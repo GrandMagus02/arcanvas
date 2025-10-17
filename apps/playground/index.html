@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arcanvas Playground</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+      }
+      #app {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      #canvas-parent {
+        flex: 1;
+        border: 1px solid #ccc;
+        min-height: 200px;
+      }
+      canvas {
+        display: block;
+        background: #111;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="canvas-parent">
+        <canvas id="c"></canvas>
+      </div>
+    </div>
+
+    <script type="module" src="/dist/main.js"></script>
+    <script>
+      (() => {
+        try {
+          const ws = new WebSocket(`ws://${location.host}/livereload`);
+          ws.onmessage = (e) => {
+            if (e.data === "reload") location.reload();
+          };
+        } catch {}
+      })();
+    </script>
+  </body>
+</html>

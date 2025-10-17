@@ -1,0 +1,16 @@
+{
+  "name": "@arcanvas/playground",
+  "private": true,
+  "type": "module",
+  "module": "./src/main.ts",
+  "dependencies": {
+    "@arcanvas/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "dev": "bun run server.ts"
+  }
+}

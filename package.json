@@ -1,0 +1,34 @@
+{
+  "name": "arcanvas",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@types/bun": "latest",
+    "eslint": "latest",
+    "eslint-config-prettier": "latest",
+    "eslint-plugin-jsdoc": "latest",
+    "eslint-plugin-jsonc": "^2.21.0",
+    "eslint-plugin-prettier": "latest",
+    "eslint-plugin-unused-imports": "latest",
+    "jsonc-eslint-parser": "^2.4.1",
+    "prettier": "latest",
+    "prettier-plugin-glsl": "^0.2.2",
+    "typescript-eslint": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "play": "bun run apps/playground/server.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier -c .",
+    "format:fix": "prettier -w ."
+  }
+}
