@@ -1,11 +1,12 @@
 import {
   Arcanvas,
-  Grid,
-  Viewport,
   autoResizePlugin,
-  camera2DPlugin,
-  gridPlugin,
-  viewportPlugin,
+  Viewport3D,
+  Camera3D,
+  Grid3D,
+  viewport3DPlugin,
+  camera3DPlugin,
+  grid3DPlugin,
 } from "@arcanvas/core";
 
 const canvas = document.getElementById("c") as HTMLCanvasElement | null;
@@ -14,34 +15,20 @@ const canvas = document.getElementById("c") as HTMLCanvasElement | null;
 if (!canvas) {
   throw new Error("Canvas element not found");
 }
-// Initialize Arcanvas with plugins. Viewport/Grid/Camera will register into DI.
+// Initialize Arcanvas with plugins. Viewport3D/Grid3D/Camera3D will register into DI.
 
 const arc = new Arcanvas(canvas, {
   width: 640,
   height: 480,
-  plugins: [autoResizePlugin, viewportPlugin, camera2DPlugin, gridPlugin],
+  plugins: [autoResizePlugin, viewport3DPlugin, camera3DPlugin, grid3DPlugin],
 });
 
 // Resolve instances from DI (provided by plugins)
-const viewport = arc.inject<Viewport>(Viewport);
-const grid = arc.inject<Grid>(Grid);
-if (!viewport || !grid) {
-  throw new Error("Required plugins not available in DI: Viewport and Grid");
+const viewport3D = arc.inject<Viewport3D>(Viewport3D);
+const grid3D = arc.inject<Grid3D>(Grid3D);
+if (!viewport3D || !grid3D) {
+  throw new Error("Required plugins not available in DI: Viewport3D and Grid3D");
 }
-
-// Wheel zoom at cursor
-canvas.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    viewport.zoomAtScreenPoint(factor, x, y);
-  },
-  { passive: false }
-);
 
 // WebGL render loop
 const gl = (canvas.getContext("webgl") ||
@@ -49,10 +36,12 @@ const gl = (canvas.getContext("webgl") ||
 if (!gl) {
   throw new Error("WebGL not supported");
 }
-gl.clearColor(1, 1, 1, 1);
+gl.clearColor(0.02, 0.02, 0.02, 1);
+gl.enable(gl.DEPTH_TEST);
 const frame = () => {
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  grid.draw(gl);
+  viewport3D.updateMatrices();
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  grid3D.draw(gl);
   requestAnimationFrame(frame);
 };
 requestAnimationFrame(frame);
