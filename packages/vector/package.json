@@ -8,5 +8,8 @@
       "types": "./index.ts",
       "import": "./index.ts"
     }
+  },
+  "dependencies": {
+    "@arcanvas/array": "workspace:*"
   }
 }
