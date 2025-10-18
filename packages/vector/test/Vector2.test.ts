@@ -16,6 +16,15 @@ describe("Vector2", () => {
     expect(v.length).toBe(2);
   });
 
+  it("throws if too few values", () => {
+    expect(() => new Vector2([1])).toThrow();
+  });
+
+  it("from enforces size", () => {
+    expect(Vector2.from([1, 2]).toArray()).toEqual([1, 2]);
+    expect(() => Vector2.from([1])).toThrow();
+  });
+
   it("constructs from array", () => {
     const v = Vector2.from([1, 2]);
     expect(v[0]).toBe(1);

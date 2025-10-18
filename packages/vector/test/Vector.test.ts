@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Vector } from "../src/Vector";
 
-describe("Vector", () => {
+describe("Vector (dynamic)", () => {
   it("constructs from numeric values", () => {
     const v = new Vector([1, 2, 3]);
     expect(v[0]).toBe(1);
