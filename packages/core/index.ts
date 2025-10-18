@@ -2,15 +2,12 @@ export {
   Arcanvas,
   DEFAULT_ARCANVAS_OPTIONS as DEFAULT_OPTIONS,
   type ArcanvasOptions,
-  type ArcanvasPluginCtor,
-  type ArcanvasPluginDescriptor,
-  type ArcanvasPluginFactory,
-  type ArcanvasPluginInstance,
+  type Plugin,
+  type PluginAPI,
+  type PluginContext,
 } from "./src/Arcanvas";
-export { AutoResize, autoResizePlugin } from "./src/plugins/AutoResize";
-export { Camera2D, camera2DPlugin } from "./src/plugins/Camera2D";
-export { Grid, gridPlugin } from "./src/plugins/Grid";
-export { Viewport, viewportPlugin } from "./src/plugins/Viewport";
-export { Viewport3D, viewport3DPlugin } from "./src/plugins/Viewport3D";
-export { Camera3D, camera3DPlugin } from "./src/plugins/Camera3D";
-export { Grid3D, grid3DPlugin } from "./src/plugins/Grid3D";
+export { EventBus, type HookFn } from "./src/EventBus";
+export { AutoResize } from "./src/plugins/auto-resize";
+export { Grid } from "./src/plugins/grid";
+export { Viewport } from "./src/plugins/viewport";
+export { Renderer, type RendererOptions } from "./src/Renderer";

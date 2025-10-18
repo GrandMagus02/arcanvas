@@ -8,6 +8,9 @@
       "types": "./index.ts",
       "import": "./index.ts"
     }
+  },
+  "dependencies": {
+    "@arcanvas/matrix": "workspace:*",
+    "@arcanvas/vector": "workspace:*"
   }
 }
-
