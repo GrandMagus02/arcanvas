@@ -18,11 +18,14 @@ export function VectorMixin<TBase extends Constructor<ArrayLike<number>>>(
      * Construct from an ArrayLike/Iterable of numbers. Enforces size (if provided).
      */
     static from(input: ArrayLike<number> | Iterable<number>) {
-      const values = Array.from(input as ArrayLike<number>);
-      if (size !== undefined && values.length !== size) {
-        throw new Error(
-          `Vector values length ${values.length} does not match required size ${size}`
-        );
+      let values = Array.from(input as ArrayLike<number>);
+      if (size !== undefined) {
+        if (values.length < size) {
+          throw new Error(
+            `Vector values length ${values.length} does not match required size ${size}`
+          );
+        }
+        if (values.length > size) values = values.slice(0, size);
       }
       const Ctor = this as unknown as {
         new (arg: ArrayLike<number> | Iterable<number>): Vector;
@@ -31,15 +34,18 @@ export function VectorMixin<TBase extends Constructor<ArrayLike<number>>>(
     }
 
     constructor(...args: any[]) {
-      // Delegate validation to the base constructor
-      super(args[0] as unknown as ArrayLike<number>);
-
+      // Accept array-like/iterable; slice extra values when size is fixed
+      const input = args[0] as ArrayLike<number> | Iterable<number>;
+      let values = Array.from(input as ArrayLike<number>);
       if (size !== undefined) {
-        const count = Vector.getElementCount(this);
-        if (count !== size) {
-          throw new Error(`Vector size ${count} does not match required size ${size}`);
+        if (values.length < size) {
+          throw new Error(
+            `Vector values length ${values.length} does not match required size ${size}`
+          );
         }
+        if (values.length > size) values = values.slice(0, size);
       }
+      super(values as unknown as ArrayLike<number>);
     }
 
     /** Convert to a plain number[] */
@@ -128,10 +134,13 @@ export function VectorMixin<TBase extends Constructor<ArrayLike<number>>>(
      * with a single array-like argument (works for built-in typed arrays).
      */
     protected _createLike(values: number[]): this {
-      if (size !== undefined && values.length !== size) {
-        throw new Error(
-          `Vector values length ${values.length} does not match required size ${size}`
-        );
+      if (size !== undefined) {
+        if (values.length < size) {
+          throw new Error(
+            `Vector values length ${values.length} does not match required size ${size}`
+          );
+        }
+        if (values.length > size) values = values.slice(0, size);
       }
       const Ctor = this.constructor as unknown as {
         new (arg: ArrayLike<number> | Iterable<number>): any;
