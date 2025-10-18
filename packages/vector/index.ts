@@ -1,0 +1,12 @@
+export { Float32Vector } from "./src/Float32Vector";
+export { Float64Vector } from "./src/Float64Vector";
+export { Int16Vector } from "./src/Int16Vector";
+export { Int32Vector } from "./src/Int32Vector";
+export { Int8Vector } from "./src/Int8Vector";
+export { Uint16Vector } from "./src/Uint16Vector";
+export { Uint32Vector } from "./src/Uint32Vector";
+export { Uint8ClampedVector } from "./src/Uint8ClampedVector";
+export { Uint8Vector } from "./src/Uint8Vector";
+export { Uint8Vector2 } from "./src/Uint8Vector2";
+export { Uint8Vector3 } from "./src/Uint8Vector3";
+export { Uint8Vector4 } from "./src/Uint8Vector4";
