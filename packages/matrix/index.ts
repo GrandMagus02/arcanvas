@@ -1,0 +1,13 @@
+export { Float32Matrix } from "./src/Float32Matrix";
+export { Float64Matrix } from "./src/Float64Matrix";
+export { Int16Matrix } from "./src/Int16Matrix";
+export { Int32Matrix } from "./src/Int32Matrix";
+export { Int8Matrix } from "./src/Int8Matrix";
+export { Matrix2 } from "./src/Matrix2";
+export { Matrix3 } from "./src/Matrix3";
+export { Matrix4 } from "./src/Matrix4";
+export { MatrixBase } from "./src/MatrixBase";
+export { Uint16Matrix } from "./src/Uint16Matrix";
+export { Uint32Matrix } from "./src/Uint32Matrix";
+export { Uint8ClampedMatrix } from "./src/Uint8ClampedMatrix";
+export { Uint8Matrix } from "./src/Uint8Matrix";

@@ -1,0 +1,10 @@
+{
+  "name": "@arcanvas/matrix",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.ts",
+  "private": true,
+  "exports": {
+    ".": "./index.ts"
+  }
+}
