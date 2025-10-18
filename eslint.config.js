@@ -39,6 +39,20 @@ export default [
       "eol-last": ["error", "always"],
       curly: ["error", "all"],
       eqeqeq: ["error", "always"],
+      // Prefer single-line arrays (collapse when possible). If an array
+      // is written without a trailing comma, enforce single-line form.
+      "comma-dangle": [
+        "error",
+        {
+          arrays: "never",
+          objects: "only-multiline",
+          imports: "only-multiline",
+          exports: "only-multiline",
+          functions: "never",
+        },
+      ],
+      "array-bracket-newline": ["error", "never"],
+      "array-element-newline": ["error", "consistent-as-needed"],
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
       "padding-line-between-statements": [
         "error",
@@ -115,6 +129,18 @@ export default [
       "eol-last": ["error", "always"],
       curly: ["error", "all"],
       eqeqeq: ["error", "always"],
+      "comma-dangle": [
+        "error",
+        {
+          arrays: "never",
+          objects: "only-multiline",
+          imports: "only-multiline",
+          exports: "only-multiline",
+          functions: "never",
+        },
+      ],
+      "array-bracket-newline": ["error", "never"],
+      "array-element-newline": ["error", "consistent-as-needed"],
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
       "padding-line-between-statements": [
         "error",
