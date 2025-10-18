@@ -13,12 +13,7 @@ export class ColorRGBA extends ColorAlphaBase<Uint8Array> {
       super(new Uint8Array([arr[0]!, arr[1]!, arr[2]!]), color.alpha);
       return;
     }
-    if (
-      typeof input === "number" &&
-      typeof g === "number" &&
-      typeof b === "number" &&
-      typeof a === "number"
-    ) {
+    if (typeof input === "number" && typeof g === "number" && typeof b === "number" && typeof a === "number") {
       const r = input;
       super(new Uint8Array([r, g, b]), a);
       return;
@@ -33,13 +28,7 @@ export class ColorRGBA extends ColorAlphaBase<Uint8Array> {
   }
 
   static fromArray(array: number[]): ColorRGBA {
-    if (
-      array.length < 4 ||
-      array[0] === undefined ||
-      array[1] === undefined ||
-      array[2] === undefined ||
-      array[3] === undefined
-    ) {
+    if (array.length < 4 || array[0] === undefined || array[1] === undefined || array[2] === undefined || array[3] === undefined) {
       throw new Error("ColorRGBA must have at least 4 elements");
     }
     return new ColorRGBA(array[0], array[1], array[2], array[3]);

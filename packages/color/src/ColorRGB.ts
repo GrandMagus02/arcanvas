@@ -22,7 +22,6 @@ export class ColorRGB extends ColorBase<Uint8Array> {
       super(new Uint8Array(color.toArray()));
       return;
     }
-    throw new Error(`Invalid color input: ${input}`);
   }
 
   get r(): number {
@@ -36,12 +35,7 @@ export class ColorRGB extends ColorBase<Uint8Array> {
   }
 
   static fromArray(array: number[]): ColorRGB {
-    if (
-      array.length < 3 ||
-      array[0] === undefined ||
-      array[1] === undefined ||
-      array[2] === undefined
-    ) {
+    if (array.length < 3 || array[0] === undefined || array[1] === undefined || array[2] === undefined) {
       throw new Error("ColorRGB must have at least 3 elements");
     }
     return new ColorRGB(array[0], array[1], array[2]);
