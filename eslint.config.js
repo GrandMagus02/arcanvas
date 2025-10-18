@@ -1,4 +1,3 @@
-// Flat config for ESLint (ESM). Strict rules for TypeScript + JS.
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import jsdoc from "eslint-plugin-jsdoc";
@@ -14,7 +13,6 @@ export default [
   },
   js.configs.recommended,
   prettier,
-  // Apply TS rules only to TS files
   ...tseslint.configs.recommendedTypeChecked.map((c) => ({
     ...c,
     files: ["**/*.ts", "**/*.tsx"],
@@ -41,8 +39,23 @@ export default [
       "eol-last": ["error", "always"],
       curly: ["error", "all"],
       eqeqeq: ["error", "always"],
-
-      // Unused imports/vars
+      "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
+      "padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "class", next: "class" },
+        { blankLine: "always", prev: "*", next: "class" },
+        { blankLine: "always", prev: "class", next: "*" },
+      ],
+      "lines-around-comment": [
+        "error",
+        {
+          beforeBlockComment: true,
+          afterBlockComment: false,
+          allowArrayStart: true,
+          allowObjectStart: true,
+          allowBlockStart: true,
+        },
+      ],
       "no-unused-vars": "off",
       "unused-imports/no-unused-imports": "error",
       "unused-imports/no-unused-vars": [
@@ -54,8 +67,6 @@ export default [
           argsIgnorePattern: "^_",
         },
       ],
-
-      // Require JSDoc on all exports
       "jsdoc/require-jsdoc": [
         "error",
         {
@@ -104,6 +115,23 @@ export default [
       "eol-last": ["error", "always"],
       curly: ["error", "all"],
       eqeqeq: ["error", "always"],
+      "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
+      "padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "class", next: "class" },
+        { blankLine: "always", prev: "*", next: "class" },
+        { blankLine: "always", prev: "class", next: "*" },
+      ],
+      "lines-around-comment": [
+        "error",
+        {
+          beforeBlockComment: true,
+          afterBlockComment: false,
+          allowArrayStart: true,
+          allowObjectStart: true,
+          allowBlockStart: true,
+        },
+      ],
       "no-unused-vars": "off",
       "unused-imports/no-unused-imports": "error",
       "unused-imports/no-unused-vars": [
