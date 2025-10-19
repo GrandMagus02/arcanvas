@@ -1,5 +1,27 @@
 import { boundsCheck, isIterable, toIndex } from "./utils";
 
+// --- Type-level utilities for fixed-size index unions ---
+/** Returns union 0..N-1 for literal N, or number when N is not specific. */
+type BuildIndices<N extends number, A extends unknown[] = []> = number extends N ? number : A["length"] extends N ? A[number] : BuildIndices<N, [...A, A["length"]]>;
+
+/** Union of valid indices for a fixed-size array length N. */
+export type Indices<N extends number> = BuildIndices<N>;
+
+type FixedIndexAccess<T, N extends number> = {
+  [I in Indices<N>]: T;
+};
+
+/** Only enforce fixed index keys when N is a literal (not the broad number). */
+type FixedIndexAccessIfLiteral<T, N extends number> = number extends N ? unknown : FixedIndexAccess<T, N>;
+
+type FixedOps<T, N extends number> = {
+  get(i: Indices<N>): T;
+  set(i: Indices<N>, value: T): unknown;
+  at(i: Indices<N>): T | undefined;
+};
+
+type WithFixedOps<V, T, N extends number> = Omit<V, "get" | "set" | "at"> & FixedOps<T, N>;
+
 /**
  * Simple, fixed-size, generic array-like (no push/pop/splice).
  * - Holds any T
@@ -7,7 +29,7 @@ import { boundsCheck, isIterable, toIndex } from "./utils";
  * - Iterable; includes map/forEach/every/some/fill/clone/reduce
  * - Static from to preserve subclass type in map/clone
  */
-export class SizedArray<T> implements Iterable<T> {
+export class SizedArray<T, N extends number = number> implements Iterable<T> {
   protected _data: T[];
 
   constructor(size: number, init?: Iterable<T> | ((i: number) => T) | T) {
@@ -56,12 +78,17 @@ export class SizedArray<T> implements Iterable<T> {
     return this._data.length;
   }
 
+  // Overloads restrict literal indices when N is known
+  get(i: Indices<N>): T;
+  get(i: number): T;
   get(i: number): T {
     const idx = toIndex(i, this.length);
     boundsCheck(idx, this.length);
     return this._data[idx]!;
   }
 
+  set(i: Indices<N>, value: T): this;
+  set(i: number, value: T): this;
   set(i: number, value: T): this {
     const idx = toIndex(i, this.length);
     boundsCheck(idx, this.length);
@@ -69,6 +96,8 @@ export class SizedArray<T> implements Iterable<T> {
     return this;
   }
 
+  at(i: Indices<N>): T | undefined;
+  at(i: number): T | undefined;
   at(i: number): T | undefined {
     const idx = toIndex(i, this.length);
     if (idx < 0 || idx >= this.length) return undefined;
@@ -170,7 +199,7 @@ export class SizedArray<T> implements Iterable<T> {
     return `${this.constructor.name}(${this.toArray().join(", ")})`;
   }
 
-  [index: number]: T;
+  // NOTE: intentionally no numeric index signature here.
 }
 
 import { setClassName, toBigInt } from "./utils";
@@ -185,10 +214,10 @@ export function createNumberSizedArrayClass<A extends Int8Array | Uint8Array | U
   /**
    * Class representing a sized array of numbers
    */
-  class NumberSizedArray implements Iterable<number> {
+  class NumberSizedArray<N extends number = number> implements Iterable<number> {
     protected _data: A;
 
-    constructor(size: number, init?: Iterable<number> | ((i: number) => number) | number) {
+    constructor(size: N, init?: Iterable<number> | ((i: number) => number) | number) {
       if (!Number.isInteger(size) || size < 0) {
         throw new TypeError("size must be a non-negative integer");
       }
@@ -212,7 +241,7 @@ export function createNumberSizedArrayClass<A extends Int8Array | Uint8Array | U
       this._data = data;
     }
 
-    static from(values: ArrayLike<number> | Iterable<number>): NumberSizedArray {
+    static from<TThis extends NumberSizedArray>(this: new (size: number, init?: Iterable<number> | ((i: number) => number) | number) => TThis, values: ArrayLike<number> | Iterable<number>): TThis {
       const arr = Array.isArray(values) ? values : Array.from(values as Iterable<number>);
       return new this(arr.length, arr);
     }
@@ -221,12 +250,16 @@ export function createNumberSizedArrayClass<A extends Int8Array | Uint8Array | U
       return this._data.length;
     }
 
+    get(i: Indices<N>): number;
+    get(i: number): number;
     get(i: number): number {
       const idx = toIndex(i, this.length);
       boundsCheck(idx, this.length);
       return this._data[idx]!;
     }
 
+    set(i: Indices<N>, value: number): this;
+    set(i: number, value: number): this;
     set(i: number, value: number): this {
       const idx = toIndex(i, this.length);
       boundsCheck(idx, this.length);
@@ -234,6 +267,8 @@ export function createNumberSizedArrayClass<A extends Int8Array | Uint8Array | U
       return this;
     }
 
+    at(i: Indices<N>): number | undefined;
+    at(i: number): number | undefined;
     at(i: number): number | undefined {
       const idx = toIndex(i, this.length);
       if (idx < 0 || idx >= this.length) return undefined;
@@ -272,7 +307,7 @@ export function createNumberSizedArrayClass<A extends Int8Array | Uint8Array | U
         out[i] = +fn.call(thisArg, this._data[i]!, i, this);
       }
       const Ctor = this.constructor as typeof NumberSizedArray;
-      return Ctor.from(out) as this;
+      return Ctor.from(out) as unknown as this;
     }
 
     // reduce overloads
@@ -317,7 +352,7 @@ export function createNumberSizedArrayClass<A extends Int8Array | Uint8Array | U
 
     clone(): this {
       const Ctor = this.constructor as typeof NumberSizedArray;
-      return Ctor.from(this._data) as this;
+      return Ctor.from(this._data) as unknown as this;
     }
 
     equals(other: NumberSizedArray, eps = 0): boolean {
@@ -346,7 +381,7 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
   /**
    * Class representing a sized array of bigints
    */
-  class BigIntSizedArray implements Iterable<bigint> {
+  class BigIntSizedArray<N extends number = number> implements Iterable<bigint> {
     protected _data: A;
 
     constructor(size: number, init?: Iterable<bigint> | ((i: number) => bigint) | bigint | number) {
@@ -373,7 +408,10 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
       this._data = data;
     }
 
-    static from(values: ArrayLike<bigint> | Iterable<bigint>): BigIntSizedArray {
+    static from<TThis extends BigIntSizedArray>(
+      this: new (size: number, init?: Iterable<bigint> | ((i: number) => bigint) | bigint | number) => TThis,
+      values: ArrayLike<bigint> | Iterable<bigint>
+    ): TThis {
       const arr = Array.isArray(values) ? values : Array.from(values as Iterable<bigint>);
       return new this(arr.length, arr);
     }
@@ -382,12 +420,16 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
       return this._data.length;
     }
 
+    get(i: Indices<N>): bigint;
+    get(i: number): bigint;
     get(i: number): bigint {
       const idx = toIndex(i, this.length);
       boundsCheck(idx, this.length);
       return this._data[idx]!;
     }
 
+    set(i: Indices<N>, value: bigint | number): this;
+    set(i: number, value: bigint | number): this;
     set(i: number, value: bigint | number): this {
       const idx = toIndex(i, this.length);
       boundsCheck(idx, this.length);
@@ -395,6 +437,8 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
       return this;
     }
 
+    at(i: Indices<N>): bigint | undefined;
+    at(i: number): bigint | undefined;
     at(i: number): bigint | undefined {
       const idx = toIndex(i, this.length);
       if (idx < 0 || idx >= this.length) return undefined;
@@ -433,7 +477,7 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
         out[i] = toBigInt(fn.call(thisArg, this._data[i]!, i, this));
       }
       const Ctor = this.constructor as typeof BigIntSizedArray;
-      return Ctor.from(out) as this;
+      return Ctor.from(out) as unknown as this;
     }
 
     // reduce overloads
@@ -478,7 +522,7 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
 
     clone(): this {
       const Ctor = this.constructor as typeof BigIntSizedArray;
-      return Ctor.from(this._data) as this;
+      return Ctor.from(this._data) as unknown as this;
     }
 
     equals(other: BigIntSizedArray): boolean {
@@ -499,17 +543,170 @@ export function createBigIntSizedArrayClass<A extends BigInt64Array | BigUint64A
 }
 
 // Number-typed
-// export const SizedArray = createNumberSizedArrayClass("SizedArray", Array);
-export const Int8SizedArray = createNumberSizedArrayClass("Int8SizedArray", Int8Array);
-export const Uint8SizedArray = createNumberSizedArrayClass("Uint8SizedArray", Uint8Array);
-export const Uint8ClampedSizedArray = createNumberSizedArrayClass("Uint8ClampedSizedArray", Uint8ClampedArray);
-export const Int16SizedArray = createNumberSizedArrayClass("Int16SizedArray", Int16Array);
-export const Uint16SizedArray = createNumberSizedArrayClass("Uint16SizedArray", Uint16Array);
-export const Int32SizedArray = createNumberSizedArrayClass("Int32SizedArray", Int32Array);
-export const Uint32SizedArray = createNumberSizedArrayClass("Uint32SizedArray", Uint32Array);
-export const Float32SizedArray = createNumberSizedArrayClass("Float32SizedArray", Float32Array);
-export const Float64SizedArray = createNumberSizedArrayClass("Float64SizedArray", Float64Array);
+/**
+ * Type representing a 3-element Int8 array.
+ */
+const Int8SizedArrayBase = createNumberSizedArrayClass("Int8SizedArray", Int8Array);
+/**
+ *
+ */
+export type Int8SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Int8SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Int8SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Int8SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Int8SizedArray<number>;
+} = Int8SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Int8SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Int8SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Uint8 array.
+ */
+const Uint8SizedArrayBase = createNumberSizedArrayClass("Uint8SizedArray", Uint8Array);
+/**
+ *
+ */
+export type Uint8SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Uint8SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Uint8SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint8SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint8SizedArray<number>;
+} = Uint8SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint8SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint8SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Uint8Clamped array.
+ */
+const Uint8ClampedSizedArrayBase = createNumberSizedArrayClass("Uint8ClampedSizedArray", Uint8ClampedArray);
+/**
+ *
+ */
+export type Uint8ClampedSizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Uint8ClampedSizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Uint8ClampedSizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint8ClampedSizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint8ClampedSizedArray<number>;
+} = Uint8ClampedSizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint8ClampedSizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint8ClampedSizedArray<number>;
+};
+/**
+ * Type representing a 3-element Int16 array.
+ */
+const Int16SizedArrayBase = createNumberSizedArrayClass("Int16SizedArray", Int16Array);
+/**
+ *
+ */
+export type Int16SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Int16SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Int16SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Int16SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Int16SizedArray<number>;
+} = Int16SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Int16SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Int16SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Uint16 array.
+ */
+const Uint16SizedArrayBase = createNumberSizedArrayClass("Uint16SizedArray", Uint16Array);
+/**
+ *
+ */
+export type Uint16SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Uint16SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Uint16SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint16SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint16SizedArray<number>;
+} = Uint16SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint16SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint16SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Int32 array.
+ */
+const Int32SizedArrayBase = createNumberSizedArrayClass("Int32SizedArray", Int32Array);
+/**
+ *
+ */
+export type Int32SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Int32SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Int32SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Int32SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Int32SizedArray<number>;
+} = Int32SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Int32SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Int32SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Uint32 array.
+ */
+const Uint32SizedArrayBase = createNumberSizedArrayClass("Uint32SizedArray", Uint32Array);
+/**
+ *
+ */
+export type Uint32SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Uint32SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Uint32SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint32SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint32SizedArray<number>;
+} = Uint32SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Uint32SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Uint32SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Float32 array.
+ */
+const Float32SizedArrayBase = createNumberSizedArrayClass("Float32SizedArray", Float32Array);
+/**
+ *
+ */
+export type Float32SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Float32SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Float32SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Float32SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Float32SizedArray<number>;
+} = Float32SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Float32SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Float32SizedArray<number>;
+};
+/**
+ * Type representing a 3-element Float64 array.
+ */
+const Float64SizedArrayBase = createNumberSizedArrayClass("Float64SizedArray", Float64Array);
+/**
+ *
+ */
+export type Float64SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof Float64SizedArrayBase>, number, N> & FixedIndexAccessIfLiteral<number, N>;
+export const Float64SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Float64SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Float64SizedArray<number>;
+} = Float64SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<number> | ((i: number) => number) | number): Float64SizedArray<N>;
+  from(values: ArrayLike<number> | Iterable<number>): Float64SizedArray<number>;
+};
 
 // BigInt-typed (note: there is no Int64Array/Uint64Array; these are BigInt*)
-export const BigInt64SizedArray = createBigIntSizedArrayClass("BigInt64SizedArray", BigInt64Array);
-export const BigUint64SizedArray = createBigIntSizedArrayClass("BigUint64SizedArray", BigUint64Array);
+/**
+ * Type representing a 3-element BigInt64 array.
+ */
+const BigInt64SizedArrayBase = createBigIntSizedArrayClass("BigInt64SizedArray", BigInt64Array);
+/**
+ *
+ */
+export type BigInt64SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof BigInt64SizedArrayBase>, bigint, N> & FixedIndexAccessIfLiteral<bigint, N>;
+export const BigInt64SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<bigint> | ((i: number) => bigint) | bigint | number): BigInt64SizedArray<N>;
+  from(values: ArrayLike<bigint> | Iterable<bigint>): BigInt64SizedArray<number>;
+} = BigInt64SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<bigint> | ((i: number) => bigint) | bigint | number): BigInt64SizedArray<N>;
+  from(values: ArrayLike<bigint> | Iterable<bigint>): BigInt64SizedArray<number>;
+};
+/**
+ * Type representing a 3-element BigUint64 array.
+ */
+const BigUint64SizedArrayBase = createBigIntSizedArrayClass("BigUint64SizedArray", BigUint64Array);
+/**
+ *
+ */
+export type BigUint64SizedArray<N extends number = number> = WithFixedOps<InstanceType<typeof BigUint64SizedArrayBase>, bigint, N> & FixedIndexAccessIfLiteral<bigint, N>;
+export const BigUint64SizedArray: {
+  new <N extends number>(size: N, init?: Iterable<bigint> | ((i: number) => bigint) | bigint | number): BigUint64SizedArray<N>;
+  from(values: ArrayLike<bigint> | Iterable<bigint>): BigUint64SizedArray<number>;
+} = BigUint64SizedArrayBase as unknown as {
+  new <N extends number>(size: N, init?: Iterable<bigint> | ((i: number) => bigint) | bigint | number): BigUint64SizedArray<N>;
+  from(values: ArrayLike<bigint> | Iterable<bigint>): BigUint64SizedArray<number>;
+};
