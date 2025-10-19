@@ -126,13 +126,25 @@ export function createGenericVectorClass<D extends number>(name: string, dim: D)
     new <T>(...values: T[]): SizedArray<T> & {
       [index: number]: T;
       // surface a few common aliases for small dims (for TS ergonomics)
-      x?: T;
-      y?: T;
-      z?: T;
-      w?: T;
+      x: T;
+      y: T;
+      z: T;
+      w: T;
     };
-    fromValues<T2>(values: ArrayLike<T2> | Iterable<T2>): SizedArray<T2>;
-    from<T2>(values: ArrayLike<T2> | Iterable<T2>): SizedArray<T2>;
+    fromValues<T2>(values: ArrayLike<T2> | Iterable<T2>): SizedArray<T2> & {
+      [index: number]: T2;
+      x: T2;
+      y: T2;
+      z: T2;
+      w: T2;
+    };
+    from<T2>(values: ArrayLike<T2> | Iterable<T2>): SizedArray<T2> & {
+      [index: number]: T2;
+      x: T2;
+      y: T2;
+      z: T2;
+      w: T2;
+    };
   };
 }
 
@@ -254,10 +266,10 @@ export function createNumberVectorClass<D extends number>(name: string, Base: Nu
       magnitude(): number;
       normalized(): NumberVector;
       cross?: (v: { get(i: number): number }) => NumberVector; // present only for dim === 3
-      x?: number;
-      y?: number;
-      z?: number;
-      w?: number;
+      x: number;
+      y: number;
+      z: number;
+      w: number;
     };
     fromValues(values: ArrayLike<number> | Iterable<number>): NumberVector;
   };
@@ -351,40 +363,147 @@ export function createBigIntVectorClass<D extends number>(name: string, Base: Bi
 }
 
 // Any-type vectors (generic)
+/**
+ * Vector2 type
+ */
+export type Vector2 = InstanceType<typeof Vector2>;
 export const Vector2 = createGenericVectorClass("Vector2", 2);
+/**
+ * Vector3 type
+ */
+export type Vector3 = InstanceType<typeof Vector3>;
 export const Vector3 = createGenericVectorClass("Vector3", 3);
+/**
+ * Vector4 type
+ */
+export type Vector4 = InstanceType<typeof Vector4>;
 export const Vector4 = createGenericVectorClass("Vector4", 4);
 
 // Numeric typed vectors
+/**
+ * Int8Vector2 type
+ */
+export type Int8Vector2 = InstanceType<typeof Int8Vector2>;
 export const Int8Vector2 = createNumberVectorClass("Int8Vector2", Int8SizedArray, 2);
+/**
+ * Int8Vector3 type
+ */
+export type Int8Vector3 = InstanceType<typeof Int8Vector3>;
 export const Int8Vector3 = createNumberVectorClass("Int8Vector3", Int8SizedArray, 3);
+/**
+ * Int8Vector4 type
+ */
+export type Int8Vector4 = InstanceType<typeof Int8Vector4>;
 export const Int8Vector4 = createNumberVectorClass("Int8Vector4", Int8SizedArray, 4);
 
+/**
+ * Uint8Vector2 type
+ */
+export type Uint8Vector2 = InstanceType<typeof Uint8Vector2>;
 export const Uint8Vector2 = createNumberVectorClass("Uint8Vector2", Uint8SizedArray, 2);
+/**
+ * Uint8Vector3 type
+ */
+export type Uint8Vector3 = InstanceType<typeof Uint8Vector3>;
 export const Uint8Vector3 = createNumberVectorClass("Uint8Vector3", Uint8SizedArray, 3);
+/**
+ * Uint8Vector4 type
+ */
+export type Uint8Vector4 = InstanceType<typeof Uint8Vector4>;
 export const Uint8Vector4 = createNumberVectorClass("Uint8Vector4", Uint8SizedArray, 4);
 
+/**
+ * Int16Vector2 type
+ */
+export type Int16Vector2 = InstanceType<typeof Int16Vector2>;
 export const Int16Vector2 = createNumberVectorClass("Int16Vector2", Int16SizedArray, 2);
+/**
+ * Int16Vector3 type
+ */
+export type Int16Vector3 = InstanceType<typeof Int16Vector3>;
 export const Int16Vector3 = createNumberVectorClass("Int16Vector3", Int16SizedArray, 3);
+/**
+ * Int16Vector4 type
+ */
+export type Int16Vector4 = InstanceType<typeof Int16Vector4>;
 export const Int16Vector4 = createNumberVectorClass("Int16Vector4", Int16SizedArray, 4);
 
+/**
+ * Int32Vector2 type
+ */
+export type Int32Vector2 = InstanceType<typeof Int32Vector2>;
 export const Int32Vector2 = createNumberVectorClass("Int32Vector2", Int32SizedArray, 2);
+/**
+ * Int32Vector3 type
+ */
+export type Int32Vector3 = InstanceType<typeof Int32Vector3>;
 export const Int32Vector3 = createNumberVectorClass("Int32Vector3", Int32SizedArray, 3);
+/**
+ * Int32Vector4 type
+ */
+export type Int32Vector4 = InstanceType<typeof Int32Vector4>;
 export const Int32Vector4 = createNumberVectorClass("Int32Vector4", Int32SizedArray, 4);
 
+/**
+ * Float32Vector2 type
+ */
 export const Float32Vector2 = createNumberVectorClass("Float32Vector2", Float32SizedArray, 2);
+/**
+ * Float32Vector3 type
+ */
+export type Float32Vector3 = InstanceType<typeof Float32Vector3>;
 export const Float32Vector3 = createNumberVectorClass("Float32Vector3", Float32SizedArray, 3);
+/**
+ * Float32Vector4 type
+ */
+export type Float32Vector4 = InstanceType<typeof Float32Vector4>;
 export const Float32Vector4 = createNumberVectorClass("Float32Vector4", Float32SizedArray, 4);
 
+/**
+ * Float64Vector2 type
+ */
+export type Float64Vector2 = InstanceType<typeof Float64Vector2>;
 export const Float64Vector2 = createNumberVectorClass("Float64Vector2", Float64SizedArray, 2);
+/**
+ * Float64Vector3 type
+ */
+export type Float64Vector3 = InstanceType<typeof Float64Vector3>;
 export const Float64Vector3 = createNumberVectorClass("Float64Vector3", Float64SizedArray, 3);
+/**
+ * Float64Vector4 type
+ */
+export type Float64Vector4 = InstanceType<typeof Float64Vector4>;
 export const Float64Vector4 = createNumberVectorClass("Float64Vector4", Float64SizedArray, 4);
 
 // Bigint typed vectors
+/**
+ * BigInt64Vector2 type
+ */
+export type BigInt64Vector2 = InstanceType<typeof BigInt64Vector2>;
 export const BigInt64Vector2 = createBigIntVectorClass("BigInt64Vector2", BigInt64SizedArray, 2);
+/**
+ * BigInt64Vector3 type
+ */
+export type BigInt64Vector3 = InstanceType<typeof BigInt64Vector3>;
 export const BigInt64Vector3 = createBigIntVectorClass("BigInt64Vector3", BigInt64SizedArray, 3);
+/**
+ * BigInt64Vector4 type
+ */
+export type BigInt64Vector4 = InstanceType<typeof BigInt64Vector4>;
 export const BigInt64Vector4 = createBigIntVectorClass("BigInt64Vector4", BigInt64SizedArray, 4);
 
+/**
+ * BigUint64Vector2 type
+ */
+export type BigUint64Vector2 = InstanceType<typeof BigUint64Vector2>;
 export const BigUint64Vector2 = createBigIntVectorClass("BigUint64Vector2", BigUint64SizedArray, 2);
+/**
+ * BigUint64Vector3 type
+ */
+export type BigUint64Vector3 = InstanceType<typeof BigUint64Vector3>;
 export const BigUint64Vector3 = createBigIntVectorClass("BigUint64Vector3", BigUint64SizedArray, 3);
+/**
+ * BigUint64Vector4 type
+ */
+export type BigUint64Vector4 = InstanceType<typeof BigUint64Vector4>;
 export const BigUint64Vector4 = createBigIntVectorClass("BigUint64Vector4", BigUint64SizedArray, 4);

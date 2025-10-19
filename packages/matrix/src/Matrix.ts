@@ -88,55 +88,6 @@ const toNested = <T>(flat: { get(i: number): T }, dims: readonly number[], offse
 
 type Nested<T> = T | Iterable<Nested<T>>;
 
-// Public shape types for factory returns to avoid self-referential return types
-type NumberMatrixInstance = {
-  [index: number]: number;
-  length: number;
-  get(i: number): number;
-  set(i: number, v: number): void;
-  toArray(): number[];
-  getN(...coords: number[]): number;
-  setN(v: number, ...coords: number[]): void;
-  add(v: { get(i: number): number }): NumberMatrixInstance;
-  sub(v: { get(i: number): number }): NumberMatrixInstance;
-  scale(s: number): NumberMatrixInstance;
-  dot(v: { get(i: number): number }): number;
-  magnitude(): number;
-  normalized(): NumberMatrixInstance;
-  toNested(): unknown;
-  matMul: (B: unknown) => NumberMatrixInstance;
-};
-
-type NumberMatrixClass = {
-  new (...values: number[]): NumberMatrixInstance;
-  readonly shape: readonly number[];
-  readonly size: number;
-  fromValues(values: ArrayLike<number> | Iterable<number> | Nested<number>): NumberMatrixInstance;
-};
-
-type BigIntMatrixInstance = {
-  [index: number]: bigint;
-  length: number;
-  get(i: number): bigint;
-  set(i: number, v: bigint | number): void;
-  toArray(): bigint[];
-  getN(...coords: number[]): bigint;
-  setN(v: bigint | number, ...coords: number[]): void;
-  add(v: { get(i: number): bigint }): BigIntMatrixInstance;
-  sub(v: { get(i: number): bigint }): BigIntMatrixInstance;
-  scale(s: bigint | number): BigIntMatrixInstance;
-  dot(v: { get(i: number): bigint }): bigint;
-  lengthApprox(): number;
-  toNested(): unknown;
-};
-
-type BigIntMatrixClass = {
-  new (...values: (bigint | number)[]): BigIntMatrixInstance;
-  readonly shape: readonly number[];
-  readonly size: number;
-  fromValues(values: ArrayLike<bigint | number | string> | Iterable<bigint | number | string> | Nested<bigint | number | string>): BigIntMatrixInstance;
-};
-
 /**
  * Flatten a (possibly nested) iterable into a flat array up to given shape.
  * Missing items are padded with `pad` (default 0 for number, 0n for bigint, undefined for generic).
@@ -277,7 +228,7 @@ export function createGenericMatrixClass(name: string, dims: readonly number[]) 
 /**
  * NUMBER: N-D Matrix/Tensor with elementwise arithmetic.
  */
-export function createNumberMatrixClass(name: string, Base: NumberSizedCtor, dims: readonly number[]): NumberMatrixClass {
+export function createNumberMatrixClass(name: string, Base: NumberSizedCtor, dims: readonly number[]) {
   const SHAPE = Object.freeze([...dims]);
   const SIZE = product(SHAPE);
   const STRIDES = computeStrides(SHAPE);
@@ -311,29 +262,29 @@ export function createNumberMatrixClass(name: string, Base: NumberSizedCtor, dim
     }
 
     // Frobenius helpers
-    add(v: { get(i: number): number }): NumberMatrix {
+    add(v: { get(i: number): number }): this {
       const Ctor = this.constructor as unknown as {
         new (...values: number[]): NumberMatrix;
       };
       const out = Array.from({ length: SIZE }, (_, i) => this.get(i) + v.get(i));
-      return new Ctor(...out);
+      return new Ctor(...out) as this;
     }
 
-    sub(v: { get(i: number): number }): NumberMatrix {
+    sub(v: { get(i: number): number }): this {
       const Ctor = this.constructor as unknown as {
         new (...values: number[]): NumberMatrix;
       };
       const out = Array.from({ length: SIZE }, (_, i) => this.get(i) - v.get(i));
-      return new Ctor(...out);
+      return new Ctor(...out) as this;
     }
 
-    scale(s: number): NumberMatrix {
+    scale(s: number): this {
       const Ctor = this.constructor as unknown as {
         new (...values: number[]): NumberMatrix;
       };
       const k = +s;
       const out = Array.from({ length: SIZE }, (_, i) => this.get(i) * k);
-      return new Ctor(...out);
+      return new Ctor(...out) as this;
     }
 
     // Inner product (sum over all elements)
@@ -352,7 +303,7 @@ export function createNumberMatrixClass(name: string, Base: NumberSizedCtor, dim
       return Math.sqrt(acc);
     }
 
-    normalized(): NumberMatrix {
+    normalized(): this {
       const len = this.magnitude() || 1;
       return this.scale(1 / len);
     }
@@ -451,13 +402,13 @@ export function createNumberMatrixClass(name: string, Base: NumberSizedCtor, dim
     }
   }
 
-  return setClassName(NumberMatrix as unknown as { new (...values: number[]): unknown }, name) as unknown as NumberMatrixClass;
+  return setClassName(NumberMatrix, name);
 }
 
 /**
  * BIGINT: N-D Matrix/Tensor with bigint arithmetic.
  */
-export function createBigIntMatrixClass(name: string, Base: BigIntSizedCtor, dims: readonly number[]): BigIntMatrixClass {
+export function createBigIntMatrixClass(name: string, Base: BigIntSizedCtor, dims: readonly number[]) {
   const SHAPE = Object.freeze([...dims]);
   const SIZE = product(SHAPE);
   const STRIDES = computeStrides(SHAPE);
@@ -584,104 +535,816 @@ export function createBigIntMatrixClass(name: string, Base: BigIntSizedCtor, dim
       new (...values: (bigint | number)[]): unknown;
     },
     name
-  ) as unknown as BigIntMatrixClass;
+  );
 }
 
+/**
+ * Type representing a 2x2 generic matrix.
+ */
+export type GenericMatrix2x2 = InstanceType<typeof GenericMatrix2x2>;
+/**
+ * Class for a 2x2 generic matrix.
+ */
 export const GenericMatrix2x2 = createGenericMatrixClass("GenericMatrix2x2", [2, 2]);
+
+/**
+ * Type representing a 2x3 generic matrix.
+ */
+export type GenericMatrix2x3 = InstanceType<typeof GenericMatrix2x3>;
+/**
+ * Class for a 2x3 generic matrix.
+ */
 export const GenericMatrix2x3 = createGenericMatrixClass("GenericMatrix2x3", [2, 3]);
+
+/**
+ * Type representing a 3x2 generic matrix.
+ */
+export type GenericMatrix3x2 = InstanceType<typeof GenericMatrix3x2>;
+/**
+ * Class for a 3x2 generic matrix.
+ */
 export const GenericMatrix3x2 = createGenericMatrixClass("GenericMatrix3x2", [3, 2]);
+
+/**
+ * Type representing a 3x3 generic matrix.
+ */
+export type GenericMatrix3x3 = InstanceType<typeof GenericMatrix3x3>;
+/**
+ * Class for a 3x3 generic matrix.
+ */
 export const GenericMatrix3x3 = createGenericMatrixClass("GenericMatrix3x3", [3, 3]);
+
+/**
+ * Type representing a 4x4 generic matrix.
+ */
+export type GenericMatrix4x4 = InstanceType<typeof GenericMatrix4x4>;
+/**
+ * Class for a 4x4 generic matrix.
+ */
 export const GenericMatrix4x4 = createGenericMatrixClass("GenericMatrix4x4", [4, 4]);
+
+/**
+ * Type representing a 2x2x2 generic matrix.
+ */
+export type GenericMatrix2x2x2 = InstanceType<typeof GenericMatrix2x2x2>;
+/**
+ * Class for a 2x2x2 generic matrix.
+ */
 export const GenericMatrix2x2x2 = createGenericMatrixClass("GenericMatrix2x2x2", [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 generic matrix.
+ */
+export type GenericMatrix2x3x2 = InstanceType<typeof GenericMatrix2x3x2>;
+/**
+ * Class for a 2x3x2 generic matrix.
+ */
 export const GenericMatrix2x3x2 = createGenericMatrixClass("GenericMatrix2x3x2", [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 generic matrix.
+ */
+export type GenericMatrix3x2x2 = InstanceType<typeof GenericMatrix3x2x2>;
+/**
+ * Class for a 3x2x2 generic matrix.
+ */
 export const GenericMatrix3x2x2 = createGenericMatrixClass("GenericMatrix3x2x2", [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 generic matrix.
+ */
+export type GenericMatrix3x3x3 = InstanceType<typeof GenericMatrix3x3x3>;
+/**
+ * Class for a 3x3x3 generic matrix.
+ */
 export const GenericMatrix3x3x3 = createGenericMatrixClass("GenericMatrix3x3x3", [3, 3, 3]);
+
+/**
+ * Class for a 4x4x4 generic matrix.
+ * @note No type alias is provided for this class.
+ */
 export const GenericMatrix4x4x4 = createGenericMatrixClass("GenericMatrix4x4x4", [4, 4, 4]);
 
+// --- Typed Number Matrices --- //
+
+/**
+ * Type representing a 2x2 Int8 matrix.
+ */
+export type Int8Matrix2x2 = InstanceType<typeof Int8Matrix2x2>;
+/**
+ * Class for a 2x2 Int8 matrix.
+ */
 export const Int8Matrix2x2 = createNumberMatrixClass("Int8Matrix2x2", Int8SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 Int8 matrix.
+ */
+export type Int8Matrix2x3 = InstanceType<typeof Int8Matrix2x3>;
+/**
+ * Class for a 2x3 Int8 matrix.
+ */
 export const Int8Matrix2x3 = createNumberMatrixClass("Int8Matrix2x3", Int8SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 Int8 matrix.
+ */
+export type Int8Matrix3x2 = InstanceType<typeof Int8Matrix3x2>;
+/**
+ * Class for a 3x2 Int8 matrix.
+ */
 export const Int8Matrix3x2 = createNumberMatrixClass("Int8Matrix3x2", Int8SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 Int8 matrix.
+ */
+export type Int8Matrix3x3 = InstanceType<typeof Int8Matrix3x3>;
+/**
+ * Class for a 3x3 Int8 matrix.
+ */
 export const Int8Matrix3x3 = createNumberMatrixClass("Int8Matrix3x3", Int8SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 Int8 matrix.
+ */
+export type Int8Matrix4x4 = InstanceType<typeof Int8Matrix4x4>;
+/**
+ * Class for a 4x4 Int8 matrix.
+ */
 export const Int8Matrix4x4 = createNumberMatrixClass("Int8Matrix4x4", Int8SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 Int8 matrix.
+ */
+export type Int8Matrix2x2x2 = InstanceType<typeof Int8Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 Int8 matrix.
+ */
 export const Int8Matrix2x2x2 = createNumberMatrixClass("Int8Matrix2x2x2", Int8SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 Int8 matrix.
+ */
+export type Int8Matrix2x3x2 = InstanceType<typeof Int8Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 Int8 matrix.
+ */
 export const Int8Matrix2x3x2 = createNumberMatrixClass("Int8Matrix2x3x2", Int8SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 Int8 matrix.
+ */
+export type Int8Matrix3x2x2 = InstanceType<typeof Int8Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 Int8 matrix.
+ */
 export const Int8Matrix3x2x2 = createNumberMatrixClass("Int8Matrix3x2x2", Int8SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 Int8 matrix.
+ */
+export type Int8Matrix3x3x3 = InstanceType<typeof Int8Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 Int8 matrix.
+ */
 export const Int8Matrix3x3x3 = createNumberMatrixClass("Int8Matrix3x3x3", Int8SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 Int8 matrix.
+ */
+export type Int8Matrix4x4x4 = InstanceType<typeof Int8Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 Int8 matrix.
+ */
 export const Int8Matrix4x4x4 = createNumberMatrixClass("Int8Matrix4x4x4", Int8SizedArray, [4, 4, 4]);
 
+/**
+ * Type representing a 2x2 Uint8 matrix.
+ */
+export type Uint8Matrix2x2 = InstanceType<typeof Uint8Matrix2x2>;
+/**
+ * Class for a 2x2 Uint8 matrix.
+ */
 export const Uint8Matrix2x2 = createNumberMatrixClass("Uint8Matrix2x2", Uint8SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 Uint8 matrix.
+ */
+export type Uint8Matrix2x3 = InstanceType<typeof Uint8Matrix2x3>;
+/**
+ * Class for a 2x3 Uint8 matrix.
+ */
 export const Uint8Matrix2x3 = createNumberMatrixClass("Uint8Matrix2x3", Uint8SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 Uint8 matrix.
+ */
+export type Uint8Matrix3x2 = InstanceType<typeof Uint8Matrix3x2>;
+/**
+ * Class for a 3x2 Uint8 matrix.
+ */
 export const Uint8Matrix3x2 = createNumberMatrixClass("Uint8Matrix3x2", Uint8SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 Uint8 matrix.
+ */
+export type Uint8Matrix3x3 = InstanceType<typeof Uint8Matrix3x3>;
+/**
+ * Class for a 3x3 Uint8 matrix.
+ */
 export const Uint8Matrix3x3 = createNumberMatrixClass("Uint8Matrix3x3", Uint8SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 Uint8 matrix.
+ */
+export type Uint8Matrix4x4 = InstanceType<typeof Uint8Matrix4x4>;
+/**
+ * Class for a 4x4 Uint8 matrix.
+ */
 export const Uint8Matrix4x4 = createNumberMatrixClass("Uint8Matrix4x4", Uint8SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 Uint8 matrix.
+ */
+export type Uint8Matrix2x2x2 = InstanceType<typeof Uint8Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 Uint8 matrix.
+ */
 export const Uint8Matrix2x2x2 = createNumberMatrixClass("Uint8Matrix2x2x2", Uint8SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 Uint8 matrix.
+ */
+export type Uint8Matrix2x3x2 = InstanceType<typeof Uint8Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 Uint8 matrix.
+ */
 export const Uint8Matrix2x3x2 = createNumberMatrixClass("Uint8Matrix2x3x2", Uint8SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 Uint8 matrix.
+ */
+export type Uint8Matrix3x2x2 = InstanceType<typeof Uint8Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 Uint8 matrix.
+ */
 export const Uint8Matrix3x2x2 = createNumberMatrixClass("Uint8Matrix3x2x2", Uint8SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 Uint8 matrix.
+ */
+export type Uint8Matrix3x3x3 = InstanceType<typeof Uint8Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 Uint8 matrix.
+ */
 export const Uint8Matrix3x3x3 = createNumberMatrixClass("Uint8Matrix3x3x3", Uint8SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 Uint8 matrix.
+ */
+export type Uint8Matrix4x4x4 = InstanceType<typeof Uint8Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 Uint8 matrix.
+ */
 export const Uint8Matrix4x4x4 = createNumberMatrixClass("Uint8Matrix4x4x4", Uint8SizedArray, [4, 4, 4]);
 
+/**
+ * Type representing a 2x2 Int16 matrix.
+ */
+export type Int16Matrix2x2 = InstanceType<typeof Int16Matrix2x2>;
+/**
+ * Class for a 2x2 Int16 matrix.
+ */
 export const Int16Matrix2x2 = createNumberMatrixClass("Int16Matrix2x2", Int16SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 Int16 matrix.
+ */
+export type Int16Matrix2x3 = InstanceType<typeof Int16Matrix2x3>;
+/**
+ * Class for a 2x3 Int16 matrix.
+ */
 export const Int16Matrix2x3 = createNumberMatrixClass("Int16Matrix2x3", Int16SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 Int16 matrix.
+ */
+export type Int16Matrix3x2 = InstanceType<typeof Int16Matrix3x2>;
+/**
+ * Class for a 3x2 Int16 matrix.
+ */
 export const Int16Matrix3x2 = createNumberMatrixClass("Int16Matrix3x2", Int16SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 Int16 matrix.
+ */
+export type Int16Matrix3x3 = InstanceType<typeof Int16Matrix3x3>;
+/**
+ * Class for a 3x3 Int16 matrix.
+ */
 export const Int16Matrix3x3 = createNumberMatrixClass("Int16Matrix3x3", Int16SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 Int16 matrix.
+ */
+export type Int16Matrix4x4 = InstanceType<typeof Int16Matrix4x4>;
+/**
+ * Class for a 4x4 Int16 matrix.
+ */
 export const Int16Matrix4x4 = createNumberMatrixClass("Int16Matrix4x4", Int16SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 Int16 matrix.
+ */
+export type Int16Matrix2x2x2 = InstanceType<typeof Int16Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 Int16 matrix.
+ */
 export const Int16Matrix2x2x2 = createNumberMatrixClass("Int16Matrix2x2x2", Int16SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 Int16 matrix.
+ */
+export type Int16Matrix2x3x2 = InstanceType<typeof Int16Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 Int16 matrix.
+ */
 export const Int16Matrix2x3x2 = createNumberMatrixClass("Int16Matrix2x3x2", Int16SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 Int16 matrix.
+ */
+export type Int16Matrix3x2x2 = InstanceType<typeof Int16Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 Int16 matrix.
+ */
 export const Int16Matrix3x2x2 = createNumberMatrixClass("Int16Matrix3x2x2", Int16SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 Int16 matrix.
+ */
+export type Int16Matrix3x3x3 = InstanceType<typeof Int16Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 Int16 matrix.
+ */
 export const Int16Matrix3x3x3 = createNumberMatrixClass("Int16Matrix3x3x3", Int16SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 Int16 matrix.
+ */
+export type Int16Matrix4x4x4 = InstanceType<typeof Int16Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 Int16 matrix.
+ */
 export const Int16Matrix4x4x4 = createNumberMatrixClass("Int16Matrix4x4x4", Int16SizedArray, [4, 4, 4]);
 
+/**
+ * Type representing a 2x2 Int32 matrix.
+ */
+export type Int32Matrix2x2 = InstanceType<typeof Int32Matrix2x2>;
+/**
+ * Class for a 2x2 Int32 matrix.
+ */
 export const Int32Matrix2x2 = createNumberMatrixClass("Int32Matrix2x2", Int32SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 Int32 matrix.
+ */
+export type Int32Matrix2x3 = InstanceType<typeof Int32Matrix2x3>;
+/**
+ * Class for a 2x3 Int32 matrix.
+ */
 export const Int32Matrix2x3 = createNumberMatrixClass("Int32Matrix2x3", Int32SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 Int32 matrix.
+ */
+export type Int32Matrix3x2 = InstanceType<typeof Int32Matrix3x2>;
+/**
+ * Class for a 3x2 Int32 matrix.
+ */
 export const Int32Matrix3x2 = createNumberMatrixClass("Int32Matrix3x2", Int32SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 Int32 matrix.
+ */
+export type Int32Matrix3x3 = InstanceType<typeof Int32Matrix3x3>;
+/**
+ * Class for a 3x3 Int32 matrix.
+ */
 export const Int32Matrix3x3 = createNumberMatrixClass("Int32Matrix3x3", Int32SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 Int32 matrix.
+ */
+export type Int32Matrix4x4 = InstanceType<typeof Int32Matrix4x4>;
+/**
+ * Class for a 4x4 Int32 matrix.
+ */
 export const Int32Matrix4x4 = createNumberMatrixClass("Int32Matrix4x4", Int32SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 Int32 matrix.
+ */
+export type Int32Matrix2x2x2 = InstanceType<typeof Int32Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 Int32 matrix.
+ */
 export const Int32Matrix2x2x2 = createNumberMatrixClass("Int32Matrix2x2x2", Int32SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 Int32 matrix.
+ */
+export type Int32Matrix2x3x2 = InstanceType<typeof Int32Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 Int32 matrix.
+ */
 export const Int32Matrix2x3x2 = createNumberMatrixClass("Int32Matrix2x3x2", Int32SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 Int32 matrix.
+ */
+export type Int32Matrix3x2x2 = InstanceType<typeof Int32Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 Int32 matrix.
+ */
 export const Int32Matrix3x2x2 = createNumberMatrixClass("Int32Matrix3x2x2", Int32SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 Int32 matrix.
+ */
+export type Int32Matrix3x3x3 = InstanceType<typeof Int32Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 Int32 matrix.
+ */
 export const Int32Matrix3x3x3 = createNumberMatrixClass("Int32Matrix3x3x3", Int32SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 Int32 matrix.
+ */
+export type Int32Matrix4x4x4 = InstanceType<typeof Int32Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 Int32 matrix.
+ */
 export const Int32Matrix4x4x4 = createNumberMatrixClass("Int32Matrix4x4x4", Int32SizedArray, [4, 4, 4]);
 
+/**
+ * Type representing a 2x2 Float32 matrix.
+ */
+export type Float32Matrix2x2 = InstanceType<typeof Float32Matrix2x2>;
+/**
+ * Class for a 2x2 Float32 matrix.
+ */
 export const Float32Matrix2x2 = createNumberMatrixClass("Float32Matrix2x2", Float32SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 Float32 matrix.
+ */
+export type Float32Matrix2x3 = InstanceType<typeof Float32Matrix2x3>;
+/**
+ * Class for a 2x3 Float32 matrix.
+ */
 export const Float32Matrix2x3 = createNumberMatrixClass("Float32Matrix2x3", Float32SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 Float32 matrix.
+ */
+export type Float32Matrix3x2 = InstanceType<typeof Float32Matrix3x2>;
+/**
+ * Class for a 3x2 Float32 matrix.
+ */
 export const Float32Matrix3x2 = createNumberMatrixClass("Float32Matrix3x2", Float32SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 Float32 matrix.
+ */
+export type Float32Matrix3x3 = InstanceType<typeof Float32Matrix3x3>;
+/**
+ * Class for a 3x3 Float32 matrix.
+ */
 export const Float32Matrix3x3 = createNumberMatrixClass("Float32Matrix3x3", Float32SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 Float32 matrix.
+ */
+export type Float32Matrix4x4 = InstanceType<typeof Float32Matrix4x4>;
+/**
+ * Class for a 4x4 Float32 matrix.
+ */
 export const Float32Matrix4x4 = createNumberMatrixClass("Float32Matrix4x4", Float32SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 Float32 matrix.
+ */
+export type Float32Matrix2x2x2 = InstanceType<typeof Float32Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 Float32 matrix.
+ */
 export const Float32Matrix2x2x2 = createNumberMatrixClass("Float32Matrix2x2x2", Float32SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 Float32 matrix.
+ */
+export type Float32Matrix2x3x2 = InstanceType<typeof Float32Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 Float32 matrix.
+ */
 export const Float32Matrix2x3x2 = createNumberMatrixClass("Float32Matrix2x3x2", Float32SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 Float32 matrix.
+ */
+export type Float32Matrix3x2x2 = InstanceType<typeof Float32Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 Float32 matrix.
+ */
 export const Float32Matrix3x2x2 = createNumberMatrixClass("Float32Matrix3x2x2", Float32SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 Float32 matrix.
+ */
+export type Float32Matrix3x3x3 = InstanceType<typeof Float32Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 Float32 matrix.
+ */
 export const Float32Matrix3x3x3 = createNumberMatrixClass("Float32Matrix3x3x3", Float32SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 Float32 matrix.
+ */
+export type Float32Matrix4x4x4 = InstanceType<typeof Float32Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 Float32 matrix.
+ */
 export const Float32Matrix4x4x4 = createNumberMatrixClass("Float32Matrix4x4x4", Float32SizedArray, [4, 4, 4]);
 
+/**
+ * Type representing a 2x2 Float64 matrix.
+ */
+export type Float64Matrix2x2 = InstanceType<typeof Float64Matrix2x2>;
+/**
+ * Class for a 2x2 Float64 matrix.
+ */
 export const Float64Matrix2x2 = createNumberMatrixClass("Float64Matrix2x2", Float64SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 Float64 matrix.
+ */
+export type Float64Matrix2x3 = InstanceType<typeof Float64Matrix2x3>;
+/**
+ * Class for a 2x3 Float64 matrix.
+ */
 export const Float64Matrix2x3 = createNumberMatrixClass("Float64Matrix2x3", Float64SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 Float64 matrix.
+ */
+export type Float64Matrix3x2 = InstanceType<typeof Float64Matrix3x2>;
+/**
+ * Class for a 3x2 Float64 matrix.
+ */
 export const Float64Matrix3x2 = createNumberMatrixClass("Float64Matrix3x2", Float64SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 Float64 matrix.
+ */
+export type Float64Matrix3x3 = InstanceType<typeof Float64Matrix3x3>;
+/**
+ * Class for a 3x3 Float64 matrix.
+ */
 export const Float64Matrix3x3 = createNumberMatrixClass("Float64Matrix3x3", Float64SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 Float64 matrix.
+ */
+export type Float64Matrix4x4 = InstanceType<typeof Float64Matrix4x4>;
+/**
+ * Class for a 4x4 Float64 matrix.
+ */
 export const Float64Matrix4x4 = createNumberMatrixClass("Float64Matrix4x4", Float64SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 Float64 matrix.
+ */
+export type Float64Matrix2x2x2 = InstanceType<typeof Float64Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 Float64 matrix.
+ */
 export const Float64Matrix2x2x2 = createNumberMatrixClass("Float64Matrix2x2x2", Float64SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 Float64 matrix.
+ */
+export type Float64Matrix2x3x2 = InstanceType<typeof Float64Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 Float64 matrix.
+ */
 export const Float64Matrix2x3x2 = createNumberMatrixClass("Float64Matrix2x3x2", Float64SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 Float64 matrix.
+ */
+export type Float64Matrix3x2x2 = InstanceType<typeof Float64Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 Float64 matrix.
+ */
 export const Float64Matrix3x2x2 = createNumberMatrixClass("Float64Matrix3x2x2", Float64SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 Float64 matrix.
+ */
+export type Float64Matrix3x3x3 = InstanceType<typeof Float64Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 Float64 matrix.
+ */
 export const Float64Matrix3x3x3 = createNumberMatrixClass("Float64Matrix3x3x3", Float64SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 Float64 matrix.
+ */
+export type Float64Matrix4x4x4 = InstanceType<typeof Float64Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 Float64 matrix.
+ */
 export const Float64Matrix4x4x4 = createNumberMatrixClass("Float64Matrix4x4x4", Float64SizedArray, [4, 4, 4]);
 
+// --- BigInt Matrices --- //
+
+/**
+ * Type representing a 2x2 BigInt64 matrix.
+ */
+export type BigInt64Matrix2x2 = InstanceType<typeof BigInt64Matrix2x2>;
+/**
+ * Class for a 2x2 BigInt64 matrix.
+ */
 export const BigInt64Matrix2x2 = createBigIntMatrixClass("BigInt64Matrix2x2", BigInt64SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 BigInt64 matrix.
+ */
+export type BigInt64Matrix2x3 = InstanceType<typeof BigInt64Matrix2x3>;
+/**
+ * Class for a 2x3 BigInt64 matrix.
+ */
 export const BigInt64Matrix2x3 = createBigIntMatrixClass("BigInt64Matrix2x3", BigInt64SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 BigInt64 matrix.
+ */
+export type BigInt64Matrix3x2 = InstanceType<typeof BigInt64Matrix3x2>;
+/**
+ * Class for a 3x2 BigInt64 matrix.
+ */
 export const BigInt64Matrix3x2 = createBigIntMatrixClass("BigInt64Matrix3x2", BigInt64SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 BigInt64 matrix.
+ */
+export type BigInt64Matrix3x3 = InstanceType<typeof BigInt64Matrix3x3>;
+/**
+ * Class for a 3x3 BigInt64 matrix.
+ */
 export const BigInt64Matrix3x3 = createBigIntMatrixClass("BigInt64Matrix3x3", BigInt64SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 BigInt64 matrix.
+ */
+export type BigInt64Matrix4x4 = InstanceType<typeof BigInt64Matrix4x4>;
+/**
+ * Class for a 4x4 BigInt64 matrix.
+ */
 export const BigInt64Matrix4x4 = createBigIntMatrixClass("BigInt64Matrix4x4", BigInt64SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 BigInt64 matrix.
+ */
+export type BigInt64Matrix2x2x2 = InstanceType<typeof BigInt64Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 BigInt64 matrix.
+ */
 export const BigInt64Matrix2x2x2 = createBigIntMatrixClass("BigInt64Matrix2x2x2", BigInt64SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 BigInt64 matrix.
+ */
+export type BigInt64Matrix2x3x2 = InstanceType<typeof BigInt64Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 BigInt64 matrix.
+ */
 export const BigInt64Matrix2x3x2 = createBigIntMatrixClass("BigInt64Matrix2x3x2", BigInt64SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 BigInt64 matrix.
+ */
+export type BigInt64Matrix3x2x2 = InstanceType<typeof BigInt64Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 BigInt64 matrix.
+ */
 export const BigInt64Matrix3x2x2 = createBigIntMatrixClass("BigInt64Matrix3x2x2", BigInt64SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 BigInt64 matrix.
+ */
+export type BigInt64Matrix3x3x3 = InstanceType<typeof BigInt64Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 BigInt64 matrix.
+ */
 export const BigInt64Matrix3x3x3 = createBigIntMatrixClass("BigInt64Matrix3x3x3", BigInt64SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 BigInt64 matrix.
+ */
+export type BigInt64Matrix4x4x4 = InstanceType<typeof BigInt64Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 BigInt64 matrix.
+ */
 export const BigInt64Matrix4x4x4 = createBigIntMatrixClass("BigInt64Matrix4x4x4", BigInt64SizedArray, [4, 4, 4]);
 
+/**
+ * Type representing a 2x2 BigUint64 matrix.
+ */
+export type BigUint64Matrix2x2 = InstanceType<typeof BigUint64Matrix2x2>;
+/**
+ * Class for a 2x2 BigUint64 matrix.
+ */
 export const BigUint64Matrix2x2 = createBigIntMatrixClass("BigUint64Matrix2x2", BigUint64SizedArray, [2, 2]);
+
+/**
+ * Type representing a 2x3 BigUint64 matrix.
+ */
+export type BigUint64Matrix2x3 = InstanceType<typeof BigUint64Matrix2x3>;
+/**
+ * Class for a 2x3 BigUint64 matrix.
+ */
 export const BigUint64Matrix2x3 = createBigIntMatrixClass("BigUint64Matrix2x3", BigUint64SizedArray, [2, 3]);
+
+/**
+ * Type representing a 3x2 BigUint64 matrix.
+ */
+export type BigUint64Matrix3x2 = InstanceType<typeof BigUint64Matrix3x2>;
+/**
+ * Class for a 3x2 BigUint64 matrix.
+ */
 export const BigUint64Matrix3x2 = createBigIntMatrixClass("BigUint64Matrix3x2", BigUint64SizedArray, [3, 2]);
+
+/**
+ * Type representing a 3x3 BigUint64 matrix.
+ */
+export type BigUint64Matrix3x3 = InstanceType<typeof BigUint64Matrix3x3>;
+/**
+ * Class for a 3x3 BigUint64 matrix.
+ */
 export const BigUint64Matrix3x3 = createBigIntMatrixClass("BigUint64Matrix3x3", BigUint64SizedArray, [3, 3]);
+
+/**
+ * Type representing a 4x4 BigUint64 matrix.
+ */
+export type BigUint64Matrix4x4 = InstanceType<typeof BigUint64Matrix4x4>;
+/**
+ * Class for a 4x4 BigUint64 matrix.
+ */
 export const BigUint64Matrix4x4 = createBigIntMatrixClass("BigUint64Matrix4x4", BigUint64SizedArray, [4, 4]);
+
+/**
+ * Type representing a 2x2x2 BigUint64 matrix.
+ */
+export type BigUint64Matrix2x2x2 = InstanceType<typeof BigUint64Matrix2x2x2>;
+/**
+ * Class for a 2x2x2 BigUint64 matrix.
+ */
 export const BigUint64Matrix2x2x2 = createBigIntMatrixClass("BigUint64Matrix2x2x2", BigUint64SizedArray, [2, 2, 2]);
+
+/**
+ * Type representing a 2x3x2 BigUint64 matrix.
+ */
+export type BigUint64Matrix2x3x2 = InstanceType<typeof BigUint64Matrix2x3x2>;
+/**
+ * Class for a 2x3x2 BigUint64 matrix.
+ */
 export const BigUint64Matrix2x3x2 = createBigIntMatrixClass("BigUint64Matrix2x3x2", BigUint64SizedArray, [2, 3, 2]);
+
+/**
+ * Type representing a 3x2x2 BigUint64 matrix.
+ */
+export type BigUint64Matrix3x2x2 = InstanceType<typeof BigUint64Matrix3x2x2>;
+/**
+ * Class for a 3x2x2 BigUint64 matrix.
+ */
 export const BigUint64Matrix3x2x2 = createBigIntMatrixClass("BigUint64Matrix3x2x2", BigUint64SizedArray, [3, 2, 2]);
+
+/**
+ * Type representing a 3x3x3 BigUint64 matrix.
+ */
+export type BigUint64Matrix3x3x3 = InstanceType<typeof BigUint64Matrix3x3x3>;
+/**
+ * Class for a 3x3x3 BigUint64 matrix.
+ */
 export const BigUint64Matrix3x3x3 = createBigIntMatrixClass("BigUint64Matrix3x3x3", BigUint64SizedArray, [3, 3, 3]);
+
+/**
+ * Type representing a 4x4x4 BigUint64 matrix.
+ */
+export type BigUint64Matrix4x4x4 = InstanceType<typeof BigUint64Matrix4x4x4>;
+/**
+ * Class for a 4x4x4 BigUint64 matrix.
+ */
 export const BigUint64Matrix4x4x4 = createBigIntMatrixClass("BigUint64Matrix4x4x4", BigUint64SizedArray, [4, 4, 4]);
