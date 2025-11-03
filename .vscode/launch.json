@@ -9,6 +9,13 @@
             "cwd": "${workspaceFolder}/apps/playground"
         },
         {
+            "name": "Docs dev (Bun)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "bun run docs:dev",
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Playground dev (Bun, inspect)",
             "type": "node",
             "request": "launch",
@@ -22,6 +29,15 @@
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Dev: Playground + Docs",
+            "configurations": [
+                "Playground dev (Bun)",
+                "Docs dev (Bun)"
             ]
         }
     ]
