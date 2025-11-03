@@ -10,6 +10,7 @@
   "devDependencies": {
     "@eslint/js": "latest",
     "@types/bun": "latest",
+    "bun-plugin-glsl": "^0.2.0",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "eslint-plugin-jsdoc": "latest",
@@ -19,6 +20,7 @@
     "jsonc-eslint-parser": "^2.4.1",
     "prettier": "latest",
     "prettier-plugin-glsl": "^0.2.2",
+    "tsdoc-markdown": "^1.4.1",
     "typescript-eslint": "latest"
   },
   "peerDependencies": {
@@ -29,6 +31,13 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier -c .",
-    "format:fix": "prettier -w ."
+    "format:fix": "prettier -w .",
+    "docs:dev": "bunx --bun vitepress dev docs",
+    "docs:build": "bunx --bun vitepress build docs",
+    "docs:preview": "bunx --bun vitepress preview docs",
+    "docs:api": "bun run scripts/generate-api-docs.ts"
+  },
+  "dependencies": {
+    "vitepress": "^1.6.4"
   }
 }

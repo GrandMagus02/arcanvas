@@ -1,0 +1,3 @@
+# ColorAlphaBase
+
+A color class

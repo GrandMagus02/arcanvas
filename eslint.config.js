@@ -24,6 +24,7 @@ export default [
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
         sourceType: "module",
+        project: ["./tsconfig.json", "./apps/*/tsconfig.json", "./packages/*/tsconfig.json", "./docs/tsconfig.json"],
       },
     },
   })),
