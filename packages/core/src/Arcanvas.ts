@@ -1,5 +1,13 @@
-import { EventBus, type HookFn } from "./EventBus";
-import { Renderer, type RendererOptions } from "./Renderer";
+import { Camera } from "./camera/Camera";
+import { Camera2D } from "./camera/Camera2D";
+import { EventBus } from "./EventBus";
+import { GridMesh } from "./meshes/grid/Grid";
+import { Mesh } from "./objects/Mesh";
+import { type PluginLike } from "./Plugin";
+import { PluginManager } from "./PluginManager";
+import { Renderer } from "./Renderer";
+import { Stage } from "./Stage";
+import type { TransformationMatrix } from "./utils/TransformationMatrix";
 
 /**
  * Options for configuring an `Arcanvas` instance.
@@ -7,71 +15,17 @@ import { Renderer, type RendererOptions } from "./Renderer";
 export interface ArcanvasOptions {
   width: number;
   height: number;
-  renderer?: boolean | RendererOptions;
+  focusable: boolean;
   [key: string]: unknown;
-}
-
-// New plugin system types (2D lifecycle-driven plugins)
-/** Public surface returned by plugins and mounted on the app under its name. */
-export type PluginAPI = unknown;
-
-/** Declarative plugin with optional dependencies and setup lifecycle. */
-export type Plugin<Name extends string, API, Opts = unknown> = {
-  name: Name;
-  deps?: string[];
-  setup(ctx: PluginContext, opts: Opts): API | { api: API; dispose?: () => void };
-};
-
-/** Context object exposed to plugins during setup and via hooks. */
-export type PluginContext = {
-  app: Arcanvas;
-  canvas: HTMLCanvasElement;
-  ctx2d: CanvasRenderingContext2D | null;
-  events: EventBus;
-  get<T = unknown>(name: string): T | undefined;
-  has(name: string): boolean;
-  hooks: {
-    onInit(fn: () => void): void;
-    onUpdate(fn: (dt: number) => void): void;
-    onRender(fn: (ctx: CanvasRenderingContext2D) => void): void;
-    onResize(fn: (w: number, h: number) => void): void;
-    onDestroy(fn: () => void): void;
-  };
-};
-
-type AnyPlugin = Plugin<string, unknown, unknown>;
-
-/** Internal lifecycle hooks storage. */
-type Hooks = {
-  init: HookFn[];
-  update: ((dt: number) => void)[];
-  render: ((ctx: CanvasRenderingContext2D) => void)[];
-  resize: ((w: number, h: number) => void)[];
-  destroy: HookFn[];
-};
-
-/**
- * Type guard to detect an object-style plugin definition.
- */
-function isObjectPlugin(candidate: unknown): candidate is AnyPlugin {
-  if (!candidate || typeof candidate !== "object") return false;
-  const rec = candidate as { name?: unknown; setup?: unknown };
-  return typeof rec.name === "string" && typeof rec.setup === "function";
-}
-
-/**
- * Detects the structured return value containing an api and optional disposer.
- */
-function isResultWithApi(x: unknown): x is { api: unknown; dispose?: () => void } {
-  return !!x && typeof x === "object" && "api" in (x as Record<string, unknown>);
 }
 
 /**
  * Default `Arcanvas` options.
  */
-export const DEFAULT_ARCANVAS_OPTIONS: ArcanvasOptions = Object.freeze({
+const _DEFAULT_ARCANVAS_OPTIONS: ArcanvasOptions = Object.freeze({
   width: 100,
   height: 100,
+  focusable: true,
 });
 
 /**
@@ -79,43 +33,64 @@ export const DEFAULT_ARCANVAS_OPTIONS: ArcanvasOptions = Object.freeze({
  */
 export class Arcanvas {
   private _canvas: HTMLCanvasElement;
-  private _options: ArcanvasOptions = Object.assign({}, DEFAULT_ARCANVAS_OPTIONS);
-  public readonly plugin: Record<string, unknown> = {};
 
-  // New system: events + plugin APIs map
-  public readonly events = new EventBus();
-  public readonly plugins = new Map<string, PluginAPI>();
-  public readonly ctx2d: CanvasRenderingContext2D | null;
-  public renderer: Renderer | null = null;
+  private _options: ArcanvasOptions = Object.assign({}, _DEFAULT_ARCANVAS_OPTIONS);
 
-  private hooks: Hooks = { init: [], update: [], render: [], resize: [], destroy: [] };
-  private disposers = new Map<string, () => void>();
-  private rafId: number | null = null;
-  private lastTs = 0;
-  private running = false;
+  private _events: EventBus;
+  private _renderer: Renderer;
+  private _plugin: PluginManager;
+  private _stage: Stage;
+  private _currentCamera: Camera | null = null;
+
+  private _isFocused: boolean = false;
 
   constructor(canvas: HTMLCanvasElement, options: Partial<ArcanvasOptions> = {}) {
     this._canvas = canvas;
     this.updateOptions(options);
-    this.applySizeFromOptions();
+    this.applyOptions();
 
-    this.ctx2d = canvas.getContext("2d");
+    this._events = new EventBus();
+    this._plugin = new PluginManager(this);
+    this._stage = new Stage(this);
+    this._renderer = new Renderer(canvas);
 
-    // Optional WebGL renderer
-    if (options.renderer) {
-      const rOpts = typeof options.renderer === "object" ? options.renderer : undefined;
-      this.renderer = new Renderer(canvas, rOpts);
-    }
+    // Create and set default camera
+    const defaultCamera = new Camera2D(this);
+    this._currentCamera = defaultCamera;
+    defaultCamera.activate();
 
-    const resizeObserver = new ResizeObserver(() => {
-      const rect = this._canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      this._canvas.width = Math.max(1, Math.round(rect.width * dpr));
-      this._canvas.height = Math.max(1, Math.round(rect.height * dpr));
-      this.ctx2d?.setTransform(dpr, 0, 0, dpr, 0, 0);
-      for (const fn of this.hooks.resize) fn(this._canvas.width, this._canvas.height);
+    // Device pixel ratio aware initial sizing if width/height not explicitly set
+    this.applyDprSizing();
+
+    this._renderer.onDraw((gl) => {
+      this._stage.traverse((node) => {
+        if (node instanceof Mesh) {
+          // Use current camera's projection matrix (camera is always set)
+          const projMatrix = this._currentCamera!.getProjection();
+
+          // Special handling for GridMesh
+          if (node instanceof GridMesh) {
+            node.setViewProjection(projMatrix);
+            node.setViewportSize(this._canvas.width, this._canvas.height);
+            // Get camera position if available
+            const camera = this._currentCamera!;
+            if ("x" in camera && "y" in camera) {
+              const x = (camera as { x: number }).x;
+              const y = (camera as { y: number }).y;
+              const z = "z" in camera ? (camera as { z: number }).z : 0;
+              node.setCameraPosition(x, y, z);
+            }
+          } else {
+            // Set projection matrix on mesh if it supports it
+            if ("setProjectionMatrix" in node && typeof node.setProjectionMatrix === "function") {
+              (node as { setProjectionMatrix: (m: TransformationMatrix) => void }).setProjectionMatrix(projMatrix);
+            }
+          }
+
+          node.render(gl);
+        }
+      });
     });
-    resizeObserver.observe(this._canvas);
   }
 
   get canvas(): HTMLCanvasElement {
@@ -134,12 +109,116 @@ export class Arcanvas {
     this._options = options;
   }
 
+  get stage(): Stage {
+    return this._stage;
+  }
+
+  /**
+   * Get the current active camera.
+   */
+  get camera(): Camera | null {
+    return this._currentCamera;
+  }
+
+  /**
+   * Set the current active camera. Deactivates the previous camera and activates the new one.
+   * If null is passed, a default Camera2D will be created and activated.
+   */
+  setCamera(camera: Camera | null): void {
+    if (this._currentCamera === camera) return;
+
+    // Deactivate previous camera
+    if (this._currentCamera) {
+      this._currentCamera.deactivate();
+    }
+
+    // Activate new camera (or create default if null)
+    if (camera === null) {
+      camera = new Camera2D(this);
+    }
+    this._currentCamera = camera;
+    this._currentCamera.activate();
+  }
+
+  /**
+   * Subscribe to an event.
+   * @param event - The event name to subscribe to.
+   * @param fn - The callback function to call when the event is emitted.
+   * @returns A function to unsubscribe from the event.
+   */
+  on(event: string, fn: (...args: unknown[]) => void): () => void {
+    return this._events.on(event, fn);
+  }
+
+  /**
+   * Subscribe to an event once.
+   * @param event - The event name to subscribe to.
+   * @param fn - The callback function to call when the event is emitted.
+   * @returns A function to unsubscribe from the event.
+   */
+  once(event: string, fn: (...args: unknown[]) => void): () => void {
+    return this._events.once(event, fn);
+  }
+
+  /**
+   * Unsubscribe from an event.
+   * @param event - The event name to unsubscribe from.
+   * @param fn - The callback function to remove.
+   */
+  off(event: string, fn: (...args: unknown[]) => void): void {
+    this._events.off(event, fn);
+  }
+
+  /**
+   * Emit an event.
+   * @param event - The event name to emit.
+   * @param args - Arguments to pass to event handlers.
+   */
+  emit(event: string, ...args: unknown[]): void {
+    this._events.emit(event, ...args);
+  }
+
   getOptions(): ArcanvasOptions {
     return this.options;
   }
 
   updateOptions(options: Partial<ArcanvasOptions>) {
+    const oldWidth = this._canvas.width;
+    const oldHeight = this._canvas.height;
     Object.assign(this.options, options);
+    this.applyDprSizing();
+
+    // Emit resize event if dimensions changed
+    if (this._canvas.width !== oldWidth || this._canvas.height !== oldHeight) {
+      this._events.emit("resize", this._canvas.width, this._canvas.height);
+    }
+
+    // Ensure renderer viewport matches canvas size immediately if running
+    if (this._renderer) this._renderer.renderOnce();
+  }
+
+  applyOptions() {
+    const { width, height, focusable } = this._options;
+    if (typeof width === "number") {
+      this._canvas.width = width;
+    }
+    if (typeof height === "number") {
+      this._canvas.height = height;
+    }
+    if (focusable) {
+      this._canvas.addEventListener("click", () => {
+        this._canvas.focus();
+      });
+      this._canvas.setAttribute("tabindex", "0");
+      this._canvas.addEventListener("focus", () => {
+        this._isFocused = true;
+        this._events.emit("focus");
+      });
+      this._canvas.addEventListener("blur", () => {
+        this._isFocused = false;
+        this._events.emit("blur");
+      });
+    }
   }
 
   setOptions(options: ArcanvasOptions) {
@@ -147,127 +226,78 @@ export class Arcanvas {
   }
 
   resetOptions() {
-    Object.assign(this.options, DEFAULT_ARCANVAS_OPTIONS);
+    Object.assign(this.options, _DEFAULT_ARCANVAS_OPTIONS);
   }
 
-  private applySizeFromOptions() {
-    const { width, height } = this._options;
-    if (typeof width === "number") {
-      this._canvas.width = width;
-    }
-    if (typeof height === "number") {
-      this._canvas.height = height;
-    }
-  }
-
-  // New style: object plugins with name/setup/deps only
-  use<Name extends string, API, Opts = unknown>(
-    plugin: Plugin<Name, API, Opts>,
-    opts?: Opts
-  ): Arcanvas & Record<Name, API>;
-  // Base overload for already-typed plugin containers
-  use(plugin: AnyPlugin, opts?: unknown): Arcanvas;
-  use(plugin: unknown, opts?: unknown): unknown {
-    // Object plugin path
-    if (isObjectPlugin(plugin)) {
-      const p = plugin;
-      for (const dep of p.deps ?? []) {
-        if (!this.plugins.has(dep)) {
-          throw new Error(`Plugin '${p.name}' requires '${dep}' to be installed first.`);
-        }
-      }
-      const ctx = this.makeCtx();
-      const res: unknown = p.setup(ctx, opts as never);
-      let api: unknown;
-      let dispose: (() => void) | undefined;
-      if (isResultWithApi(res)) {
-        api = res.api;
-        dispose = res.dispose;
-      } else {
-        api = res;
-      }
-      // The plugin API surface can be any serializable object/function bag
-      this.decorate(p.name, api);
-      if (dispose) this.disposers.set(p.name, dispose);
-      return this;
-    }
-    throw new Error("Invalid plugin: expected object-style plugin with name/setup.");
+  use<T = unknown>(plugin: PluginLike<T>, opts?: T): Arcanvas {
+    this._plugin.use(plugin as PluginLike, opts as T);
+    return this;
   }
 
   destroy() {
     this.stop();
-    for (const fn of this.hooks.destroy) fn();
-    for (const [, dispose] of this.disposers) dispose();
-    this.disposers.clear();
-    this.plugins.clear();
+    if (this._currentCamera) {
+      this._currentCamera.destroy();
+      this._currentCamera = null;
+    }
+    this._plugin.destroyAll();
   }
 
-  // New system helpers
-  has(name: string): boolean {
-    return this.plugins.has(name);
+  has<T = unknown>(plugin: PluginLike<T>): boolean {
+    return this._plugin.has(plugin as PluginLike);
   }
 
-  get<T = unknown>(name: string): T | undefined {
-    return this.plugins.get(name) as T | undefined;
+  get<T = unknown>(plugin: PluginLike<T>): T | undefined {
+    return this._plugin.get(plugin);
   }
 
   start() {
-    if (this.running) return;
-    // Start WebGL renderer if present
-    this.renderer?.start();
-    if (!this.ctx2d) return; // 2D loop only when 2D context is available
-    this.running = true;
-    for (const fn of this.hooks.init) fn();
-    const loop = (ts: number) => {
-      if (!this.running) return;
-      const dt = Math.min(32, ts - (this.lastTs || ts));
-      this.lastTs = ts;
-      for (const fn of this.hooks.update) fn(dt);
-      const g = this.ctx2d!;
-      g.clearRect(0, 0, this._canvas.width, this._canvas.height);
-      for (const fn of this.hooks.render) fn(g);
-      this.rafId = requestAnimationFrame(loop);
-    };
-    this.rafId = requestAnimationFrame(loop);
+    this._renderer?.start();
   }
 
   stop() {
-    if (!this.running) return;
-    this.running = false;
-    if (this.rafId !== null) cancelAnimationFrame(this.rafId);
-    this.rafId = null;
-    this.renderer?.stop();
+    this._renderer?.stop();
   }
 
-  private decorate<Name extends string, API>(
-    name: Name,
-    api: API
-  ): asserts this is Arcanvas & Record<Name, API> {
-    if (this.plugins.has(name)) throw new Error(`Plugin '${name}' is already installed.`);
-    Object.defineProperty(this, name, {
-      value: api,
-      enumerable: true,
-      configurable: false,
-      writable: false,
-    });
-    this.plugins.set(name, api as PluginAPI);
+  /**
+   * Resize the canvas (in device pixels) and render a frame immediately.
+   * @param width - The width of the canvas in device pixels.
+   * @param height - The height of the canvas in device pixels.
+   */
+  resize(width: number, height: number): void {
+    const oldWidth = this._canvas.width;
+    const oldHeight = this._canvas.height;
+    if (Number.isFinite(width) && width > 0) this._canvas.width = Math.floor(width);
+    if (Number.isFinite(height) && height > 0) this._canvas.height = Math.floor(height);
+    this._options.width = this._canvas.width;
+    this._options.height = this._canvas.height;
+
+    // Emit resize event if dimensions changed
+    if (this._canvas.width !== oldWidth || this._canvas.height !== oldHeight) {
+      this._events.emit("resize", this._canvas.width, this._canvas.height);
+    }
+
+    if (this._renderer) this._renderer.renderOnce();
   }
 
-  private makeCtx(): PluginContext {
-    return {
-      app: this,
-      canvas: this._canvas,
-      ctx2d: this.ctx2d,
-      events: this.events,
-      get: <T = unknown>(name: string) => this.get<T>(name),
-      has: (name: string) => this.has(name),
-      hooks: {
-        onInit: (fn) => this.hooks.init.push(fn),
-        onUpdate: (fn) => this.hooks.update.push(fn),
-        onRender: (fn) => this.hooks.render.push(fn),
-        onResize: (fn) => this.hooks.resize.push(fn),
-        onDestroy: (fn) => this.hooks.destroy.push(fn),
-      },
-    };
+  private applyDprSizing(): void {
+    const dpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    // Only auto-size when caller didn't explicitly pass numeric width/height
+    const hasExplicitWidth = typeof this._options.width === "number" && this._options.width > 0;
+    const hasExplicitHeight = typeof this._options.height === "number" && this._options.height > 0;
+    if (!hasExplicitWidth || !hasExplicitHeight) {
+      const parent = this._canvas.parentElement;
+      if (parent) {
+        const cssWidth = Math.max(0, Math.floor(parent.clientWidth || 0));
+        const cssHeight = Math.max(0, Math.floor(parent.clientHeight || 0));
+        const width = Math.max(0, Math.floor(cssWidth * dpr));
+        const height = Math.max(0, Math.floor(cssHeight * dpr));
+        if (width || height) this.resize(width || this._canvas.width, height || this._canvas.height);
+      }
+    }
+  }
+
+  isFocused(): boolean {
+    return this._isFocused;
   }
 }
