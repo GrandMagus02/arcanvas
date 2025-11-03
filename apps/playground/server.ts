@@ -1,4 +1,3 @@
-
 import type { ServerWebSocket } from "bun";
 import { watch } from "fs";
 import { join } from "path";
@@ -17,6 +16,13 @@ async function build() {
     target: "browser",
     sourcemap: "inline",
     minify: false,
+    loader: {
+      ".vert": "text",
+      ".frag": "text",
+      ".glsl": "text",
+      ".fsh": "text",
+      ".vsh": "text",
+    },
   });
   if (!result.success) {
     console.error("Build failed:");
@@ -94,5 +100,3 @@ function onChange() {
 watch(srcDir, { recursive: true }, onChange);
 watch(coreDir, { recursive: true }, onChange);
 watch(join(root, "index.html"), onChange);
-
-
