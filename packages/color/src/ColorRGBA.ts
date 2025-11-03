@@ -3,28 +3,40 @@ import { ColorAlphaBase } from "./ColorAlphaBase";
 /**
  * A color class
  */
-export class ColorRGBA extends ColorAlphaBase<Uint8Array> {
+export class ColorRGBA extends ColorAlphaBase<number[]> {
   constructor(r: number, g: number, b: number, a: number);
   constructor(input: string);
   constructor(input: number | string, g?: number, b?: number, a?: number) {
     if (typeof input === "string") {
       const color = ColorRGBA.parse(input);
-      const arr = color.toArray();
-      super(new Uint8Array([arr[0]!, arr[1]!, arr[2]!]), color.alpha);
+      super(color.values, color.alpha);
       return;
     }
     if (typeof input === "number" && typeof g === "number" && typeof b === "number" && typeof a === "number") {
       const r = input;
-      super(new Uint8Array([r, g, b]), a);
+      super([r, g, b], a);
       return;
     }
     if (typeof input === "number") {
       const color = ColorRGBA.fromNumber(input);
-      const arr = color.toArray();
-      super(new Uint8Array([arr[0]!, arr[1]!, arr[2]!]), color.alpha);
+      super(color.values, color.alpha);
       return;
     }
     throw new Error("Invalid color input");
+  }
+
+  get r(): number {
+    return this._values[0]!;
+  }
+  get g(): number {
+    return this._values[1]!;
+  }
+  get b(): number {
+    return this._values[2]!;
+  }
+
+  get values() {
+    return this._values;
   }
 
   static fromArray(array: number[]): ColorRGBA {
@@ -148,5 +160,13 @@ export class ColorRGBA extends ColorAlphaBase<Uint8Array> {
 
   protected newInstance(values: number[]): this {
     return ColorRGBA.fromArray(values) as unknown as this;
+  }
+
+  toCSSString(): string {
+    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.alpha})`;
+  }
+
+  toHEXString(): string {
+    return `#${this.r.toString(16).padStart(2, "0")}${this.g.toString(16).padStart(2, "0")}${this.b.toString(16).padStart(2, "0")}${this.alpha.toString(16).padStart(2, "0")}`;
   }
 }

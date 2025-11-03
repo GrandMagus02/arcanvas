@@ -6,8 +6,8 @@ import { ColorBase } from "./ColorBase";
 export abstract class ColorAlphaBase<TArray extends ArrayLike<number>> extends ColorBase<TArray> {
   private _alpha: number = 1;
 
-  protected constructor(vec: TArray, alpha: number) {
-    super(vec);
+  protected constructor(values: TArray, alpha: number = 1) {
+    super(values);
     this._alpha = alpha;
   }
 
@@ -21,5 +21,9 @@ export abstract class ColorAlphaBase<TArray extends ArrayLike<number>> extends C
 
   override toArray(): number[] {
     return [...super.toArray(), this._alpha];
+  }
+
+  override equals(other: this): boolean {
+    return super.equals(other) && this._alpha === other._alpha;
   }
 }

@@ -2,16 +2,16 @@
  * A color class
  */
 export abstract class ColorBase<TArray extends ArrayLike<number>> {
-  protected _vec: TArray;
+  protected _values: TArray;
 
-  protected constructor(vec: TArray) {
-    this._vec = vec;
+  protected constructor(values: TArray) {
+    this._values = values;
   }
 
   protected abstract newInstance(values: number[]): this;
 
   toArray(): number[] {
-    return Array.from(this._vec as unknown as number[]);
+    return Array.from(this._values as unknown as number[]);
   }
 
   toString(): string {

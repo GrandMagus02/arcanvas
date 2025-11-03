@@ -3,35 +3,39 @@ import { ColorBase } from "./ColorBase";
 /**
  * A color class
  */
-export class ColorRGB extends ColorBase<Uint8Array> {
+export class ColorRGB extends ColorBase<number[]> {
   constructor(r: number, g: number, b: number);
   constructor(input: string | number);
   constructor(input: number | string, g?: number, b?: number) {
     if (typeof input === "string") {
       const color = ColorRGB.parse(input);
-      super(new Uint8Array(color.toArray()));
+      super(color.values);
       return;
     }
     if (typeof input === "number" && typeof g === "number" && typeof b === "number") {
       const r = input;
-      super(new Uint8Array([r, g, b]));
+      super([r, g, b]);
       return;
     }
     if (typeof input === "number") {
       const color = ColorRGB.fromNumber(input);
-      super(new Uint8Array(color.toArray()));
+      super(color.values);
       return;
     }
   }
 
   get r(): number {
-    return this._vec[0]!;
+    return this._values[0]!;
   }
   get g(): number {
-    return this._vec[1]!;
+    return this._values[1]!;
   }
   get b(): number {
-    return this._vec[2]!;
+    return this._values[2]!;
+  }
+
+  get values() {
+    return this._values;
   }
 
   static fromArray(array: number[]): ColorRGB {
@@ -131,5 +135,13 @@ export class ColorRGB extends ColorBase<Uint8Array> {
 
   protected newInstance(values: number[]): this {
     return ColorRGB.fromArray(values) as unknown as this;
+  }
+
+  toCSSString(): string {
+    return `rgb(${this.r}, ${this.g}, ${this.b})`;
+  }
+
+  toHEXString(): string {
+    return `#${this.r.toString(16).padStart(2, "0")}${this.g.toString(16).padStart(2, "0")}${this.b.toString(16).padStart(2, "0")}`;
   }
 }
