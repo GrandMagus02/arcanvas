@@ -9,7 +9,7 @@
       "import": "./index.ts"
     }
   },
-  "dependencies": {
-    "@arcanvas/array": "workspace:*"
+  "devDependencies": {
+    "@arcanvas/matrix": "workspace:*"
   }
 }
