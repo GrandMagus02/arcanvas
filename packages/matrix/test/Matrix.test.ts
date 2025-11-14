@@ -414,6 +414,14 @@ describe("Matrix", () => {
     expect(m.findIndex((value, r) => r === 2)).toBeUndefined();
   });
 
+  it("fills empty matrix properly", () => {
+    const m = new Matrix([], 2, 2);
+    expect(m.get(0, 0)).toBe(0);
+    expect(m.get(0, 1)).toBe(0);
+    expect(m.get(1, 0)).toBe(0);
+    expect(m.get(1, 1)).toBe(0);
+  });
+
   it("fills matrix properly", () => {
     const m = new Matrix([1, 2, 3, 4], 2, 2);
     const result = m.fill(5);
@@ -422,14 +430,5 @@ describe("Matrix", () => {
     expect(m.get(0, 1)).toBe(5);
     expect(m.get(1, 0)).toBe(5);
     expect(m.get(1, 1)).toBe(5);
-  });
-
-  it("fills matrix with zero properly", () => {
-    const m = new Matrix([1, 2, 3, 4], 2, 2);
-    m.fill(0);
-    expect(m.get(0, 0)).toBe(0);
-    expect(m.get(0, 1)).toBe(0);
-    expect(m.get(1, 0)).toBe(0);
-    expect(m.get(1, 1)).toBe(0);
   });
 });

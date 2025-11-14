@@ -55,10 +55,11 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
    * @param data - The data of the matrix.
    */
   protected validateData(data: TArr): TArr {
-    const newData = new (data.constructor as unknown as NumberArrayConstructor)(data.length) as TArr;
+    const newData = new (data.constructor as unknown as NumberArrayConstructor)(this.size) as TArr;
     if (Array.isArray(newData)) {
       newData.splice(0, newData.length, ...data);
     } else {
+      newData.fill(0);
       (newData as unknown as TypedArray).set(data as unknown as TypedArray);
     }
     for (let i = 0; i < this.size; i++) {
