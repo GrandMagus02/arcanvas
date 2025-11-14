@@ -1,6 +1,3 @@
-import type { Float32Vector2, Float64Vector2, Int16Vector2, Int32Vector2, Int8Vector2, Uint16Vector2, Uint8ClampedVector2, Uint8Vector2 } from "./Vector2";
-import type { Float32Vector3, Float64Vector3, Int16Vector3, Int32Vector3, Int8Vector3, Uint16Vector3, Uint8ClampedVector3, Uint8Vector3 } from "./Vector3";
-
 /**
  * TypedArray is a union of all typed arrays.
  */
@@ -29,13 +26,3 @@ export type TypedArrayConstructor =
  * NumberArrayConstructor is a union of all number array constructors.
  */
 export type NumberArrayConstructor = ArrayConstructor | TypedArrayConstructor;
-
-/**
- * AnyVector is a union of all vector types.
- */
-export type AnyVector2 = Float32Vector2 | Float64Vector2 | Int16Vector2 | Uint16Vector2 | Uint8Vector2 | Int32Vector2 | Int8Vector2 | Uint8ClampedVector2;
-
-/**
- * AnyVector3 is a union of all 3D vector types.
- */
-export type AnyVector3 = Float32Vector3 | Float64Vector3 | Int16Vector3 | Uint16Vector3 | Uint8Vector3 | Int32Vector3 | Int8Vector3 | Uint8ClampedVector3;
