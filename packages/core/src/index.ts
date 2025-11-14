@@ -17,7 +17,7 @@ export * from "./meshes";
 export * from "./objects";
 export * from "./PluginManager";
 export * from "./plugins";
-export * from "./Renderer";
+export * from "./renderers/webgl/Renderer";
 export * from "./rendergraph/RenderGraph";
 export * from "./rendergraph/RenderPass";
 export * from "./Stage";

@@ -1,13 +1,10 @@
 import { Camera } from "./camera/Camera";
-import { Camera2D } from "./camera/Camera2D";
+import { CameraManager } from "./camera/CameraManager";
 import { EventBus } from "./EventBus";
-import { GridMesh } from "./meshes/grid/Grid";
-import { Mesh } from "./objects/Mesh";
 import { type PluginLike } from "./Plugin";
 import { PluginManager } from "./PluginManager";
-import { Renderer } from "./Renderer";
+import { Renderer } from "./renderers/Renderer";
 import { Stage } from "./Stage";
-import type { TransformationMatrix } from "./utils/TransformationMatrix";
 
 /**
  * Options for configuring an `Arcanvas` instance.
@@ -22,11 +19,13 @@ export interface ArcanvasOptions {
 /**
  * Default `Arcanvas` options.
  */
-const _DEFAULT_ARCANVAS_OPTIONS: ArcanvasOptions = Object.freeze({
+const DEFAULT_ARCANVAS_OPTIONS: ArcanvasOptions = Object.freeze({
   width: 100,
   height: 100,
   focusable: true,
 });
+
+const DEFAULT_CAMERA_LABEL = "__DEFAULT__";
 
 /**
  * Arcanvas is a class that provides a canvas for rendering.
@@ -34,13 +33,13 @@ const _DEFAULT_ARCANVAS_OPTIONS: ArcanvasOptions = Object.freeze({
 export class Arcanvas {
   private _canvas: HTMLCanvasElement;
 
-  private _options: ArcanvasOptions = Object.assign({}, _DEFAULT_ARCANVAS_OPTIONS);
+  private _options: ArcanvasOptions = Object.assign({}, DEFAULT_ARCANVAS_OPTIONS);
 
   private _events: EventBus;
   private _renderer: Renderer;
-  private _plugin: PluginManager;
+  private _plugins: PluginManager;
   private _stage: Stage;
-  private _currentCamera: Camera | null = null;
+  private _cameras: CameraManager;
 
   private _isFocused: boolean = false;
 
@@ -50,47 +49,50 @@ export class Arcanvas {
     this.applyOptions();
 
     this._events = new EventBus();
-    this._plugin = new PluginManager(this);
+    this._plugins = new PluginManager(this);
     this._stage = new Stage(this);
     this._renderer = new Renderer(canvas);
+    this._cameras = new CameraManager(this);
 
-    // Create and set default camera
-    const defaultCamera = new Camera2D(this);
-    this._currentCamera = defaultCamera;
-    defaultCamera.activate();
+    this._cameras.add(DEFAULT_CAMERA_LABEL, new Camera(this));
+    this._cameras.setActive(DEFAULT_CAMERA_LABEL);
 
     // Device pixel ratio aware initial sizing if width/height not explicitly set
     this.applyDprSizing();
 
-    this._renderer.onDraw((gl) => {
-      this._stage.traverse((node) => {
-        if (node instanceof Mesh) {
-          // Use current camera's projection matrix (camera is always set)
-          const projMatrix = this._currentCamera!.getProjection();
-
-          // Special handling for GridMesh
-          if (node instanceof GridMesh) {
-            node.setViewProjection(projMatrix);
-            node.setViewportSize(this._canvas.width, this._canvas.height);
-            // Get camera position if available
-            const camera = this._currentCamera!;
-            if ("x" in camera && "y" in camera) {
-              const x = (camera as { x: number }).x;
-              const y = (camera as { y: number }).y;
-              const z = "z" in camera ? (camera as { z: number }).z : 0;
-              node.setCameraPosition(x, y, z);
-            }
-          } else {
-            // Set projection matrix on mesh if it supports it
-            if ("setProjectionMatrix" in node && typeof node.setProjectionMatrix === "function") {
-              (node as { setProjectionMatrix: (m: TransformationMatrix) => void }).setProjectionMatrix(projMatrix);
-            }
-          }
-
-          node.render(gl);
-        }
-      });
+    this._renderer.onDraw((gl, program) => {
+      this._stage.draw(gl, program);
     });
+
+    // this._Renderer.onDraw((gl) => {
+    //   this._stage.traverse((node) => {
+    //     if (node instanceof Mesh) {
+    //       // Use current camera's projection matrix (camera is always set)
+    //       const projection = this._currentCamera!.projection;
+
+    //       // Special handling for GridMesh
+    //       if (node instanceof GridMesh) {
+    //         node.setViewProjection(projection);
+    //         node.setViewportSize(this._canvas.width, this._canvas.height);
+    //         // Get camera position if available
+    //         const camera = this._currentCamera!;
+    //         if ("x" in camera && "y" in camera) {
+    //           const x = (camera as { x: number }).x;
+    //           const y = (camera as { y: number }).y;
+    //           const z = "z" in camera ? (camera as { z: number }).z : 0;
+    //           node.setCameraPosition(x, y, z);
+    //         }
+    //       } else {
+    //         // Set projection matrix on mesh if it supports it
+    //         if ("setProjectionMatrix" in node && typeof node.setProjectionMatrix === "function") {
+    //           (node as { setProjectionMatrix: (m: TransformationMatrix) => void }).setProjectionMatrix(projMatrix);
+    //         }
+    //       }
+
+    //       node.render(gl);
+    //     }
+    //   });
+    // });
   }
 
   get canvas(): HTMLCanvasElement {
@@ -117,27 +119,15 @@ export class Arcanvas {
    * Get the current active camera.
    */
   get camera(): Camera | null {
-    return this._currentCamera;
+    return this._cameras.active;
   }
 
   /**
    * Set the current active camera. Deactivates the previous camera and activates the new one.
    * If null is passed, a default Camera2D will be created and activated.
    */
-  setCamera(camera: Camera | null): void {
-    if (this._currentCamera === camera) return;
-
-    // Deactivate previous camera
-    if (this._currentCamera) {
-      this._currentCamera.deactivate();
-    }
-
-    // Activate new camera (or create default if null)
-    if (camera === null) {
-      camera = new Camera2D(this);
-    }
-    this._currentCamera = camera;
-    this._currentCamera.activate();
+  setCamera(camera: Camera | string | null): void {
+    this._cameras.setActive(camera);
   }
 
   /**
@@ -193,7 +183,7 @@ export class Arcanvas {
       this._events.emit("resize", this._canvas.width, this._canvas.height);
     }
 
-    // Ensure renderer viewport matches canvas size immediately if running
+    // Ensure Renderer viewport matches canvas size immediately if running
     if (this._renderer) this._renderer.renderOnce();
   }
 
@@ -226,29 +216,26 @@ export class Arcanvas {
   }
 
   resetOptions() {
-    Object.assign(this.options, _DEFAULT_ARCANVAS_OPTIONS);
+    Object.assign(this.options, DEFAULT_ARCANVAS_OPTIONS);
   }
 
   use<T = unknown>(plugin: PluginLike<T>, opts?: T): Arcanvas {
-    this._plugin.use(plugin as PluginLike, opts as T);
+    this._plugins.use(plugin as PluginLike, opts as T);
     return this;
   }
 
   destroy() {
     this.stop();
-    if (this._currentCamera) {
-      this._currentCamera.destroy();
-      this._currentCamera = null;
-    }
-    this._plugin.destroyAll();
+    this._cameras.clear();
+    this._plugins.destroyAll();
   }
 
   has<T = unknown>(plugin: PluginLike<T>): boolean {
-    return this._plugin.has(plugin as PluginLike);
+    return this._plugins.has(plugin as PluginLike);
   }
 
   get<T = unknown>(plugin: PluginLike<T>): T | undefined {
-    return this._plugin.get(plugin);
+    return this._plugins.get(plugin);
   }
 
   start() {

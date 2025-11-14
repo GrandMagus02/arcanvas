@@ -36,7 +36,9 @@ export abstract class Mesh extends Node {
     this._indices = indices;
   }
 
-  render(gl: WebGLRenderingContext): void {
+  render(gl: WebGLRenderingContext, program: WebGLProgram): void {
+    gl.useProgram(program);
+
     if (!this._vertexBuffer) {
       this._vertexBuffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, this._vertexBuffer);

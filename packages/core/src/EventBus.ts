@@ -6,16 +6,16 @@ export type HookFn = (...args: unknown[]) => void;
 /**
  * A event bus that can be used to emit and subscribe to events.
  */
-export class EventBus {
-  private map = new Map<string, Set<HookFn>>();
+export class EventBus<T extends string = string> {
+  private map = new Map<T, Set<HookFn>>();
 
-  on(event: string, fn: HookFn) {
+  on(event: T, fn: HookFn) {
     if (!this.map.has(event)) this.map.set(event, new Set());
     this.map.get(event)!.add(fn);
     return () => this.off(event, fn);
   }
 
-  once(event: string, fn: HookFn) {
+  once(event: T, fn: HookFn) {
     const off = this.on(event, (...args) => {
       off();
       fn(...args);
@@ -23,11 +23,11 @@ export class EventBus {
     return off;
   }
 
-  off(event: string, fn: HookFn) {
+  off(event: T, fn: HookFn) {
     this.map.get(event)?.delete(fn);
   }
 
-  emit(event: string, ...args: unknown[]) {
+  emit(event: T, ...args: unknown[]) {
     this.map.get(event)?.forEach((fn) => fn(...args));
   }
 }

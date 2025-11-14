@@ -1,5 +1,5 @@
 import type { Arcanvas } from "./Arcanvas";
-import { Node } from "./objects";
+import { Mesh, Node } from "./objects";
 
 /**
  * Stage is a thin facade over the underlying canvas and contexts, providing
@@ -37,5 +37,13 @@ export class Stage extends Node {
       this.parent.children = this.parent.children.filter((c) => c !== this);
     }
     this.parent = null;
+  }
+
+  draw(gl: WebGLRenderingContext, program: WebGLProgram): void {
+    this.traverse((node) => {
+      if (node instanceof Mesh) {
+        node.render(gl, program);
+      }
+    });
   }
 }
