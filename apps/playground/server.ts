@@ -41,7 +41,7 @@ const sockets = new Set<ServerWebSocket<LRData>>();
 
 /** HTTP + WebSocket server for the playground */
 const server = Bun.serve<LRData>({
-  port: 3000,
+  port: 3030,
   async fetch(req, srv) {
     const url = new URL(req.url);
 
