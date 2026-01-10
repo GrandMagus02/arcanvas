@@ -1,3 +1,7 @@
+import type { Camera } from "../camera/Camera";
+import { RenderGraph } from "../rendergraph/RenderGraph";
+import type { PassContext } from "../rendergraph/RenderPass";
+
 /**
  * A function that can be used to draw a scene.
  */
@@ -24,6 +28,8 @@ export class Renderer {
   private readonly _gl: WebGLRenderingContext | null;
   private readonly _program: WebGLProgram | null = null;
   private readonly _drawHooks: DrawHook[] = [];
+  private _renderGraph: RenderGraph | null = null;
+  private _cameraGetter: (() => Camera | null) | null = null;
   private _rafId: number | null = null;
   private _running = false;
   private _options: RendererOptions = Object.assign({}, _DEFAULT_RENDERER_OPTIONS);
@@ -72,6 +78,27 @@ export class Renderer {
 
   get isAvailable(): boolean {
     return !!this._gl;
+  }
+
+  /**
+   * Set the render graph to use for rendering.
+   */
+  setRenderGraph(graph: RenderGraph): void {
+    this._renderGraph = graph;
+  }
+
+  /**
+   * Get the current render graph.
+   */
+  getRenderGraph(): RenderGraph | null {
+    return this._renderGraph;
+  }
+
+  /**
+   * Set a function that returns the current active camera.
+   */
+  setCameraGetter(getter: () => Camera | null): void {
+    this._cameraGetter = getter;
   }
 
   onDraw(fn: DrawHook): () => void {
@@ -148,7 +175,22 @@ export class Renderer {
     } else {
       gl.disable(gl.SCISSOR_TEST);
     }
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    for (const fn of this._drawHooks) fn(gl, this._program!);
+
+    // Use render graph if available, otherwise fall back to draw hooks
+    if (this._renderGraph) {
+      const camera = this._cameraGetter ? this._cameraGetter() : null;
+      const ctx: PassContext = {
+        gl,
+        width: this._canvas.width,
+        height: this._canvas.height,
+        camera,
+        program: this._program,
+      };
+      this._renderGraph.execute(ctx);
+    } else {
+      // Fallback to old draw hooks system for backward compatibility
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      for (const fn of this._drawHooks) fn(gl, this._program!);
+    }
   }
 }

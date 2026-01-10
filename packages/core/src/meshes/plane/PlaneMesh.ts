@@ -122,7 +122,19 @@ export class PlaneMesh extends Mesh {
     if (this._uProjection) {
       if (this._viewProjectionMatrix) {
         // Convert row-major to column-major for WebGL
-        const cm = this._viewProjectionMatrix.toColumnMajorArray();
+        let cm: Float32Array;
+        if (typeof this._viewProjectionMatrix.toColumnMajorArray === "function") {
+          cm = this._viewProjectionMatrix.toColumnMajorArray();
+        } else {
+          // Fallback: manually transpose if method doesn't exist (for compatibility during build updates)
+          const data = this._viewProjectionMatrix.data;
+          cm = new Float32Array(16);
+          for (let c = 0; c < 4; c++) {
+            for (let r = 0; r < 4; r++) {
+              cm[c * 4 + r] = data[r * 4 + c]!;
+            }
+          }
+        }
         gl.uniformMatrix4fv(this._uProjection, false, cm);
       } else {
         // Use identity matrix if no view-projection matrix is set

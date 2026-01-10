@@ -1,8 +1,8 @@
-import { Node } from "./Node";
+import { Entity } from "./Entity";
 /**
  *
  */
-export abstract class Mesh extends Node {
+export abstract class Mesh extends Entity {
   protected _vertexBuffer: WebGLBuffer | null = null;
   protected _indexBuffer: WebGLBuffer | null = null;
 
@@ -36,8 +36,10 @@ export abstract class Mesh extends Node {
     this._indices = indices;
   }
 
-  render(gl: WebGLRenderingContext, program: WebGLProgram): void {
-    gl.useProgram(program);
+  render(gl: WebGLRenderingContext, program?: WebGLProgram): void {
+    if (program) {
+      gl.useProgram(program);
+    }
 
     if (!this._vertexBuffer) {
       this._vertexBuffer = gl.createBuffer();

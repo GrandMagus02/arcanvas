@@ -1,10 +1,46 @@
 import { Matrix4 } from "@arcanvas/matrix";
+import { MatrixOrientation } from "@arcanvas/matrix";
 import { Vector } from "@arcanvas/vector";
+import type { ProjectionMatrix } from "./ProjectionMatrix";
+import type { ViewMatrix } from "./ViewMatrix";
 
 /**
  * TransformationMatrix is a 4x4 matrix that represents a transformation in 3D space.
  */
 export class TransformationMatrix extends Matrix4 {
+  /**
+   * Composes a view-projection matrix from projection and view matrices.
+   * The result is projection * view (projection applied first, then view).
+   * @param projection - The projection matrix
+   * @param view - The view matrix
+   * @returns A new TransformationMatrix representing the composed view-projection
+   */
+  static composeViewProjection(projection: ProjectionMatrix, view: ViewMatrix): TransformationMatrix {
+    const result = projection.mult(view);
+    return new TransformationMatrix(result.data as Float32Array);
+  }
+
+  /**
+   * Converts the matrix to column-major order for WebGL uniformMatrix4fv.
+   * WebGL expects matrices in column-major format.
+   * @returns A Float32Array in column-major order
+   */
+  toColumnMajorArray(): Float32Array {
+    // Matrix4 stores data in row-major order: [m00, m01, m02, m03, m10, m11, m12, m13, ...]
+    // WebGL expects column-major: [m00, m10, m20, m30, m01, m11, m21, m31, ...]
+    // So we transpose by reading column-wise instead of row-wise
+    const result = new Float32Array(16);
+    const data = this.data;
+    // For a 4x4 matrix stored row-major, transpose to column-major
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        // Row-major index: r * 4 + c
+        // Column-major index: c * 4 + r
+        result[c * 4 + r] = data[r * 4 + c]!;
+      }
+    }
+    return result;
+  }
   get translationVec(): Vector<Float32Array, 3> {
     return new Vector<Float32Array, 3>(new Float32Array([this._data[3]!, this._data[7]!, this._data[11]!]));
   }

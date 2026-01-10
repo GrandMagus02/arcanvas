@@ -16,6 +16,8 @@ export class RenderGraph {
   }
 
   execute(ctx: PassContext): void {
-    for (const p of this.passes) p.execute(ctx);
+    for (const p of this.passes) {
+      p.execute(ctx);
+    }
   }
 }

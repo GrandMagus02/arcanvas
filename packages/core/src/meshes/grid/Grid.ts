@@ -43,6 +43,7 @@ export class GridMesh extends Mesh {
   private _viewProjectionMatrix: TransformationMatrix | null = null;
   private _invViewProjectionMatrix: TransformationMatrix | null = null;
   private _invViewProjectionDirty: boolean = true;
+  private _invertWarningLogged: boolean = false;
 
   // State
   private _plane: GridPlane = "XY";
@@ -347,7 +348,22 @@ export class GridMesh extends Mesh {
     // Update inverse view-projection if needed
     if (this._invViewProjectionDirty && this._viewProjectionMatrix) {
       const vp = this._viewProjectionMatrix;
-      this._invViewProjectionMatrix = vp.invert();
+      // Try to invert the matrix if the method exists
+      if (typeof vp.invert === "function") {
+        this._invViewProjectionMatrix = vp.invert();
+      } else {
+        // Fallback: For now, use identity if invert is not available
+        // TODO: Implement proper matrix inversion
+        // Note: Using identity will cause the grid to render incorrectly, but prevents crashes
+        this._invViewProjectionMatrix = new TransformationMatrix(
+          new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
+        );
+        // Only warn once per frame to reduce spam
+        if (!this._invertWarningLogged) {
+          console.warn("GridMesh: Matrix invert() not available, using identity matrix. Grid may not render correctly.");
+          this._invertWarningLogged = true;
+        }
+      }
       this._invViewProjectionDirty = false;
     }
 
@@ -360,7 +376,19 @@ export class GridMesh extends Mesh {
     // Inverse view-projection matrix
     if (this._uInvViewProj) {
       if (this._invViewProjectionMatrix) {
-        const cm = this._invViewProjectionMatrix.toColumnMajorArray();
+        let cm: Float32Array;
+        if (typeof this._invViewProjectionMatrix.toColumnMajorArray === "function") {
+          cm = this._invViewProjectionMatrix.toColumnMajorArray();
+        } else {
+          // Fallback: manually transpose if method doesn't exist (for compatibility during build updates)
+          const data = this._invViewProjectionMatrix.data;
+          cm = new Float32Array(16);
+          for (let c = 0; c < 4; c++) {
+            for (let r = 0; r < 4; r++) {
+              cm[c * 4 + r] = data[r * 4 + c]!;
+            }
+          }
+        }
         gl.uniformMatrix4fv(this._uInvViewProj, false, cm as unknown as Float32Array);
       } else {
         const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);

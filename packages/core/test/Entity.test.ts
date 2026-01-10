@@ -1,24 +1,24 @@
-import { Node, NodeCycleError, NodeSelfAttachmentError } from "@arcanvas/core";
+import { Entity, EntityCycleError, EntitySelfAttachmentError } from "@arcanvas/core";
 import { describe, expect, it } from "bun:test";
 
-describe("Node", () => {
+describe("Entity", () => {
   it("initializes properly with defaults and custom values", () => {
-    const n = new Node();
+    const n = new Entity();
     expect(n.id).toBeDefined();
     expect(typeof n.id).toBe("string");
     expect(n.name).toBeNull();
     expect(n.parent).toBeNull();
     expect(n.children).toEqual([]);
 
-    const n2 = new Node("foo", "custom-id");
+    const n2 = new Entity("foo", "custom-id");
     expect(n2.name).toBe("foo");
     expect(n2.id).toBe("custom-id");
   });
 
   it("adds children and updates parent relationships", () => {
-    const parent = new Node("parent");
-    const child1 = new Node("child1");
-    const child2 = new Node("child2");
+    const parent = new Entity("parent");
+    const child1 = new Entity("child1");
+    const child2 = new Entity("child2");
 
     const ret = parent.add(child1);
     expect(ret).toBe(parent);
@@ -31,9 +31,9 @@ describe("Node", () => {
   });
 
   it("reparents children when added to a new parent", () => {
-    const p1 = new Node("p1");
-    const p2 = new Node("p2");
-    const child = new Node("child");
+    const p1 = new Entity("p1");
+    const p2 = new Entity("p2");
+    const child = new Entity("child");
 
     p1.add(child);
     expect(child.parent).toBe(p1);
@@ -45,25 +45,25 @@ describe("Node", () => {
     expect(p2.children).toEqual([child]);
   });
 
-  it("throws when attempting to add a node to itself", () => {
-    const n = new Node("self");
-    expect(() => n.add(n)).toThrow(NodeSelfAttachmentError);
+  it("throws when attempting to add an entity to itself", () => {
+    const n = new Entity("self");
+    expect(() => n.add(n)).toThrow(EntitySelfAttachmentError);
   });
 
   it("prevents creating cycles when adding an ancestor as a child", () => {
-    const root = new Node("root");
-    const child = new Node("child");
+    const root = new Entity("root");
+    const child = new Entity("child");
 
     root.add(child);
     // child already has root as ancestor; now try to attach root under child
-    expect(() => child.add(root)).toThrow(NodeCycleError);
+    expect(() => child.add(root)).toThrow(EntityCycleError);
   });
 
   it("adds children at specific indices using addAt", () => {
-    const parent = new Node("parent");
-    const a = new Node("a");
-    const b = new Node("b");
-    const c = new Node("c");
+    const parent = new Entity("parent");
+    const a = new Entity("a");
+    const b = new Entity("b");
+    const c = new Entity("c");
 
     parent.add(a);
     parent.add(c);
@@ -73,36 +73,36 @@ describe("Node", () => {
     expect(b.parent).toBe(parent);
 
     // index less than 0 clamps to 0
-    const d = new Node("d");
+    const d = new Entity("d");
     parent.addAt(d, -10);
     expect(parent.children[0]).toBe(d);
 
     // index greater than length clamps to end
-    const e = new Node("e");
+    const e = new Entity("e");
     parent.addAt(e, 999);
     expect(parent.children[parent.children.length - 1]).toBe(e);
   });
 
-  it("removes node from its parent using remove", () => {
-    const parent = new Node("parent");
-    const child = new Node("child");
+  it("removes entity from its parent using remove", () => {
+    const parent = new Entity("parent");
+    const child = new Entity("child");
     parent.add(child);
 
     child.remove();
     expect(child.parent).toBeNull();
     expect(parent.children).toEqual([]);
 
-    // removing a root node should be a no-op
-    const root = new Node("root");
+    // removing a root entity should be a no-op
+    const root = new Entity("root");
     root.remove();
     expect(root.parent).toBeNull();
   });
 
   it("removes a specific child using removeChild", () => {
-    const parent = new Node("parent");
-    const a = new Node("a");
-    const b = new Node("b");
-    const c = new Node("c");
+    const parent = new Entity("parent");
+    const a = new Entity("a");
+    const b = new Entity("b");
+    const c = new Entity("c");
     parent.add(a).add(b).add(c);
 
     parent.removeChild(b);
@@ -110,15 +110,15 @@ describe("Node", () => {
     expect(b.parent).toBeNull();
 
     // removing non-child is a no-op
-    const other = new Node("other");
+    const other = new Entity("other");
     parent.removeChild(other);
     expect(parent.children).toEqual([a, c]);
   });
 
   it("removes all children using removeChildren", () => {
-    const parent = new Node("parent");
-    const a = new Node("a");
-    const b = new Node("b");
+    const parent = new Entity("parent");
+    const a = new Entity("a");
+    const b = new Entity("b");
     parent.add(a).add(b);
 
     parent.removeChildren();
@@ -128,10 +128,10 @@ describe("Node", () => {
   });
 
   it("replaces children using replaceChild and replaceWith", () => {
-    const parent = new Node("parent");
-    const a = new Node("a");
-    const b = new Node("b");
-    const c = new Node("c");
+    const parent = new Entity("parent");
+    const a = new Entity("a");
+    const b = new Entity("b");
+    const c = new Entity("c");
 
     parent.add(a).add(b);
 
@@ -150,26 +150,26 @@ describe("Node", () => {
     expect(c.parent).toBe(parent);
 
     // replaceWith on child
-    const d = new Node("d");
+    const d = new Entity("d");
     a.replaceWith(d);
     expect(parent.children.map((n) => n.name)).toEqual(["d", "c"]);
     expect(d.parent).toBe(parent);
     expect(a.parent).toBeNull();
 
     // replaceWith on root (no parent) is a no-op
-    const root = new Node("root");
-    const other = new Node("other");
+    const root = new Entity("root");
+    const other = new Entity("other");
     root.replaceWith(other);
     expect(root.parent).toBeNull();
     expect(other.parent).toBeNull();
   });
 
-  it("moves nodes between parents using moveTo", () => {
-    const p1 = new Node("p1");
-    const p2 = new Node("p2");
-    const a = new Node("a");
-    const b = new Node("b");
-    const c = new Node("c");
+  it("moves entities between parents using moveTo", () => {
+    const p1 = new Entity("p1");
+    const p2 = new Entity("p2");
+    const a = new Entity("a");
+    const b = new Entity("b");
+    const c = new Entity("c");
 
     p1.add(a).add(b).add(c);
 
@@ -190,19 +190,19 @@ describe("Node", () => {
   });
 
   it("throws when moveTo would create a cycle", () => {
-    const root = new Node("root");
-    const child = new Node("child");
+    const root = new Entity("root");
+    const child = new Entity("child");
     root.add(child);
 
     // moving root under child would create a cycle
-    expect(() => root.moveTo(child)).toThrow(NodeCycleError);
+    expect(() => root.moveTo(child)).toThrow(EntityCycleError);
   });
 
   it("computes isRoot, isLeaf, root, depth, height, size, index and sibling helpers", () => {
-    const root = new Node("root");
-    const child1 = new Node("child1");
-    const child2 = new Node("child2");
-    const grandchild = new Node("grandchild");
+    const root = new Entity("root");
+    const child1 = new Entity("child1");
+    const child2 = new Entity("child2");
+    const grandchild = new Entity("grandchild");
 
     root.add(child1).add(child2);
     child1.add(grandchild);
@@ -241,17 +241,17 @@ describe("Node", () => {
     expect(child2.isLeaf).toBe(true);
     expect(grandchild.isLeaf).toBe(true);
 
-    const lone = new Node("lone");
+    const lone = new Entity("lone");
     expect(lone.prevSibling()).toBeNull();
     expect(lone.nextSibling()).toBeNull();
   });
 
   it("computes ancestors, descendants and pathFromRoot", () => {
-    const root = new Node("root");
-    const a = new Node("a");
-    const b = new Node("b");
-    const c = new Node("c");
-    const d = new Node("d");
+    const root = new Entity("root");
+    const a = new Entity("a");
+    const b = new Entity("b");
+    const c = new Entity("c");
+    const d = new Entity("d");
 
     root.add(a);
     a.add(b);
@@ -269,9 +269,9 @@ describe("Node", () => {
   });
 
   it("checks ancestor/descendant relationships and containment", () => {
-    const root = new Node("root");
-    const a = new Node("a");
-    const b = new Node("b");
+    const root = new Entity("root");
+    const a = new Entity("a");
+    const b = new Entity("b");
 
     root.add(a);
     a.add(b);
@@ -292,11 +292,11 @@ describe("Node", () => {
   });
 
   it("traverses depth-first and breadth-first", () => {
-    const root = new Node("root");
-    const a = new Node("a");
-    const b = new Node("b");
-    const c = new Node("c");
-    const d = new Node("d");
+    const root = new Entity("root");
+    const a = new Entity("a");
+    const b = new Entity("b");
+    const c = new Entity("c");
+    const d = new Entity("d");
 
     root.add(a).add(b);
     a.add(c);
@@ -311,11 +311,11 @@ describe("Node", () => {
     expect(bfs).toEqual(["root", "a", "b", "c", "d"]);
   });
 
-  it("finds nodes using find, findAll, findById and findByName", () => {
-    const root = new Node("root");
-    const a1 = new Node("a");
-    const a2 = new Node("a");
-    const b = new Node("b");
+  it("finds entities using find, findAll, findById and findByName", () => {
+    const root = new Entity("root");
+    const a1 = new Entity("a");
+    const a2 = new Entity("a");
+    const b = new Entity("b");
 
     root.add(a1).add(b);
     a1.add(a2);
@@ -335,9 +335,9 @@ describe("Node", () => {
   });
 
   it("serializes to JSON and deserializes from JSON", () => {
-    const root = new Node("root");
-    const a = new Node("a");
-    const b = new Node("b");
+    const root = new Entity("root");
+    const a = new Entity("a");
+    const b = new Entity("b");
     root.add(a).add(b);
 
     const json = root.toJSON();
@@ -347,7 +347,7 @@ describe("Node", () => {
     expect(json.children?.length).toBe(2);
     expect(json.children?.map((c) => c.name)).toEqual(["a", "b"]);
 
-    const roundTripped = Node.fromJSON(json);
+    const roundTripped = Entity.fromJSON(json);
     expect(roundTripped.name).toBe("root");
     expect(roundTripped.children.length).toBe(2);
     expect(roundTripped.children.map((c) => c.name)).toEqual(["a", "b"]);
@@ -355,9 +355,9 @@ describe("Node", () => {
     expect(firstChild.parent).toBe(roundTripped);
   });
 
-  it("clones nodes (shallow and deep)", () => {
-    const root = new Node("root");
-    const child = new Node("child");
+  it("clones entities (shallow and deep)", () => {
+    const root = new Entity("root");
+    const child = new Entity("child");
     root.add(child);
 
     const shallow = root.clone(false);

@@ -1,2 +1,2 @@
 export * from "./Mesh";
-export * from "./Node";
+export * from "./Entity";

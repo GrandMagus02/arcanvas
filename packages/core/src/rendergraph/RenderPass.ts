@@ -1,3 +1,5 @@
+import type { Camera } from "../camera/Camera";
+
 /**
  *
  */
@@ -5,6 +7,8 @@ export interface PassContext {
   gl: WebGLRenderingContext;
   width: number;
   height: number;
+  camera: Camera | null;
+  program: WebGLProgram | null;
 }
 
 /**

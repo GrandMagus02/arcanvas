@@ -3,6 +3,9 @@ import { CameraManager } from "./camera/CameraManager";
 import { EventBus } from "./EventBus";
 import { type PluginLike } from "./Plugin";
 import { PluginManager } from "./PluginManager";
+import { ClearPass } from "./rendergraph/passes/ClearPass";
+import { DrawStagePass } from "./rendergraph/passes/DrawStagePass";
+import { RenderGraph } from "./rendergraph/RenderGraph";
 import { Renderer } from "./renderers/Renderer";
 import { Stage } from "./Stage";
 
@@ -60,38 +63,20 @@ export class Arcanvas {
     // Device pixel ratio aware initial sizing if width/height not explicitly set
     this.applyDprSizing();
 
-    this._renderer.onDraw((gl, program) => {
-      this._stage.draw(gl, program);
-    });
+    // Set up render graph with clear pass and draw stage pass
+    const renderGraph = new RenderGraph();
+    renderGraph.addPass(new ClearPass([0.1, 0.1, 0.1, 1])); // Dark gray clear color for better visibility
+    renderGraph.addPass(new DrawStagePass(this._stage));
 
-    // this._Renderer.onDraw((gl) => {
-    //   this._stage.traverse((node) => {
-    //     if (node instanceof Mesh) {
-    //       // Use current camera's projection matrix (camera is always set)
-    //       const projection = this._currentCamera!.projection;
+    // Set render graph on renderer
+    this._renderer.setRenderGraph(renderGraph);
 
-    //       // Special handling for GridMesh
-    //       if (node instanceof GridMesh) {
-    //         node.setViewProjection(projection);
-    //         node.setViewportSize(this._canvas.width, this._canvas.height);
-    //         // Get camera position if available
-    //         const camera = this._currentCamera!;
-    //         if ("x" in camera && "y" in camera) {
-    //           const x = (camera as { x: number }).x;
-    //           const y = (camera as { y: number }).y;
-    //           const z = "z" in camera ? (camera as { z: number }).z : 0;
-    //           node.setCameraPosition(x, y, z);
-    //         }
-    //       } else {
-    //         // Set projection matrix on mesh if it supports it
-    //         if ("setProjectionMatrix" in node && typeof node.setProjectionMatrix === "function") {
-    //           (node as { setProjectionMatrix: (m: TransformationMatrix) => void }).setProjectionMatrix(projMatrix);
-    //         }
-    //       }
+    // Set camera getter so renderer can access active camera
+    this._renderer.setCameraGetter(() => this._cameras.active);
 
-    //       node.render(gl);
-    //     }
-    //   });
+    // Keep old onDraw hook for backward compatibility (but render graph takes precedence)
+    // this._renderer.onDraw((gl, program) => {
+    //   this._stage.draw(gl, program);
     // });
   }
 
