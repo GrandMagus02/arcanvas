@@ -17,10 +17,15 @@ export class PlaneMesh extends Mesh {
   }
 
   private static resolveAssetUrl(relativePath: string): string {
-    if (/^https?:\/\//.test(relativePath) || relativePath.startsWith("/")) return relativePath;
+    if (/^https?:\/\//.test(relativePath) || relativePath.startsWith("/")) {
+      console.log("PlaneMesh: Using absolute URL for shader:", relativePath);
+      return relativePath;
+    }
     const script = document.querySelector<HTMLScriptElement>('script[type="module"][src$="/dist/main.js"]');
     const base = script?.src ? new URL(".", script.src).toString() : new URL("/dist/", location.href).toString();
-    return new URL(relativePath.replace(/^\.\//, ""), base).toString();
+    const resolved = new URL(relativePath.replace(/^\.\//, ""), base).toString();
+    console.log("PlaneMesh: Resolved shader URL:", relativePath, "->", resolved, "(base:", base + ")");
+    return resolved;
   }
 
   private async initProgram(ctx: WebGLRenderingContext): Promise<void> {
@@ -28,56 +33,160 @@ export class PlaneMesh extends Mesh {
     let vsSource = VS_SOURCE;
     let fsSource = FS_SOURCE;
 
-    // If bundler emitted URLs for shaders, fetch their contents
+    // Load vertex shader source
     if (!PlaneMesh.isInlineSource(vsSource)) {
-      const url = PlaneMesh.resolveAssetUrl(vsSource);
-      vsSource = await fetch(url).then((r) => r.text());
-    }
-    if (!PlaneMesh.isInlineSource(fsSource)) {
-      const url = PlaneMesh.resolveAssetUrl(fsSource);
-      fsSource = await fetch(url).then((r) => r.text());
+      try {
+        const url = PlaneMesh.resolveAssetUrl(vsSource);
+        console.log("PlaneMesh: Loading vertex shader from:", url);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch vertex shader: ${response.status} ${response.statusText}`);
+        }
+        vsSource = await response.text();
+        if (!vsSource || vsSource.trim().length === 0) {
+          throw new Error("Vertex shader source is empty");
+        }
+        console.log("PlaneMesh: Vertex shader loaded successfully, length:", vsSource.length);
+      } catch (error) {
+        console.error("PlaneMesh: Failed to load vertex shader:", error);
+        if (error instanceof Error) {
+          console.error("PlaneMesh: Error details:", error.message);
+        }
+        throw error; // Re-throw to prevent program creation with invalid shader
+      }
+    } else {
+      console.log("PlaneMesh: Using inline vertex shader source");
     }
 
-    const vs = ctx.createShader(ctx.VERTEX_SHADER)!;
+    // Load fragment shader source
+    if (!PlaneMesh.isInlineSource(fsSource)) {
+      try {
+        const url = PlaneMesh.resolveAssetUrl(fsSource);
+        console.log("PlaneMesh: Loading fragment shader from:", url);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch fragment shader: ${response.status} ${response.statusText}`);
+        }
+        fsSource = await response.text();
+        if (!fsSource || fsSource.trim().length === 0) {
+          throw new Error("Fragment shader source is empty");
+        }
+        console.log("PlaneMesh: Fragment shader loaded successfully, length:", fsSource.length);
+      } catch (error) {
+        console.error("PlaneMesh: Failed to load fragment shader:", error);
+        if (error instanceof Error) {
+          console.error("PlaneMesh: Error details:", error.message);
+        }
+        throw error; // Re-throw to prevent program creation with invalid shader
+      }
+    } else {
+      console.log("PlaneMesh: Using inline fragment shader source");
+    }
+
+    const vs = ctx.createShader(ctx.VERTEX_SHADER);
+    if (!vs) {
+      const error = ctx.getError();
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("PlaneMesh: Failed to create vertex shader. WebGL error:", errorNames[error] || `0x${error.toString(16)}`);
+      throw new Error("Failed to create vertex shader");
+    }
     ctx.shaderSource(vs, vsSource);
     ctx.compileShader(vs);
     if (!ctx.getShaderParameter(vs, ctx.COMPILE_STATUS)) {
-      const info = ctx.getShaderInfoLog(vs) || "";
-      console.error("Vertex shader compile error:", info);
+      const info = ctx.getShaderInfoLog(vs) || "Unknown compilation error";
+      console.error("PlaneMesh: Vertex shader compile error:", info);
+      console.error("PlaneMesh: Vertex shader source (first 500 chars):", vsSource.substring(0, 500));
       ctx.deleteShader(vs);
-      return;
+      throw new Error(`Vertex shader compilation failed: ${info}`);
     }
-    const fs = ctx.createShader(ctx.FRAGMENT_SHADER)!;
+    console.log("PlaneMesh: Vertex shader compiled successfully");
+    const fs = ctx.createShader(ctx.FRAGMENT_SHADER);
+    if (!fs) {
+      const error = ctx.getError();
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("PlaneMesh: Failed to create fragment shader. WebGL error:", errorNames[error] || `0x${error.toString(16)}`);
+      ctx.deleteShader(vs);
+      throw new Error("Failed to create fragment shader");
+    }
     ctx.shaderSource(fs, fsSource);
     ctx.compileShader(fs);
     if (!ctx.getShaderParameter(fs, ctx.COMPILE_STATUS)) {
-      const info = ctx.getShaderInfoLog(fs) || "";
-      console.error("Fragment shader compile error:", info);
+      const info = ctx.getShaderInfoLog(fs) || "Unknown compilation error";
+      console.error("PlaneMesh: Fragment shader compile error:", info);
+      console.error("PlaneMesh: Fragment shader source (first 500 chars):", fsSource.substring(0, 500));
       ctx.deleteShader(vs);
       ctx.deleteShader(fs);
-      return;
+      throw new Error(`Fragment shader compilation failed: ${info}`);
     }
+    console.log("PlaneMesh: Fragment shader compiled successfully");
     const prog = ctx.createProgram();
-    if (!prog) return;
+    if (!prog) {
+      const error = ctx.getError();
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("PlaneMesh: Failed to create program. WebGL error:", errorNames[error] || `0x${error.toString(16)}`);
+      ctx.deleteShader(vs);
+      ctx.deleteShader(fs);
+      throw new Error("Failed to create WebGL program");
+    }
     ctx.attachShader(prog, vs);
     ctx.attachShader(prog, fs);
     ctx.linkProgram(prog);
     if (!ctx.getProgramParameter(prog, ctx.LINK_STATUS)) {
-      const info = ctx.getProgramInfoLog(prog) || "";
-      console.error("Program link error:", info);
+      const info = ctx.getProgramInfoLog(prog) || "Unknown link error";
+      console.error("PlaneMesh: Program link error:", info);
       ctx.deleteShader(vs);
       ctx.deleteShader(fs);
       ctx.deleteProgram(prog);
-      return;
+      throw new Error(`Program linking failed: ${info}`);
     }
+    // Check for WebGL errors
+    const error = ctx.getError();
+    if (error !== ctx.NO_ERROR) {
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("PlaneMesh: WebGL error after program link:", errorNames[error] || `0x${error.toString(16)}`);
+      // Don't throw here, as the program may still be usable
+    }
+    console.log("PlaneMesh: Program linked successfully");
+
     this._program = prog;
     this._aPos = ctx.getAttribLocation(prog, "a_position");
+    if (this._aPos < 0) {
+      console.warn("PlaneMesh: Attribute 'a_position' not found in shader program");
+    }
     this._uProjection = ctx.getUniformLocation(prog, "u_projection");
+    if (!this._uProjection) {
+      console.warn("PlaneMesh: Uniform 'u_projection' not found in shader program (may be optimized out)");
+    }
+
     // shaders can be detached/deleted after linking to free resources
     ctx.detachShader(prog, vs);
-    ctx.detachShader(prog, fs);
     ctx.deleteShader(vs);
     ctx.deleteShader(fs);
+    console.log("PlaneMesh: Shader program compiled, linked, and initialized successfully");
   }
 
   /**
@@ -107,13 +216,23 @@ export class PlaneMesh extends Mesh {
     // Lazy initialize program; if fetch required, schedule and return until ready
     if (!this._program) {
       if (!this._shaderInitPromise) {
-        this._shaderInitPromise = this.initProgram(gl);
+        this._shaderInitPromise = this.initProgram(gl).catch((error) => {
+          console.error("PlaneMesh: Shader initialization failed:", error);
+          if (error instanceof Error) {
+            console.error("PlaneMesh: Error details:", error.message, error.stack);
+          }
+          // Reset promise to allow retry on next frame
+          this._shaderInitPromise = null;
+        });
       }
       // Not ready yet; try again next frame
       return;
     }
 
-    if (this._aPos < 0) return;
+    if (this._aPos < 0) {
+      console.warn("PlaneMesh: Cannot render - attribute location is invalid");
+      return;
+    }
 
     gl.useProgram(this._program);
 

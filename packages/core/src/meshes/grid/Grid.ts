@@ -43,7 +43,6 @@ export class GridMesh extends Mesh {
   private _viewProjectionMatrix: TransformationMatrix | null = null;
   private _invViewProjectionMatrix: TransformationMatrix | null = null;
   private _invViewProjectionDirty: boolean = true;
-  private _invertWarningLogged: boolean = false;
 
   // State
   private _plane: GridPlane = "XY";
@@ -241,65 +240,175 @@ export class GridMesh extends Mesh {
   }
 
   private static resolveAssetUrl(relativePath: string): string {
-    if (/^https?:\/\//.test(relativePath) || relativePath.startsWith("/")) return relativePath;
+    if (/^https?:\/\//.test(relativePath) || relativePath.startsWith("/")) {
+      console.log("GridMesh: Using absolute URL for shader:", relativePath);
+      return relativePath;
+    }
     const script = document.querySelector<HTMLScriptElement>('script[type="module"][src$="/dist/main.js"]');
     const base = script?.src ? new URL(".", script.src).toString() : new URL("/dist/", location.href).toString();
-    return new URL(relativePath.replace(/^\.\//, ""), base).toString();
+    const resolved = new URL(relativePath.replace(/^\.\//, ""), base).toString();
+    console.log("GridMesh: Resolved shader URL:", relativePath, "->", resolved, "(base:", base + ")");
+    return resolved;
   }
 
   private async initProgram(ctx: WebGLRenderingContext): Promise<void> {
     if (this._program) return;
     // Request derivatives extension for anti-aliased grid lines (safe no-op if unavailable)
-    ctx.getExtension("OES_standard_derivatives");
+    const ext = ctx.getExtension("OES_standard_derivatives");
+    if (!ext) {
+      console.warn("GridMesh: OES_standard_derivatives extension not available, grid lines may not be anti-aliased");
+    }
     let vsSource = VS_SOURCE;
     let fsSource = FS_SOURCE;
 
+    // Load vertex shader source
     if (!GridMesh.isInlineSource(vsSource)) {
-      const url = GridMesh.resolveAssetUrl(vsSource);
-      vsSource = await fetch(url).then((r) => r.text());
-    }
-    if (!GridMesh.isInlineSource(fsSource)) {
-      const url = GridMesh.resolveAssetUrl(fsSource);
-      fsSource = await fetch(url).then((r) => r.text());
+      try {
+        const url = GridMesh.resolveAssetUrl(vsSource);
+        console.log("GridMesh: Loading vertex shader from:", url);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch vertex shader: ${response.status} ${response.statusText}`);
+        }
+        vsSource = await response.text();
+        if (!vsSource || vsSource.trim().length === 0) {
+          throw new Error("Vertex shader source is empty");
+        }
+        console.log("GridMesh: Vertex shader loaded successfully, length:", vsSource.length);
+      } catch (error) {
+        console.error("GridMesh: Failed to load vertex shader:", error);
+        if (error instanceof Error) {
+          console.error("GridMesh: Error details:", error.message);
+        }
+        throw error; // Re-throw to prevent program creation with invalid shader
+      }
+    } else {
+      console.log("GridMesh: Using inline vertex shader source");
     }
 
-    const vs = ctx.createShader(ctx.VERTEX_SHADER)!;
+    // Load fragment shader source
+    if (!GridMesh.isInlineSource(fsSource)) {
+      try {
+        const url = GridMesh.resolveAssetUrl(fsSource);
+        console.log("GridMesh: Loading fragment shader from:", url);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch fragment shader: ${response.status} ${response.statusText}`);
+        }
+        fsSource = await response.text();
+        if (!fsSource || fsSource.trim().length === 0) {
+          throw new Error("Fragment shader source is empty");
+        }
+        console.log("GridMesh: Fragment shader loaded successfully, length:", fsSource.length);
+      } catch (error) {
+        console.error("GridMesh: Failed to load fragment shader:", error);
+        if (error instanceof Error) {
+          console.error("GridMesh: Error details:", error.message);
+        }
+        throw error; // Re-throw to prevent program creation with invalid shader
+      }
+    } else {
+      console.log("GridMesh: Using inline fragment shader source");
+    }
+
+    const vs = ctx.createShader(ctx.VERTEX_SHADER);
+    if (!vs) {
+      const error = ctx.getError();
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("GridMesh: Failed to create vertex shader. WebGL error:", errorNames[error] || `0x${error.toString(16)}`);
+      throw new Error("Failed to create vertex shader");
+    }
     ctx.shaderSource(vs, vsSource);
     ctx.compileShader(vs);
     if (!ctx.getShaderParameter(vs, ctx.COMPILE_STATUS)) {
-      const info = ctx.getShaderInfoLog(vs) || "";
-      console.error("GridMesh vertex shader compile error:", info);
+      const info = ctx.getShaderInfoLog(vs) || "Unknown compilation error";
+      console.error("GridMesh: Vertex shader compile error:", info);
+      console.error("GridMesh: Vertex shader source (first 500 chars):", vsSource.substring(0, 500));
       ctx.deleteShader(vs);
-      return;
+      throw new Error(`Vertex shader compilation failed: ${info}`);
     }
+    console.log("GridMesh: Vertex shader compiled successfully");
 
-    const fs = ctx.createShader(ctx.FRAGMENT_SHADER)!;
+    const fs = ctx.createShader(ctx.FRAGMENT_SHADER);
+    if (!fs) {
+      const error = ctx.getError();
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("GridMesh: Failed to create fragment shader. WebGL error:", errorNames[error] || `0x${error.toString(16)}`);
+      ctx.deleteShader(vs);
+      throw new Error("Failed to create fragment shader");
+    }
     ctx.shaderSource(fs, fsSource);
     ctx.compileShader(fs);
     if (!ctx.getShaderParameter(fs, ctx.COMPILE_STATUS)) {
-      const info = ctx.getShaderInfoLog(fs) || "";
-      console.error("GridMesh fragment shader compile error:", info);
+      const info = ctx.getShaderInfoLog(fs) || "Unknown compilation error";
+      console.error("GridMesh: Fragment shader compile error:", info);
+      console.error("GridMesh: Fragment shader source (first 500 chars):", fsSource.substring(0, 500));
       ctx.deleteShader(vs);
       ctx.deleteShader(fs);
-      return;
+      throw new Error(`Fragment shader compilation failed: ${info}`);
     }
+    console.log("GridMesh: Fragment shader compiled successfully");
 
     const prog = ctx.createProgram();
-    if (!prog) return;
+    if (!prog) {
+      const error = ctx.getError();
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("GridMesh: Failed to create program. WebGL error:", errorNames[error] || `0x${error.toString(16)}`);
+      ctx.deleteShader(vs);
+      ctx.deleteShader(fs);
+      throw new Error("Failed to create WebGL program");
+    }
     ctx.attachShader(prog, vs);
     ctx.attachShader(prog, fs);
     ctx.linkProgram(prog);
     if (!ctx.getProgramParameter(prog, ctx.LINK_STATUS)) {
-      const info = ctx.getProgramInfoLog(prog) || "";
-      console.error("GridMesh program link error:", info);
+      const info = ctx.getProgramInfoLog(prog) || "Unknown link error";
+      console.error("GridMesh: Program link error:", info);
       ctx.deleteShader(vs);
       ctx.deleteShader(fs);
       ctx.deleteProgram(prog);
-      return;
+      throw new Error(`Program linking failed: ${info}`);
     }
+    // Check for WebGL errors
+    const error = ctx.getError();
+    if (error !== ctx.NO_ERROR) {
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error("GridMesh: WebGL error after program link:", errorNames[error] || `0x${error.toString(16)}`);
+      // Don't throw here, as the program may still be usable
+    }
+    console.log("GridMesh: Program linked successfully");
 
     this._program = prog;
     this._aPos = ctx.getAttribLocation(prog, "a_position");
+    if (this._aPos < 0) {
+      console.warn("GridMesh: Attribute 'a_position' not found in shader program");
+    }
+
+    // Get all uniform locations
     this._uPlane = ctx.getUniformLocation(prog, "u_plane");
     this._uInvViewProj = ctx.getUniformLocation(prog, "u_invViewProj");
     this._uViewportPx = ctx.getUniformLocation(prog, "u_viewportPx");
@@ -323,55 +432,184 @@ export class GridMesh extends Mesh {
     this._uZAxisDashColor = ctx.getUniformLocation(prog, "u_zAxisDashColor");
     this._uCenterColor = ctx.getUniformLocation(prog, "u_centerColor");
 
+    // Log any missing uniforms (they may be optimized out, which is OK)
+    const missingUniforms: string[] = [];
+    if (!this._uPlane) missingUniforms.push("u_plane");
+    if (!this._uInvViewProj) missingUniforms.push("u_invViewProj");
+    if (!this._uViewportPx) missingUniforms.push("u_viewportPx");
+    if (!this._uCameraPos) missingUniforms.push("u_cameraPos");
+    if (missingUniforms.length > 0) {
+      console.warn("GridMesh: Some uniforms not found (may be optimized out):", missingUniforms.join(", "));
+    }
+
     ctx.detachShader(prog, vs);
-    ctx.detachShader(prog, fs);
     ctx.deleteShader(vs);
     ctx.deleteShader(fs);
+    console.log("GridMesh: Shader program compiled, linked, and initialized successfully");
   }
 
   override render(gl: WebGLRenderingContext): void {
+    // Initialize vertex buffer if needed
     if (!this["_vertexBuffer"]) {
       this["_vertexBuffer"] = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, this["_vertexBuffer"]);
       gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
     }
 
+    // Handle shader initialization
     if (!this._program) {
       if (!this._shaderInitPromise) {
-        this._shaderInitPromise = this.initProgram(gl);
+        console.log("GridMesh: Starting shader initialization...");
+        this._shaderInitPromise = this.initProgram(gl)
+          .then(() => {
+            console.log("GridMesh: Shader initialization completed successfully");
+            this._shaderInitPromise = null; // Clear promise after success
+          })
+          .catch((error) => {
+            console.error("GridMesh: Shader initialization failed:", error);
+            if (error instanceof Error) {
+              console.error("GridMesh: Error details:", error.message, error.stack);
+            }
+            // Reset promise to allow retry on next frame
+            this._shaderInitPromise = null;
+          });
+      } else {
+        // Shader initialization in progress, wait for next frame
+        console.log("GridMesh: Shader initialization in progress, skipping render this frame");
       }
+      return; // Wait for shader initialization to complete
+    }
+
+    // Validate attribute location
+    if (this._aPos < 0) {
+      console.error("GridMesh: Cannot render - attribute location 'a_position' is invalid (not found in shader)");
       return;
     }
 
-    if (this._aPos < 0) return;
-
-    // Update inverse view-projection if needed
-    if (this._invViewProjectionDirty && this._viewProjectionMatrix) {
+    // Validate view-projection matrix is set
+    if (!this._viewProjectionMatrix) {
+      console.warn("GridMesh: View-projection matrix not set, grid may not render correctly. Waiting for DrawStagePass to set it.");
+      // Still render with identity matrix as fallback
+      if (!this._invViewProjectionMatrix) {
+        this._invViewProjectionMatrix = new TransformationMatrix(new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
+        this._invViewProjectionDirty = false;
+        console.warn("GridMesh: Using identity matrix as fallback - this will cause incorrect rendering!");
+      }
+    } else if (this._invViewProjectionDirty) {
+      // Update inverse view-projection if needed
       const vp = this._viewProjectionMatrix;
-      // Try to invert the matrix if the method exists
-      if (typeof vp.invert === "function") {
-        this._invViewProjectionMatrix = vp.invert();
-      } else {
-        // Fallback: For now, use identity if invert is not available
-        // TODO: Implement proper matrix inversion
-        // Note: Using identity will cause the grid to render incorrectly, but prevents crashes
-        this._invViewProjectionMatrix = new TransformationMatrix(
-          new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
-        );
-        // Only warn once per frame to reduce spam
-        if (!this._invertWarningLogged) {
-          console.warn("GridMesh: Matrix invert() not available, using identity matrix. Grid may not render correctly.");
-          this._invertWarningLogged = true;
+
+      // Validate view-projection matrix before inversion
+      const vpData = vp.data;
+      let hasInvalidValue = false;
+      for (let i = 0; i < 16; i++) {
+        if (!isFinite(vpData[i]!)) {
+          hasInvalidValue = true;
+          console.error(`GridMesh: View-projection matrix contains invalid value at index ${i}: ${vpData[i]}`);
+          break;
         }
       }
-      this._invViewProjectionDirty = false;
+
+      if (hasInvalidValue) {
+        console.error("GridMesh: Cannot invert invalid view-projection matrix, using identity");
+        this._invViewProjectionMatrix = new TransformationMatrix(new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
+        this._invViewProjectionDirty = false;
+      } else {
+        try {
+          this._invViewProjectionMatrix = vp.invert();
+
+          // Validate inverted matrix
+          const invData = this._invViewProjectionMatrix.data;
+          let invHasInvalidValue = false;
+          for (let i = 0; i < 16; i++) {
+            if (!isFinite(invData[i]!)) {
+              invHasInvalidValue = true;
+              console.error(`GridMesh: Inverted matrix contains invalid value at index ${i}: ${invData[i]}`);
+              break;
+            }
+          }
+
+          if (invHasInvalidValue) {
+            console.error("GridMesh: Inverted matrix is invalid, using identity fallback");
+            this._invViewProjectionMatrix = new TransformationMatrix(new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
+          } else {
+            // Check if matrix is identity (which would cause quadrant rendering)
+            let isIdentity = true;
+            for (let i = 0; i < 16; i++) {
+              const expected = i % 5 === 0 ? 1 : 0; // Identity has 1s on diagonal
+              if (Math.abs(invData[i]! - expected) > 1e-6) {
+                isIdentity = false;
+                break;
+              }
+            }
+            if (isIdentity) {
+              console.warn("GridMesh: Inverse view-projection matrix is identity! This will cause incorrect rendering. View-projection matrix may be invalid.");
+              // Log the original view-projection matrix for debugging
+              const vpData = vp.data;
+              console.log("GridMesh: Original view-projection matrix:", Array.from(vpData));
+            }
+          }
+        } catch (error) {
+          // If inversion fails (singular matrix), use identity as fallback
+          console.error("GridMesh: Failed to invert view-projection matrix:", error);
+          if (error instanceof Error) {
+            console.error("GridMesh: Inversion error details:", error.message);
+          }
+          // Log the matrix that failed to invert
+          const vpData = this._viewProjectionMatrix.data;
+          console.error("GridMesh: View-projection matrix that failed to invert:");
+          console.error(
+            "  Row 0:",
+            Array.from(vpData.slice(0, 4)).map((v) => v.toFixed(6))
+          );
+          console.error(
+            "  Row 1:",
+            Array.from(vpData.slice(4, 8)).map((v) => v.toFixed(6))
+          );
+          console.error(
+            "  Row 2:",
+            Array.from(vpData.slice(8, 12)).map((v) => v.toFixed(6))
+          );
+          console.error(
+            "  Row 3:",
+            Array.from(vpData.slice(12, 16)).map((v) => v.toFixed(6))
+          );
+
+          // Check for potential issues
+          const hasZeroRow = [0, 4, 8, 12].some((start) => {
+            const row = vpData.slice(start, start + 4);
+            return row.every((v) => Math.abs(v) < 1e-10);
+          });
+          const hasZeroCol = [0, 1, 2, 3].some((col) => {
+            return Math.abs(vpData[col]!) < 1e-10 && Math.abs(vpData[col + 4]!) < 1e-10 && Math.abs(vpData[col + 8]!) < 1e-10 && Math.abs(vpData[col + 12]!) < 1e-10;
+          });
+          if (hasZeroRow) {
+            console.error("GridMesh: Matrix has a zero row - this makes it singular!");
+          }
+          if (hasZeroCol) {
+            console.error("GridMesh: Matrix has a zero column - this makes it singular!");
+          }
+
+          console.error("GridMesh: Using identity fallback - this will cause incorrect rendering!");
+          this._invViewProjectionMatrix = new TransformationMatrix(new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
+        }
+        this._invViewProjectionDirty = false;
+      }
     }
 
     gl.useProgram(this._program);
 
+    // Log uniforms on first render (static counter)
+    const hasRenderedKey = "_hasRendered" as keyof this;
+    const isFirstRender = !(this[hasRenderedKey] as boolean | undefined);
+    (this[hasRenderedKey] as boolean) = true;
+
     // Plane selection: 0 = XY, 1 = XZ, 2 = YZ
     const planeValue = this._plane === "XY" ? 0 : this._plane === "XZ" ? 1 : 2;
     if (this._uPlane) gl.uniform1i(this._uPlane, planeValue);
+    if (isFirstRender) {
+      console.log(`GridMesh: Setting plane to ${this._plane} (value: ${planeValue})`);
+    }
 
     // Inverse view-projection matrix
     if (this._uInvViewProj) {
@@ -390,17 +628,39 @@ export class GridMesh extends Mesh {
           }
         }
         gl.uniformMatrix4fv(this._uInvViewProj, false, cm as unknown as Float32Array);
+        if (isFirstRender) {
+          console.log(
+            "GridMesh: Inverse view-projection matrix set (first 4 values):",
+            Array.from(cm.slice(0, 4)).map((v) => v.toFixed(3))
+          );
+        }
       } else {
         const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
         gl.uniformMatrix4fv(this._uInvViewProj, false, identity);
+        if (isFirstRender) {
+          console.warn("GridMesh: Using identity matrix for inverse view-projection - this will cause incorrect rendering!");
+        }
       }
     }
 
     // Viewport size
-    if (this._uViewportPx) gl.uniform2f(this._uViewportPx, this._viewportWidth, this._viewportHeight);
+    if (this._uViewportPx) {
+      if (this._viewportWidth <= 0 || this._viewportHeight <= 0) {
+        console.warn(`GridMesh: Invalid viewport size when setting uniform: ${this._viewportWidth}x${this._viewportHeight}`);
+      }
+      gl.uniform2f(this._uViewportPx, this._viewportWidth, this._viewportHeight);
+      if (isFirstRender) {
+        console.log(`GridMesh: Viewport size: ${this._viewportWidth}x${this._viewportHeight}`);
+      }
+    }
 
     // Camera position
-    if (this._uCameraPos) gl.uniform3f(this._uCameraPos, this._cameraPos[0], this._cameraPos[1], this._cameraPos[2]);
+    if (this._uCameraPos) {
+      gl.uniform3f(this._uCameraPos, this._cameraPos[0], this._cameraPos[1], this._cameraPos[2]);
+      if (isFirstRender) {
+        console.log(`GridMesh: Camera position: [${this._cameraPos[0].toFixed(2)}, ${this._cameraPos[1].toFixed(2)}, ${this._cameraPos[2].toFixed(2)}]`);
+      }
+    }
 
     // Spacing
     if (this._uAdaptive) gl.uniform1i(this._uAdaptive, this._adaptiveSpacing ? 1 : 0);
@@ -430,7 +690,22 @@ export class GridMesh extends Mesh {
     gl.enableVertexAttribArray(this._aPos);
     gl.vertexAttribPointer(this._aPos, 2, gl.FLOAT, false, 0, 0);
     const vertCount = this.vertices.length / 2;
+
     gl.drawArrays(gl.TRIANGLES, 0, vertCount);
+
+    // Check for WebGL errors after drawing
+    const drawError = gl.getError();
+    if (drawError !== gl.NO_ERROR) {
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error(`GridMesh: WebGL error after drawArrays: ${errorNames[drawError] || `0x${drawError.toString(16)}`}`);
+    }
+
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 }

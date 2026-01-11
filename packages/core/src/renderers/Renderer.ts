@@ -67,6 +67,12 @@ export class Renderer {
     this._options = Object.assign({}, _DEFAULT_RENDERER_OPTIONS, options);
     this.applyGlState();
 
+    // Verify WebGL context is valid
+    const contextError = gl.getError();
+    if (contextError !== gl.NO_ERROR) {
+      console.warn("Renderer: WebGL context has error after initialization:", contextError);
+    }
+
     // Context loss/restore hooks
     this._canvas.addEventListener("webglcontextlost", this._onContextLost as EventListener);
     this._canvas.addEventListener("webglcontextrestored", this._onContextRestored as EventListener);
@@ -158,27 +164,70 @@ export class Renderer {
     if (!gl) return;
     const { clearColor, depthTest } = this._options;
     gl.clearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
-    if (depthTest) gl.enable(gl.DEPTH_TEST);
-    else gl.disable(gl.DEPTH_TEST);
-    // Premultiplied alpha blending defaults
+    if (depthTest) {
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthFunc(gl.LEQUAL); // Default depth function
+    } else {
+      gl.disable(gl.DEPTH_TEST);
+    }
+    // Premultiplied alpha blending for correct compositing
+    // Source: premultiplied RGB * alpha, Destination: (1 - src_alpha)
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    // Ensure color mask is enabled for all channels
+    gl.colorMask(true, true, true, true);
+  }
+
+  private static checkGLError(gl: WebGLRenderingContext, operation: string): boolean {
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR) {
+      const errorNames: Record<number, string> = {
+        0x0500: "INVALID_ENUM",
+        0x0501: "INVALID_VALUE",
+        0x0502: "INVALID_OPERATION",
+        0x0503: "INVALID_FRAMEBUFFER_OPERATION",
+        0x0505: "OUT_OF_MEMORY",
+      };
+      console.error(`WebGL Error in ${operation}:`, errorNames[error] || `0x${error.toString(16)}`);
+      return false;
+    }
+    return true;
   }
 
   private frame() {
     const gl = this.gl;
-    if (!gl) return;
+    if (!gl) {
+      console.error("Renderer: WebGL context is null in frame()");
+      return;
+    }
+
+    // Verify viewport dimensions are valid
+    if (this._canvas.width <= 0 || this._canvas.height <= 0) {
+      console.warn(`Renderer: Invalid canvas dimensions: ${this._canvas.width}x${this._canvas.height}`);
+      return;
+    }
+
     gl.viewport(0, 0, this._canvas.width, this._canvas.height);
+    Renderer.checkGLError(gl, "viewport");
     if (this._scissorRect) {
       gl.enable(gl.SCISSOR_TEST);
       gl.scissor(this._scissorRect.x, this._scissorRect.y, this._scissorRect.w, this._scissorRect.h);
+      Renderer.checkGLError(gl, "scissor");
     } else {
       gl.disable(gl.SCISSOR_TEST);
     }
 
+    // Ensure blending state is correct for premultiplied alpha rendering
+    // This is important as other code might have changed the state
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
     // Use render graph if available, otherwise fall back to draw hooks
     if (this._renderGraph) {
       const camera = this._cameraGetter ? this._cameraGetter() : null;
+      if (!camera) {
+        console.warn("Renderer: Camera is null in render graph execution");
+      }
       const ctx: PassContext = {
         gl,
         width: this._canvas.width,
@@ -187,10 +236,15 @@ export class Renderer {
         program: this._program,
       };
       this._renderGraph.execute(ctx);
+      Renderer.checkGLError(gl, "render graph execute");
     } else {
       // Fallback to old draw hooks system for backward compatibility
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      for (const fn of this._drawHooks) fn(gl, this._program!);
+      Renderer.checkGLError(gl, "clear");
+      for (const fn of this._drawHooks) {
+        fn(gl, this._program!);
+        Renderer.checkGLError(gl, "draw hook");
+      }
     }
   }
 }

@@ -133,7 +133,7 @@ void main() {
   if (u_adaptive != 0) {
     // Adaptive spacing: snap to power of 10 based on pixel density
     float wpp = max(uvDeriv.x, uvDeriv.y);
-    const float TARGET_PX_SPACING = 0.0;
+    const float TARGET_PX_SPACING = 80.0; // Target 80 pixels between grid lines
     float targetWorldSpacing = TARGET_PX_SPACING * wpp;
     float logSpacing = log(max(targetWorldSpacing, 1e-6)) / log(10.0);
     float roundedLog = floor(logSpacing + 0.3);
@@ -210,8 +210,9 @@ void main() {
   minorGrid2 = mix(minorGrid2, vec2(minorTargetWidth), clamp(uvDeriv * 2.0 - 1.0, 0.0, 1.0));
   minorGrid2 = minorInvertLine ? 1.0 - minorGrid2 : minorGrid2;
   vec2 axisDistAbs = abs(axisDist);
-  // Only show minor grid when far from axes (both components > 0.5)
-  float axisMask = step(0.5, axisDistAbs.x) * step(0.5, axisDistAbs.y);
+  // Show minor grid when far from axes (both components > 0.1 units)
+  // This allows minor lines to be visible closer to axes for better grid visibility
+  float axisMask = step(0.1, axisDistAbs.x) * step(0.1, axisDistAbs.y);
   minorGrid2 *= axisMask;
   
   float minorGrid = mix(minorGrid2.x, 1.0, minorGrid2.y);
