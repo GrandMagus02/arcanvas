@@ -22,6 +22,14 @@ export interface Camera2DControllerOptions {
    * Pan sensitivity factor (default: 1.0).
    */
   panSensitivity?: number;
+  /**
+   * Invert Y axis for panning (default: false).
+   */
+  invertYAxis?: boolean;
+  /**
+   * Invert X axis for zooming (default: false).
+   */
+  invertXAxis?: boolean;
 }
 
 const DEFAULT_OPTIONS: Required<Camera2DControllerOptions> = {
@@ -29,6 +37,8 @@ const DEFAULT_OPTIONS: Required<Camera2DControllerOptions> = {
   maxZoom: 10,
   zoomSensitivity: 0.01,
   panSensitivity: 1.0,
+  invertYAxis: false,
+  invertXAxis: false,
 };
 
 /**
@@ -72,14 +82,17 @@ export class Camera2DController implements ICameraController {
       // Initial zoom 0.1 = size 10, which shows objects up to 20 units wide/tall
       // This allows zooming out to minZoom (0.001 = size 1000)
       this._currentZoom = 0.1;
-      const size = 1.0 / this._currentZoom;
+
+      const ppu = camera.pixelsPerUnit;
+      const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
+
       camera.projection.update({
         mode: ProjectionMode.Orthographic,
-        left: -size * aspect,
-        right: size * aspect,
-        top: size,
-        bottom: -size,
-        near: 0.1,
+        left: -halfHeight * aspect,
+        right: halfHeight * aspect,
+        top: halfHeight,
+        bottom: -halfHeight,
+        near: -1000,
         far: 1000,
       } as unknown as Parameters<typeof camera.projection.update>[0]);
     } else {
@@ -90,7 +103,7 @@ export class Camera2DController implements ICameraController {
         right: 100,
         top: 100,
         bottom: -100,
-        near: 0.1,
+        near: -1000,
         far: 1000,
       } as unknown as Parameters<typeof camera.projection.update>[0]);
     }
@@ -133,8 +146,8 @@ export class Camera2DController implements ICameraController {
     const canvas = this._camera.arcanvas?.canvas;
     if (!canvas) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
 
     // Calculate world space delta based on current projection bounds
     const proj = this._camera.projection;
@@ -143,10 +156,16 @@ export class Camera2DController implements ICameraController {
     const worldWidth = proj.right - proj.left;
     const worldHeight = proj.top - proj.bottom;
 
-    const worldDeltaX = (-deltaX / width) * worldWidth * this._options.panSensitivity;
-    const worldDeltaY = (deltaY / height) * worldHeight * this._options.panSensitivity;
+    // Convert mouse delta to world space translation
+    // Base behavior: dragging right moves content right (camera left), dragging down moves content down (camera up)
+    // invertXAxis: when TRUE, invert X direction
+    // invertYAxis: when FALSE, invert Y direction (so default false = inverted Y)
+    const xSign = this._options.invertXAxis ? 1 : -1;
+    const ySign = this._options.invertYAxis ? -1 : 1;
+    const worldDeltaX = ((xSign * deltaX) / width) * worldWidth * this._options.panSensitivity;
+    const worldDeltaY = ((ySign * deltaY) / height) * worldHeight * this._options.panSensitivity;
 
-    // Move camera in world space
+    // Move camera position in 2D world space (translation only, no rotation)
     this._camera.move(worldDeltaX, worldDeltaY, 0);
     console.log("[Camera2DController] Pan move", {
       screenDelta: { x: deltaX, y: deltaY },
@@ -212,15 +231,17 @@ export class Camera2DController implements ICameraController {
     const delta = isPinchGesture && Math.abs(event.deltaZ) > 0 ? event.deltaZ : event.deltaY;
 
     // Calculate zoom factor
-    const zoomDelta = -delta * sensitivity;
-    const newZoom = Math.max(this._options.minZoom, Math.min(this._options.maxZoom, this._currentZoom + zoomDelta));
+    // Use exponential zooming for linear visual scaling
+    // newZoom = currentZoom * exp(-delta * sensitivity)
+    const zoomScale = Math.exp(-delta * sensitivity);
+    const newZoom = Math.max(this._options.minZoom, Math.min(this._options.maxZoom, this._currentZoom * zoomScale));
 
     if (newZoom === this._currentZoom) {
       console.log("[Camera2DController] Zoom clamped", {
         delta,
         deltaY: event.deltaY,
         deltaZ: event.deltaZ,
-        zoomDelta,
+        zoomScale,
         currentZoom: this._currentZoom,
         newZoom,
         minZoom: this._options.minZoom,
@@ -238,7 +259,8 @@ export class Camera2DController implements ICameraController {
     if (!canvas) return;
 
     const aspect = canvas.width / canvas.height;
-    const size = 1.0 / this._currentZoom;
+    const ppu = this._camera.pixelsPerUnit;
+    const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
 
     console.log("[Camera2DController] Zoom", {
       delta,
@@ -247,25 +269,25 @@ export class Camera2DController implements ICameraController {
       deltaMode: event.deltaMode,
       isPinchGesture,
       sensitivity,
-      zoomDelta,
+      zoomScale,
       oldZoom,
       newZoom,
-      size,
+      halfHeight,
       projection: {
-        left: -size * aspect,
-        right: size * aspect,
-        top: size,
-        bottom: -size,
+        left: -halfHeight * aspect,
+        right: halfHeight * aspect,
+        top: halfHeight,
+        bottom: -halfHeight,
       },
     });
 
     this._camera.projection.update({
       mode: ProjectionMode.Orthographic,
-      left: -size * aspect,
-      right: size * aspect,
-      top: size,
-      bottom: -size,
-      near: 0.1,
+      left: -halfHeight * aspect,
+      right: halfHeight * aspect,
+      top: halfHeight,
+      bottom: -halfHeight,
+      near: -1000,
       far: 1000,
     } as unknown as Parameters<typeof this._camera.projection.update>[0]);
 
@@ -317,15 +339,16 @@ export class Camera2DController implements ICameraController {
     if (!canvas) return;
 
     const aspect = canvas.width / canvas.height;
-    const size = 1.0 / this._currentZoom;
+    const ppu = this._camera.pixelsPerUnit;
+    const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
 
     this._camera.projection.update({
       mode: ProjectionMode.Orthographic,
-      left: -size * aspect,
-      right: size * aspect,
-      top: size,
-      bottom: -size,
-      near: 0.1,
+      left: -halfHeight * aspect,
+      right: halfHeight * aspect,
+      top: halfHeight,
+      bottom: -halfHeight,
+      near: -1000,
       far: 1000,
     } as unknown as Parameters<typeof this._camera.projection.update>[0]);
   }

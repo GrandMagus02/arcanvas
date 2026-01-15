@@ -6,9 +6,10 @@ import type { BufferHandle, IRenderContext, ProgramHandle } from "./IRenderConte
 export class WebGLRenderContext implements IRenderContext {
   constructor(
     private gl: WebGLRenderingContext,
-    private program: WebGLProgram
+    private program: WebGLProgram | null = null
   ) {
-    this.gl.useProgram(this.program);
+    // Don't automatically activate program - let meshes manage their own programs
+    // This avoids errors when no program is set or when the program isn't properly linked
   }
 
   createVertexBuffer(data: Float32Array): BufferHandle {
@@ -118,9 +119,9 @@ export class WebGLRenderContext implements IRenderContext {
   /**
    * Gets the WebGL program associated with this context.
    *
-   * @returns The WebGL program.
+   * @returns The WebGL program, or null if none is set.
    */
-  getProgram(): WebGLProgram {
+  getProgram(): WebGLProgram | null {
     return this.program;
   }
 }

@@ -29,6 +29,7 @@ export class GridMesh extends Mesh {
   private _uMinorLineWidth: WebGLUniformLocation | null = null;
   private _uAxisDashScale: WebGLUniformLocation | null = null;
   private _uFixedPixelSize: WebGLUniformLocation | null = null;
+  private _uMinCellPixelSize: WebGLUniformLocation | null = null;
   private _uBaseColor: WebGLUniformLocation | null = null;
   private _uMinorColor: WebGLUniformLocation | null = null;
   private _uMajorColor: WebGLUniformLocation | null = null;
@@ -55,6 +56,7 @@ export class GridMesh extends Mesh {
   private _minorLineWidth = 1;
   private _axisDashScale = 1.33;
   private _fixedPixelSize = false;
+  private _minCellPixelSize = 0;
   private _viewportWidth = 640;
   private _viewportHeight = 480;
   private _cameraPos: [number, number, number] = [0, 0, 0];
@@ -71,7 +73,7 @@ export class GridMesh extends Mesh {
   private _zAxisDashColor: [number, number, number, number] = [0, 0, 0.5, 1];
   private _centerColor: [number, number, number, number] = [1, 1, 1, 1];
 
-  constructor(_vertices: Float32Array) {
+  constructor(_vertices?: Float32Array) {
     // Ignore provided vertices; use a fullscreen triangle in clip-space
     void _vertices;
     super(new Float32Array([-1, -1, 3, -1, -1, 3]), new Uint16Array([0, 1, 2]));
@@ -131,6 +133,14 @@ export class GridMesh extends Mesh {
    */
   setAxisDashScale(scale: number): void {
     if (Number.isFinite(scale) && scale > 0) this._axisDashScale = scale;
+  }
+
+  /**
+   * Set minimum cell size in pixels for adaptive grid.
+   * If the visual size of a cell drops below this, the grid will switch to a larger interval.
+   */
+  setMinCellPixelSize(pixels: number): void {
+    if (Number.isFinite(pixels) && pixels >= 0) this._minCellPixelSize = pixels;
   }
 
   /**
@@ -312,6 +322,7 @@ export class GridMesh extends Mesh {
     this._uMinorLineWidth = ctx.getUniformLocation(prog, "u_minorLineWidth");
     this._uAxisDashScale = ctx.getUniformLocation(prog, "u_axisDashScale");
     this._uFixedPixelSize = ctx.getUniformLocation(prog, "u_fixedPixelSize");
+    this._uMinCellPixelSize = ctx.getUniformLocation(prog, "u_minCellPixelSize");
     this._uBaseColor = ctx.getUniformLocation(prog, "u_baseColor");
     this._uMinorColor = ctx.getUniformLocation(prog, "u_minorColor");
     this._uMajorColor = ctx.getUniformLocation(prog, "u_majorColor");
@@ -357,54 +368,63 @@ export class GridMesh extends Mesh {
       this._invViewProjectionDirty = false;
     }
 
-    ctx.useProgram(this._program);
+    gl.useProgram(this._program);
 
     // Plane selection: 0 = XY, 1 = XZ, 2 = YZ
     const planeValue = this._plane === "XY" ? 0 : this._plane === "XZ" ? 1 : 2;
-    ctx.uniform1i(this._uPlane, planeValue);
+    gl.uniform1i(this._uPlane, planeValue);
 
     // Inverse view-projection matrix
     if (this._invViewProjectionMatrix) {
       const cm = this._invViewProjectionMatrix.toColumnMajorArray();
-      ctx.uniformMatrix4fv(this._uInvViewProj, false, cm);
+      gl.uniformMatrix4fv(this._uInvViewProj, false, cm);
     } else {
       const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-      ctx.uniformMatrix4fv(this._uInvViewProj, false, identity);
+      gl.uniformMatrix4fv(this._uInvViewProj, false, identity);
     }
 
     // Viewport size
-    ctx.uniform2f(this._uViewportPx, this._viewportWidth, this._viewportHeight);
+    // Use actual GL viewport/drawing buffer size instead of cached state which might be stale
+    this._viewportWidth = gl.drawingBufferWidth;
+    this._viewportHeight = gl.drawingBufferHeight;
+    gl.uniform2f(this._uViewportPx, this._viewportWidth, this._viewportHeight);
 
     // Camera position
-    ctx.uniform3f(this._uCameraPos, this._cameraPos[0], this._cameraPos[1], this._cameraPos[2]);
+    gl.uniform3f(this._uCameraPos, this._cameraPos[0], this._cameraPos[1], this._cameraPos[2]);
 
     // Spacing
-    ctx.uniform1i(this._uAdaptive, this._adaptiveSpacing ? 1 : 0);
-    ctx.uniform1f(this._uCellSize, this._cellSize);
-    ctx.uniform1f(this._uMajorDiv, this._majorDivisions);
+    gl.uniform1i(this._uAdaptive, this._adaptiveSpacing ? 1 : 0);
+    gl.uniform1f(this._uCellSize, this._cellSize);
+    gl.uniform1f(this._uMajorDiv, this._majorDivisions);
 
     // Line widths
-    ctx.uniform1f(this._uAxisLineWidth, this._axisLineWidth);
-    ctx.uniform1f(this._uMajorLineWidth, this._majorLineWidth);
-    ctx.uniform1f(this._uMinorLineWidth, this._minorLineWidth);
-    ctx.uniform1f(this._uAxisDashScale, this._axisDashScale);
-    ctx.uniform1i(this._uFixedPixelSize, this._fixedPixelSize ? 1 : 0);
+    gl.uniform1f(this._uAxisLineWidth, this._axisLineWidth);
+    gl.uniform1f(this._uMajorLineWidth, this._majorLineWidth);
+    gl.uniform1f(this._uMinorLineWidth, this._minorLineWidth);
+    gl.uniform1f(this._uAxisDashScale, this._axisDashScale);
+    gl.uniform1i(this._uFixedPixelSize, this._fixedPixelSize ? 1 : 0);
+    gl.uniform1f(this._uMinCellPixelSize, this._minCellPixelSize);
 
     // Colors
-    ctx.uniform4f(this._uBaseColor, this._baseColor[0], this._baseColor[1], this._baseColor[2], this._baseColor[3]);
-    ctx.uniform4f(this._uMinorColor, this._minorColor[0], this._minorColor[1], this._minorColor[2], this._minorColor[3]);
-    ctx.uniform4f(this._uMajorColor, this._majorColor[0], this._majorColor[1], this._majorColor[2], this._majorColor[3]);
-    ctx.uniform4f(this._uXAxisColor, this._xAxisColor[0], this._xAxisColor[1], this._xAxisColor[2], this._xAxisColor[3]);
-    ctx.uniform4f(this._uXAxisDashColor, this._xAxisDashColor[0], this._xAxisDashColor[1], this._xAxisDashColor[2], this._xAxisDashColor[3]);
-    ctx.uniform4f(this._uYAxisColor, this._yAxisColor[0], this._yAxisColor[1], this._yAxisColor[2], this._yAxisColor[3]);
-    ctx.uniform4f(this._uYAxisDashColor, this._yAxisDashColor[0], this._yAxisDashColor[1], this._yAxisDashColor[2], this._yAxisDashColor[3]);
-    ctx.uniform4f(this._uZAxisColor, this._zAxisColor[0], this._zAxisColor[1], this._zAxisColor[2], this._zAxisColor[3]);
-    ctx.uniform4f(this._uZAxisDashColor, this._zAxisDashColor[0], this._zAxisDashColor[1], this._zAxisDashColor[2], this._zAxisDashColor[3]);
-    ctx.uniform4f(this._uCenterColor, this._centerColor[0], this._centerColor[1], this._centerColor[2], this._centerColor[3]);
+    gl.uniform4f(this._uBaseColor, this._baseColor[0], this._baseColor[1], this._baseColor[2], this._baseColor[3]);
+    gl.uniform4f(this._uMinorColor, this._minorColor[0], this._minorColor[1], this._minorColor[2], this._minorColor[3]);
+    gl.uniform4f(this._uMajorColor, this._majorColor[0], this._majorColor[1], this._majorColor[2], this._majorColor[3]);
+    gl.uniform4f(this._uXAxisColor, this._xAxisColor[0], this._xAxisColor[1], this._xAxisColor[2], this._xAxisColor[3]);
+    gl.uniform4f(this._uXAxisDashColor, this._xAxisDashColor[0], this._xAxisDashColor[1], this._xAxisDashColor[2], this._xAxisDashColor[3]);
+    gl.uniform4f(this._uYAxisColor, this._yAxisColor[0], this._yAxisColor[1], this._yAxisColor[2], this._yAxisColor[3]);
+    gl.uniform4f(this._uYAxisDashColor, this._yAxisDashColor[0], this._yAxisDashColor[1], this._yAxisDashColor[2], this._yAxisDashColor[3]);
+    gl.uniform4f(this._uZAxisColor, this._zAxisColor[0], this._zAxisColor[1], this._zAxisColor[2], this._zAxisColor[3]);
+    gl.uniform4f(this._uZAxisDashColor, this._zAxisDashColor[0], this._zAxisDashColor[1], this._zAxisDashColor[2], this._zAxisDashColor[3]);
+    gl.uniform4f(this._uCenterColor, this._centerColor[0], this._centerColor[1], this._centerColor[2], this._centerColor[3]);
 
     ctx.enableVertexAttribArray(this._aPos);
     ctx.vertexAttribPointer(this._aPos, 2, gl.FLOAT, false, 0, 0);
     const vertCount = this.vertices.length / 2;
+
+    // Disable depth write for grid (background) to allow subsequent objects to draw over it
+    // especially if they are coplanar (z=0) and depth func is LESS
+    gl.depthMask(false);
     ctx.drawArrays(gl.TRIANGLES, 0, vertCount);
+    gl.depthMask(true);
   }
 }

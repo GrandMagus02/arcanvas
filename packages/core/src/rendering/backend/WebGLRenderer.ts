@@ -15,7 +15,6 @@ const _DEFAULT_RENDERER_OPTIONS: RendererOptions = {
 export class WebGLRenderer implements IRenderer {
   private readonly _canvas: HTMLCanvasElement;
   private readonly _gl: WebGLRenderingContext | null;
-  private readonly _program: WebGLProgram | null = null;
   private readonly _drawHooks: DrawHook[] = [];
   private _rafId: number | null = null;
   private _running = false;
@@ -46,11 +45,7 @@ export class WebGLRenderer implements IRenderer {
     this._canvas = canvas;
     this._gl = gl;
 
-    const program = gl.createProgram();
-    if (!program) {
-      throw new Error("Failed to create program");
-    }
-    this._program = program;
+    // Note: We don't create a default program here - meshes manage their own shader programs
 
     this._options = { ..._DEFAULT_RENDERER_OPTIONS, ...options };
     this.applyGlState();
@@ -141,8 +136,7 @@ export class WebGLRenderer implements IRenderer {
 
   private frame() {
     const gl = this._gl;
-    const program = this._program;
-    if (!gl || !program) return;
+    if (!gl) return;
 
     gl.viewport(0, 0, this._canvas.width, this._canvas.height);
 
@@ -156,8 +150,8 @@ export class WebGLRenderer implements IRenderer {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // Create render context for this frame
-    // Using IRenderContext type ensures draw hooks work with abstract interface
-    const renderContext: IRenderContext = new WebGLRenderContext(gl, program);
+    // Note: no default program - meshes manage their own shader programs
+    const renderContext: IRenderContext = new WebGLRenderContext(gl);
 
     // Call draw hooks with abstract IRenderContext
     for (const fn of this._drawHooks) {

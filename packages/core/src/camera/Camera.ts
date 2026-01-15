@@ -14,6 +14,7 @@ import { CameraEventKey } from "./CameraEvents";
 export class Camera extends Subscribable {
   protected _arc: IArcanvasContext | undefined = undefined;
   protected _pos: Vector3 = new Vector3();
+  protected _pixelsPerUnit: number = 1;
   // Initialize view matrix with eye = center for 2D camera (simple translation)
   protected _view: ViewMatrix = new ViewMatrix(this._pos, this._pos);
   protected _projection: ProjectionMatrix = new ProjectionMatrix();
@@ -36,6 +37,18 @@ export class Camera extends Subscribable {
 
   get projection(): ProjectionMatrix {
     return this._projection;
+  }
+
+  get pixelsPerUnit(): number {
+    return this._pixelsPerUnit;
+  }
+
+  set pixelsPerUnit(value: number) {
+    this._pixelsPerUnit = value;
+    // Trigger resize or update projection if possible
+    if (this._arc) {
+      this.onResize(this._arc.canvas.width, this._arc.canvas.height);
+    }
   }
 
   move(dx: number, dy: number, dz: number): void {
