@@ -14,6 +14,7 @@ export interface CameraSetup {
 export function setupCamera(arc: Arcanvas): CameraSetup {
   // Create and set camera first (this ensures arcanvas is properly set)
   const camera = new Camera(arc);
+  camera.pixelsPerUnit = 100; // 1 unit = 100 pixels at zoom 1
   arc.setCamera(camera);
 
   // Create and attach 2D camera controller for pan and zoom

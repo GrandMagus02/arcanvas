@@ -1,38 +1,39 @@
-import { Arcanvas, Plane } from "@arcanvas/core";
+import { Arcanvas, GridMesh, Plane2D } from "@arcanvas/core";
 
 /**
  * Setup scene.
  */
-export function setupScene(arc: Arcanvas): Plane {
-  // Create a simple colored rectangle using Plane (3D coordinates)
-  // Rectangle: 2x1.5 units, centered at origin (smaller to fit in camera view)
-  const rectangle = new Plane([
-    // First triangle
-    -1,
-    -0.75,
-    0, // bottom-left
-    1,
-    -0.75,
-    0, // bottom-right
-    1,
-    0.75,
-    0, // top-right
-    // Second triangle
-    -1,
-    -0.75,
-    0, // bottom-left
-    1,
-    0.75,
-    0, // top-right
-    -1,
-    0.75,
-    0, // top-left
-  ]);
-  rectangle.name = "TestRectangle";
-  arc.stage.add(rectangle);
+export function setupScene(arc: Arcanvas): GridMesh {
+  // Create a grid mesh
+  const grid = new GridMesh();
+  grid.name = "Grid";
 
-  console.log("[SetupScene] Rectangle vertices:", rectangle.vertices);
-  console.log("[SetupScene] Rectangle added to stage, children count:", arc.stage.children.length);
+  // Configure grid
+  grid.setPlane("XY"); // Grid on ground
+  grid.setCellSize(1); // Base cell size 1 unit
+  grid.setMajorDivisions(4); // 4 minor cells per major cell
+  grid.setAdaptiveSpacing(true); // Enable adaptive
+  grid.setFixedPixelSize(true); // 1px lines
+  grid.setAxisLineWidth(2);
+  grid.setMajorLineWidth(1);
+  grid.setMinorLineWidth(1);
+  grid.setMinCellPixelSize(20); // Minimum 50px per cell before collapsing
 
-  return rectangle;
+  // Set colors (r, g, b, a)
+  grid.setBaseColor(0.1, 0.1, 0.1, 1);
+  grid.setMinorColor(0.3, 0.3, 0.3, 0.5);
+  grid.setMajorColor(0.5, 0.5, 0.5, 0.8);
+  grid.setXAxisColor(0.8, 0.2, 0.2, 1);
+  grid.setYAxisColor(0.2, 0.8, 0.2, 1);
+
+  arc.stage.add(grid);
+
+  // Add a plane mesh
+  const plane = new Plane2D(0, 0, 100, 150);
+  plane.name = "TestRectangle";
+  arc.stage.add(plane);
+
+  console.log("[SetupScene] Grid added to stage");
+
+  return grid;
 }
