@@ -22,4 +22,3 @@ export function toColumnMajor3x3(rowMajor: Float32Array): Float32Array {
     rowMajor[8]!, // column 2
   ]);
 }
-

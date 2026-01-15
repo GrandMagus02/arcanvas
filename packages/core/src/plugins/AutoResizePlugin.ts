@@ -1,4 +1,4 @@
-import { Plugin } from "../Plugin";
+import { Plugin } from "./Plugin";
 
 /**
  * Plugin that automatically resizes the canvas to its parent element.

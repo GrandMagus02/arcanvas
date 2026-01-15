@@ -1,4 +1,5 @@
-import { Mesh } from "@arcanvas/core";
+import type { IRenderContext } from "../../rendering/context";
+import { Mesh } from "../../scene/Mesh";
 
 /**
  *
@@ -8,11 +9,16 @@ export class TriangleMesh extends Mesh {
   private _fsSource: string | null = null;
 
   constructor(vertices: Float32Array) {
-    super(vertices);
+    super(vertices, new Uint16Array([0, 1, 2]));
   }
 
-  override render(gl: WebGLRenderingContext): void {
-    super.render(gl);
+  override render(ctx: IRenderContext): void {
+    super.render(ctx);
+
+    const gl = ctx.getWebGLContext();
+    if (!gl) {
+      throw new Error("TriangleMesh requires WebGL context");
+    }
 
     // Always treat imported values as GLSL sources. If they don't look like GLSL, fall back to inline defaults.
     if (!this._vsSource || !this._fsSource) {
@@ -73,7 +79,7 @@ export class TriangleMesh extends Mesh {
 
     if (!this._program) return;
 
-    gl.useProgram(this._program);
+    ctx.useProgram(this._program);
 
     // Buffer is bound in super.render; set up the attribute pointer each frame.
     const positionLocation = gl.getAttribLocation(this._program, "vertPosition");
@@ -81,9 +87,9 @@ export class TriangleMesh extends Mesh {
       console.warn("Attribute vertPosition not found");
       return;
     }
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0);
-    gl.enableVertexAttribArray(positionLocation);
+    ctx.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0);
+    ctx.enableVertexAttribArray(positionLocation);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx.drawArrays(gl.TRIANGLES, 0, 3);
   }
 }

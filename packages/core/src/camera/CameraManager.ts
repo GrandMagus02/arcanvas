@@ -1,4 +1,4 @@
-import type { Arcanvas } from "../Arcanvas";
+import type { IArcanvasContext } from "../infrastructure/interfaces/IArcanvasContext";
 import { AbstractManager } from "../utils/Manager";
 import type { Camera } from "./Camera";
 import { CameraEventKey } from "./CameraEvents";
@@ -7,10 +7,10 @@ import { CameraEventKey } from "./CameraEvents";
  * The camera manager.
  */
 export class CameraManager extends AbstractManager<Camera> {
-  private _arc: Arcanvas;
+  private _arc: IArcanvasContext;
   private _activeCamera: Camera | null = null;
 
-  constructor(arc: Arcanvas) {
+  constructor(arc: IArcanvasContext) {
     super();
     this._arc = arc;
   }

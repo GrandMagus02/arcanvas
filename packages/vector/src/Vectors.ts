@@ -22,6 +22,10 @@ export class Vector2<T extends NumberArray = Float32Array> extends Vector<T, 2> 
   set y(value: number) {
     this._data[1] = value;
   }
+
+  override clone(): Vector2<T> {
+    return new Vector2(this._data.slice() as T);
+  }
 }
 
 /**
@@ -51,6 +55,10 @@ export class Vector3<T extends NumberArray = Float32Array> extends Vector<T, 3> 
   }
   set z(value: number) {
     this._data[2] = value;
+  }
+
+  override clone(): Vector3<T> {
+    return new Vector3(this._data.slice() as T);
   }
 }
 
@@ -88,5 +96,9 @@ export class Vector4<T extends NumberArray = Float32Array> extends Vector<T, 4> 
   }
   set w(value: number) {
     this._data[3] = value;
+  }
+
+  override clone(): Vector4<T> {
+    return new Vector4(this._data.slice() as T);
   }
 }

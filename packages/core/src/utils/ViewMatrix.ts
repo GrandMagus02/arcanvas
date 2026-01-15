@@ -63,7 +63,37 @@ export class ViewMatrix extends Matrix4 {
       this._up = up.clone();
     }
 
-    const z = this._eye.sub(this._center).normalize();
+    // Check if eye and center are the same (2D camera case)
+    // Use clones to avoid mutating original vectors
+    const eyeClone = this._eye.clone();
+    const centerClone = this._center.clone();
+    const eyeCenterDiff = eyeClone.sub(centerClone);
+    const diffLength = eyeCenterDiff.length;
+
+    // If eye and center are the same or very close, use simple translation matrix for 2D
+    if (diffLength < 0.0001) {
+      // Simple translation matrix: translate by -eye position
+      this._data[0] = 1;
+      this._data[1] = 0;
+      this._data[2] = 0;
+      this._data[3] = 0;
+      this._data[4] = 0;
+      this._data[5] = 1;
+      this._data[6] = 0;
+      this._data[7] = 0;
+      this._data[8] = 0;
+      this._data[9] = 0;
+      this._data[10] = 1;
+      this._data[11] = 0;
+      this._data[12] = -this._eye.x;
+      this._data[13] = -this._eye.y;
+      this._data[14] = -this._eye.z;
+      this._data[15] = 1;
+      return;
+    }
+
+    // 3D look-at matrix calculation
+    const z = eyeCenterDiff.normalize();
     const x = this._up.cross(z).normalize();
     const y = z.cross(x).normalize();
 

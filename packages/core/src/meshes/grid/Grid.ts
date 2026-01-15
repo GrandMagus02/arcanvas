@@ -1,4 +1,5 @@
-import { Mesh } from "../../objects/Mesh";
+import type { IRenderContext } from "../../rendering/context";
+import { Mesh } from "../../scene/Mesh";
 import { TransformationMatrix } from "../../utils/TransformationMatrix";
 import FS_SOURCE from "./grid.frag";
 import VS_SOURCE from "./grid.vert";
@@ -328,11 +329,16 @@ export class GridMesh extends Mesh {
     ctx.deleteShader(fs);
   }
 
-  override render(gl: WebGLRenderingContext): void {
+  override render(ctx: IRenderContext): void {
+    const gl = ctx.getWebGLContext();
+    if (!gl) {
+      throw new Error("GridMesh requires WebGL context");
+    }
+
     if (!this["_vertexBuffer"]) {
-      this["_vertexBuffer"] = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, this["_vertexBuffer"]);
-      gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
+      this["_vertexBuffer"] = ctx.createVertexBuffer(this.vertices);
+    } else {
+      ctx.bindVertexBuffer(this["_vertexBuffer"]);
     }
 
     if (!this._program) {
@@ -351,58 +357,54 @@ export class GridMesh extends Mesh {
       this._invViewProjectionDirty = false;
     }
 
-    gl.useProgram(this._program);
+    ctx.useProgram(this._program);
 
     // Plane selection: 0 = XY, 1 = XZ, 2 = YZ
     const planeValue = this._plane === "XY" ? 0 : this._plane === "XZ" ? 1 : 2;
-    if (this._uPlane) gl.uniform1i(this._uPlane, planeValue);
+    ctx.uniform1i(this._uPlane, planeValue);
 
     // Inverse view-projection matrix
-    if (this._uInvViewProj) {
-      if (this._invViewProjectionMatrix) {
-        const cm = this._invViewProjectionMatrix.toColumnMajorArray();
-        gl.uniformMatrix4fv(this._uInvViewProj, false, cm as unknown as Float32Array);
-      } else {
-        const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-        gl.uniformMatrix4fv(this._uInvViewProj, false, identity);
-      }
+    if (this._invViewProjectionMatrix) {
+      const cm = this._invViewProjectionMatrix.toColumnMajorArray();
+      ctx.uniformMatrix4fv(this._uInvViewProj, false, cm);
+    } else {
+      const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+      ctx.uniformMatrix4fv(this._uInvViewProj, false, identity);
     }
 
     // Viewport size
-    if (this._uViewportPx) gl.uniform2f(this._uViewportPx, this._viewportWidth, this._viewportHeight);
+    ctx.uniform2f(this._uViewportPx, this._viewportWidth, this._viewportHeight);
 
     // Camera position
-    if (this._uCameraPos) gl.uniform3f(this._uCameraPos, this._cameraPos[0], this._cameraPos[1], this._cameraPos[2]);
+    ctx.uniform3f(this._uCameraPos, this._cameraPos[0], this._cameraPos[1], this._cameraPos[2]);
 
     // Spacing
-    if (this._uAdaptive) gl.uniform1i(this._uAdaptive, this._adaptiveSpacing ? 1 : 0);
-    if (this._uCellSize) gl.uniform1f(this._uCellSize, this._cellSize);
-    if (this._uMajorDiv) gl.uniform1f(this._uMajorDiv, this._majorDivisions);
+    ctx.uniform1i(this._uAdaptive, this._adaptiveSpacing ? 1 : 0);
+    ctx.uniform1f(this._uCellSize, this._cellSize);
+    ctx.uniform1f(this._uMajorDiv, this._majorDivisions);
 
     // Line widths
-    if (this._uAxisLineWidth) gl.uniform1f(this._uAxisLineWidth, this._axisLineWidth);
-    if (this._uMajorLineWidth) gl.uniform1f(this._uMajorLineWidth, this._majorLineWidth);
-    if (this._uMinorLineWidth) gl.uniform1f(this._uMinorLineWidth, this._minorLineWidth);
-    if (this._uAxisDashScale) gl.uniform1f(this._uAxisDashScale, this._axisDashScale);
-    if (this._uFixedPixelSize) gl.uniform1i(this._uFixedPixelSize, this._fixedPixelSize ? 1 : 0);
+    ctx.uniform1f(this._uAxisLineWidth, this._axisLineWidth);
+    ctx.uniform1f(this._uMajorLineWidth, this._majorLineWidth);
+    ctx.uniform1f(this._uMinorLineWidth, this._minorLineWidth);
+    ctx.uniform1f(this._uAxisDashScale, this._axisDashScale);
+    ctx.uniform1i(this._uFixedPixelSize, this._fixedPixelSize ? 1 : 0);
 
     // Colors
-    if (this._uBaseColor) gl.uniform4f(this._uBaseColor, this._baseColor[0], this._baseColor[1], this._baseColor[2], this._baseColor[3]);
-    if (this._uMinorColor) gl.uniform4f(this._uMinorColor, this._minorColor[0], this._minorColor[1], this._minorColor[2], this._minorColor[3]);
-    if (this._uMajorColor) gl.uniform4f(this._uMajorColor, this._majorColor[0], this._majorColor[1], this._majorColor[2], this._majorColor[3]);
-    if (this._uXAxisColor) gl.uniform4f(this._uXAxisColor, this._xAxisColor[0], this._xAxisColor[1], this._xAxisColor[2], this._xAxisColor[3]);
-    if (this._uXAxisDashColor) gl.uniform4f(this._uXAxisDashColor, this._xAxisDashColor[0], this._xAxisDashColor[1], this._xAxisDashColor[2], this._xAxisDashColor[3]);
-    if (this._uYAxisColor) gl.uniform4f(this._uYAxisColor, this._yAxisColor[0], this._yAxisColor[1], this._yAxisColor[2], this._yAxisColor[3]);
-    if (this._uYAxisDashColor) gl.uniform4f(this._uYAxisDashColor, this._yAxisDashColor[0], this._yAxisDashColor[1], this._yAxisDashColor[2], this._yAxisDashColor[3]);
-    if (this._uZAxisColor) gl.uniform4f(this._uZAxisColor, this._zAxisColor[0], this._zAxisColor[1], this._zAxisColor[2], this._zAxisColor[3]);
-    if (this._uZAxisDashColor) gl.uniform4f(this._uZAxisDashColor, this._zAxisDashColor[0], this._zAxisDashColor[1], this._zAxisDashColor[2], this._zAxisDashColor[3]);
-    if (this._uCenterColor) gl.uniform4f(this._uCenterColor, this._centerColor[0], this._centerColor[1], this._centerColor[2], this._centerColor[3]);
+    ctx.uniform4f(this._uBaseColor, this._baseColor[0], this._baseColor[1], this._baseColor[2], this._baseColor[3]);
+    ctx.uniform4f(this._uMinorColor, this._minorColor[0], this._minorColor[1], this._minorColor[2], this._minorColor[3]);
+    ctx.uniform4f(this._uMajorColor, this._majorColor[0], this._majorColor[1], this._majorColor[2], this._majorColor[3]);
+    ctx.uniform4f(this._uXAxisColor, this._xAxisColor[0], this._xAxisColor[1], this._xAxisColor[2], this._xAxisColor[3]);
+    ctx.uniform4f(this._uXAxisDashColor, this._xAxisDashColor[0], this._xAxisDashColor[1], this._xAxisDashColor[2], this._xAxisDashColor[3]);
+    ctx.uniform4f(this._uYAxisColor, this._yAxisColor[0], this._yAxisColor[1], this._yAxisColor[2], this._yAxisColor[3]);
+    ctx.uniform4f(this._uYAxisDashColor, this._yAxisDashColor[0], this._yAxisDashColor[1], this._yAxisDashColor[2], this._yAxisDashColor[3]);
+    ctx.uniform4f(this._uZAxisColor, this._zAxisColor[0], this._zAxisColor[1], this._zAxisColor[2], this._zAxisColor[3]);
+    ctx.uniform4f(this._uZAxisDashColor, this._zAxisDashColor[0], this._zAxisDashColor[1], this._zAxisDashColor[2], this._zAxisDashColor[3]);
+    ctx.uniform4f(this._uCenterColor, this._centerColor[0], this._centerColor[1], this._centerColor[2], this._centerColor[3]);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this["_vertexBuffer"]);
-    gl.enableVertexAttribArray(this._aPos);
-    gl.vertexAttribPointer(this._aPos, 2, gl.FLOAT, false, 0, 0);
+    ctx.enableVertexAttribArray(this._aPos);
+    ctx.vertexAttribPointer(this._aPos, 2, gl.FLOAT, false, 0, 0);
     const vertCount = this.vertices.length / 2;
-    gl.drawArrays(gl.TRIANGLES, 0, vertCount);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    ctx.drawArrays(gl.TRIANGLES, 0, vertCount);
   }
 }

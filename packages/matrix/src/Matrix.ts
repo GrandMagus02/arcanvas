@@ -89,7 +89,11 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
     const out = new constructor(this._data.length) as TypedArray;
     out.set(this._data);
     if (orientation === MatrixOrientation.ColumnMajor) {
-      return this.transpose().toTypedArray(constructor, orientation);
+      // Transpose and return in row-major (which is column-major of original)
+      const transposed = this.transpose();
+      const result = new constructor(transposed._data.length) as TypedArray;
+      result.set(transposed._data);
+      return result;
     }
     return out;
   }
