@@ -1,0 +1,439 @@
+---
+description: Core package architecture and WebGL/Canvas engine technical rules
+globs: packages/core/**/*
+alwaysApply: false
+---
+
+# Core Package Architecture
+
+## Package Purpose
+
+`@arcanvas/core` is a minimal WebGL rendering engine for building Figma-like editors and Photoshop/Aseprite web alternatives. Core provides essential rendering, scene graph, and plugin infrastructure.
+
+## Design Principles
+
+1. Minimal Core: Only essential engine functionality
+2. Extensibility: Plugin system for feature expansion
+3. Separation of Concerns: Clear boundaries between rendering, scene, application
+4. WebGL-First: Optimized for WebGL2, WebGPU migration path via abstraction
+5. Scene Graph: Hierarchical node system for composition
+
+## Component Architecture
+
+### Arcanvas (Application Root)
+
+- Responsibilities: Lifecycle, canvas management, subsystem coordination, event hub, plugin host
+- State: canvas, options, stage, renderer, cameras, plugins, events
+- Rule: Thin orchestrator only. No business logic.
+
+### Scene Graph (Stage & Node)
+
+- Node base: id, name, parent, children
+- Mesh extends Node: vertices (Float32Array), indices (Uint16Array), material, render(gl, program)
+- Stage extends Node: canvas reference, dimensions, draw(gl, program)
+- Operations: add(child) O(1), remove() O(1), traverse(fn) O(n), find(predicate) O(n), contains(node) O(depth)
+- Rule: Prevent cycles via ensureCanAttach(). Cache computed properties, invalidate on hierarchy changes.
+
+### Rendering Pipeline
+
+- Renderer: gl context, default program, drawHooks array, frame() executes viewport/clear/drawHooks
+- RenderGraph: passes array, execute(ctx) runs passes in order
+- RenderPass: abstract with name() and execute(ctx)
+- PassContext: gl, width, height
+- Pass order: ClearPass → DrawStagePass → PostProcessPass → UIOverlayPass
+- Rule: Passes must be isolated and testable. Use topological sort for dependencies.
+
+### Camera System
+
+- CameraManager: Map<string, Camera>, active camera, setActive(id)
+- Camera: position (Vector3), view (ViewMatrix), projection (ProjectionMatrix), events
+- Rule: Cameras reactive to canvas resize. Update projection automatically. Separate from scene transforms.
+
+### GPU Resource Management
+
+- ShaderLibrary: Map<string, string> for shader modules
+- ProgramCache: Map<string, WebGLProgram>, getOrCreate(gl, key, vs, fs)
+- StateCache: Track WebGL state to minimize redundant calls
+- Material: program, uniforms Record<string, UniformValue>, bind(gl)
+- Uniform types: 1f, 2f, 3f, 4f (floats), 1i, 2i, 3i, 4i (integers)
+- Rule: Cache programs aggressively with content-addressable keys (hash shader source). Materials immutable per render pass.
+
+### Document Model
+
+- DocumentModel: id, width, height, colorProfile, root (GroupLayer)
+- BaseLayer: id, name, parent, visible, locked, opacity, blendMode, transform, dirty tracking
+- GroupLayer extends BaseLayer: children array
+- RasterLayer extends BaseLayer: width, height, surface (OffscreenCanvas)
+- AdjustmentLayer extends BaseLayer: filter parameters
+- Blend modes: Normal (source-over), Multiply, Screen, Overlay, Add (custom shader)
+- Rule: Track dirty regions (rectangles) for incremental rendering. Use OffscreenCanvas for worker processing.
+
+### Event System
+
+- EventBus<T>: Map<T, Set<HookFn>>, on/once/off/emit methods
+- Standard events: resize (width, height), focus, blur, camera:move (x,y,z), camera:activate, layer:dirty (rect?)
+- Rule: Use typed event keys. Batch high-frequency events. Provide cleanup helpers.
+
+### Plugin System
+
+- PluginManager: Map<PluginLike, Plugin>, use/has/get/destroy methods
+- Plugin<T>: app (Arcanvas), opts (T), setup(), destroy()
+- Lifecycle: instantiate → setup → register → active → destroy → unregister
+- Types: Tool, Filter, UI, System
+- Rule: Plugins isolated via dependency injection. Limited API surface via Arcanvas context.
+
+### Frame Loop
+
+- FrameLoop: callback (dtMs, timeMs), options, running flag, start/stop
+- Modes: Variable delta (real time), Fixed delta (constant timestep)
+- Rule: Optional. Renderer can drive own loop via requestAnimationFrame. Separate update/render loops.
+
+## WebGL Technical Rules
+
+### Context Management
+
+- Always check WebGL context availability before operations
+- Handle context lost/restored events
+- Use single WebGL context per canvas
+- Rule: Never create multiple contexts on same canvas element
+
+### Buffer Management
+
+- Create buffers once, reuse across frames
+- Upload buffer data only when changed
+- Use STATIC_DRAW for static geometry, DYNAMIC_DRAW for frequently updated
+- Rule: Minimize buffer creation/deletion. Track buffer state to avoid redundant uploads.
+
+### Program Management
+
+- Cache compiled programs by shader source hash
+- Compile shaders once, link programs once
+- Delete shaders after program linking (detach then delete)
+- Rule: Never compile shaders in render loop. Use ProgramCache for all program creation.
+
+### State Management
+
+- Track WebGL state (blend, depth test, cull face, etc.)
+- Batch state changes, minimize redundant calls
+- Set state only when different from current
+- Rule: Use StateCache to track and minimize state changes. Group draw calls by state.
+
+### Uniform Management
+
+- Set uniforms only when values change
+- Use appropriate uniform type (1f/2f/3f/4f for floats, 1i/2i/3i/4i for integers)
+- Cache uniform locations after first lookup
+- Rule: Don't query uniform locations in render loop. Cache locations in Material.
+
+### Texture Management
+
+- Create textures once, reuse across frames
+- Upload texture data only when changed
+- Use appropriate texture format (RGBA, RGB, etc.)
+- Rule: Minimize texture creation/deletion. Use texture units efficiently (max 8-16 units).
+
+### Rendering Best Practices
+
+- Clear buffers once per frame before drawing
+- Set viewport only when size changes
+- Use scissor test for partial rendering
+- Enable/disable features only when state changes
+- Rule: Minimize WebGL calls per frame. Batch operations. Profile with WebGL Inspector.
+
+### Error Handling
+
+- Check shader compilation status (COMPILE_STATUS)
+- Check program link status (LINK_STATUS)
+- Check WebGL errors with getError() in development
+- Rule: Always validate shader compilation and program linking. Log errors with source.
+
+## Canvas Technical Rules
+
+### Canvas Element
+
+- Set canvas.width/height (not CSS) for pixel-perfect rendering
+- Handle devicePixelRatio for high-DPI displays
+- Use OffscreenCanvas for off-main-thread rendering
+- Rule: Always set canvas dimensions explicitly. Don't rely on CSS sizing.
+
+### Canvas Context
+
+- Get context once, reuse across frames
+- Use appropriate context attributes (alpha, desynchronized, willReadFrequently)
+- Handle context loss gracefully
+- Rule: Single context per canvas. Cache context reference.
+
+### OffscreenCanvas
+
+- Use for layer surfaces and worker-based processing
+- Transfer ImageData to/from workers via postMessage
+- Create with explicit dimensions
+- Rule: Use OffscreenCanvas for all intermediate rendering surfaces.
+
+### ImageData Operations
+
+- Use Uint8ClampedArray for pixel manipulation
+- RGBA format: [R, G, B, A, R, G, B, A, ...]
+- Minimize getImageData/putImageData calls
+- Rule: Batch pixel operations. Use ImageData for CPU-side compositing.
+
+## Data Flow
+
+### Rendering Flow
+
+User Input → Plugin → Stage/Document Update → Dirty Mark → Renderer.frame() → RenderGraph.execute() → Passes → WebGL Calls → Canvas Update
+
+### Scene Traversal
+
+Stage.draw(gl, program) → traverse nodes → if Mesh: bind material → upload buffers → set uniforms → draw elements
+
+### Event Flow
+
+Component.emit(event, data) → EventBus routes → Subscribers receive → State update → Optional re-emit
+
+## Dependencies
+
+### Dependency Hierarchy
+
+```
+core/Arcanvas
+  ↓ depends on
+infrastructure/ + systems/ + scene/ + camera/ + rendering/ + plugins/
+  ↓ depends on
+utils/ (pure utilities)
+```
+
+### Detailed Dependencies
+
+```
+Arcanvas (core/)
+  → SceneSystem, RenderSystem, PluginSystem (systems/)
+  → CanvasHost, EventSystem (infrastructure/)
+  → Stage (scene/)
+  → Camera (camera/)
+  → IRenderer (rendering/backend/)
+
+SceneSystem (systems/)
+  → Stage (scene/)
+  → CameraManager (camera/)
+
+RenderSystem (systems/)
+  → IRenderer (rendering/backend/)
+  → Stage (scene/)
+
+Stage (scene/)
+  → Entity, Mesh (scene/)
+  → IRenderContext (rendering/context/)
+
+Camera (camera/)
+  → IArcanvasContext (infrastructure/interfaces/)
+  → ViewMatrix, ProjectionMatrix (utils/)
+  → Subscribable (utils/)
+
+Renderer (rendering/backend/)
+  → IRenderContext (rendering/context/)
+  → RenderGraph (rendering/graph/)
+
+Material (rendering/gpu/)
+  → WebGLProgram
+```
+
+## File Structure
+
+The package is organized in a layered architecture with clear separation by abstraction levels:
+
+```
+packages/core/src/
+├── core/                    # Application layer (depends on all below)
+│   └── Arcanvas.ts          # Main application class
+│
+├── infrastructure/           # Infrastructure layer (base systems)
+│   ├── events/
+│   │   ├── EventBus.ts      # Base event bus
+│   │   └── EventSystem.ts   # Wrapper around EventBus
+│   ├── lifecycle/
+│   │   └── FrameLoop.ts     # Frame update loop
+│   ├── canvas/
+│   │   └── CanvasHost.ts    # DOM canvas management
+│   └── interfaces/          # All system interfaces
+│       ├── IArcanvasContext.ts
+│       ├── EventEmitter.ts
+│       ├── Lifecycle.ts
+│       └── ...
+│
+├── scene/                    # Scene graph layer
+│   ├── graph/
+│   │   └── TreeNode.ts      # Base tree node
+│   ├── Entity.ts            # Scene entity
+│   ├── Mesh.ts              # Renderable mesh
+│   └── Stage.ts             # Scene root
+│
+├── camera/                   # Camera system
+│   ├── Camera.ts
+│   ├── CameraManager.ts
+│   └── CameraEvents.ts
+│
+├── rendering/                # Rendering layer (combines all rendering components)
+│   ├── context/              # Render context abstraction
+│   │   ├── IRenderContext.ts
+│   │   ├── WebGLRenderContext.ts
+│   │   └── Renderable.ts
+│   ├── backend/              # Renderer implementations
+│   │   ├── IRenderer.ts
+│   │   ├── WebGLRenderer.ts
+│   │   ├── createRenderer.ts
+│   │   └── types.ts
+│   ├── graph/                # Render graph system
+│   │   ├── RenderGraph.ts
+│   │   ├── RenderPass.ts
+│   │   └── passes/
+│   │       ├── ClearPass.ts
+│   │       └── DrawStagePass.ts
+│   └── gpu/                  # GPU resource management
+│       ├── Material.ts
+│       ├── ProgramCache.ts
+│       ├── ShaderLibrary.ts
+│       └── StateCache.ts
+│
+├── document/                 # Document model (2D editor support)
+│   ├── Document.ts
+│   ├── Layer.ts
+│   ├── BlendMode.ts
+│   ├── compose2d.ts
+│   ├── io.ts
+│   └── SelectionMask.ts
+│
+├── meshes/                   # Concrete mesh implementations
+│   ├── Triangle.ts
+│   ├── Plane.ts
+│   ├── Grid.ts
+│   └── Cube.ts
+│
+├── plugins/                  # Plugin system
+│   ├── Plugin.ts
+│   └── AutoResizePlugin.ts
+│
+├── systems/                  # Application-level systems (coordinators)
+│   ├── SceneSystem.ts
+│   ├── RenderSystem.ts
+│   └── PluginSystem.ts
+│
+└── utils/                    # Pure utilities (no dependencies on other modules)
+    ├── uuid.ts
+    ├── EventKey.ts
+    ├── Key.ts
+    ├── Manager.ts
+    ├── Subscribable.ts
+    ├── matrix.ts
+    ├── ProjectionMatrix.ts
+    ├── ViewMatrix.ts
+    ├── TransformationMatrix.ts
+    ├── projection2d.ts
+    └── mixins/
+```
+
+### Layers and Dependencies
+
+The architecture is organized by layers, where each layer depends only on layers below:
+
+1. **utils/** - Base layer with no dependencies on other core modules
+2. **infrastructure/** - Infrastructure components (events, lifecycle, interfaces)
+3. **scene/**, **camera/**, **rendering/**, **document/** - Domain layers
+4. **systems/** - Coordinator systems that combine domain components
+5. **core/** - Application layer (Arcanvas), coordinates all systems
+6. **meshes/**, **plugins/** - Extensions that depend on domain layers
+
+**Dependency Rule**: Modules can only import from their own layer or layers below. Never import from layers above.
+
+## Implementation Status
+
+### Phase 1: Complete
+
+- Arcanvas, Node, Renderer, EventBus, Camera, Plugin system
+
+### Phase 2: Pending
+
+- RenderGraph dependencies, Material improvements, StateCache, dirty regions, render targets
+
+### Phase 3: Pending
+
+- Layer compositing, blend shaders, OffscreenCanvas integration, selection masks, transform caching
+
+### Phase 4: Pending
+
+- Plugin API docs, plugin isolation, worker plugins, render backend abstraction, WebGPU path
+
+## Extension Points
+
+### Figma-like Editors
+
+- Vector shapes: New Mesh types in meshes/
+- Text: TextLayer + font rendering in document/
+- Constraints: Layout plugin
+- Components: Reusable node groups in objects/
+
+### Photoshop/Aseprite Alternatives
+
+- Brush engine: Stamp-based painting plugin
+- Selection tools: Marquee/lasso/wand plugins
+- Filters: Image processing pass plugins
+- History/Undo: Command pattern plugin
+- Tiled rendering: TiledRenderer in renderer/
+
+## Performance Rules
+
+1. Dirty region tracking: Only re-render changed areas
+2. Program caching: Reuse compiled shaders via ProgramCache
+3. State batching: Minimize WebGL state changes via StateCache
+4. Worker offloading: Use OffscreenCanvas + Workers for filters
+5. Frame rate: Use requestAnimationFrame for 60fps
+6. Profiling: Use WebGL Inspector for call analysis
+
+## WebGL State Rules
+
+### Required State Per Frame
+
+- Viewport: Set once per frame if unchanged
+- Clear color: Set once per frame
+- Blend function: Set per material if different
+- Depth test: Enable/disable per pass
+- Scissor: Set for partial rendering
+
+### State Change Minimization
+
+- Track current state in StateCache
+- Only call gl.enable/gl.disable when state differs
+- Batch draw calls with same state
+- Rule: Never set state redundantly. Check StateCache before WebGL calls.
+
+## Matrix Operations
+
+### Transform Matrices
+
+- Use column-major order for WebGL (Float32Array)
+- Compose transforms: translate → rotate → scale
+- Cache world transforms, invalidate on hierarchy change
+- Rule: Compute world transforms during traversal, not per-frame.
+
+### Projection Matrices
+
+- Orthographic: left, right, bottom, top, near, far
+- Perspective: fov, aspect, near, far
+- Update on canvas resize automatically
+- Rule: Recompute projection only on canvas size change.
+
+## Memory Management
+
+### WebGL Resources
+
+- Delete buffers, textures, programs on cleanup
+- Track resource lifetime
+- Avoid leaks: always delete created resources
+- Rule: Every createBuffer/createTexture/createProgram must have corresponding delete call.
+
+### JavaScript Objects
+
+- Use WeakMap for object-to-resource mappings
+- Clear caches on context loss
+- Unsubscribe event handlers on destroy
+- Rule: Clean up all subscriptions and caches in destroy() methods.
