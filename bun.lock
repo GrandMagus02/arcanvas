@@ -51,13 +51,16 @@
     "packages/matrix": {
       "name": "@arcanvas/matrix",
       "version": "0.1.0",
-      "dependencies": {
+      "devDependencies": {
         "@arcanvas/vector": "workspace:*",
       },
     },
     "packages/vector": {
       "name": "@arcanvas/vector",
       "version": "0.0.0",
+      "devDependencies": {
+        "@arcanvas/matrix": "workspace:*",
+      },
     },
   },
   "packages": {
