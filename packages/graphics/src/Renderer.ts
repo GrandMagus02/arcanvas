@@ -1,4 +1,6 @@
 import type { IRenderBackend, LightInfo } from "./IRenderBackend";
+import type { Mesh } from "./Mesh";
+import type { BaseMaterial } from "./materials";
 
 /**
  * Interface for scene that can be rendered.
@@ -6,15 +8,15 @@ import type { IRenderBackend, LightInfo } from "./IRenderBackend";
 export interface RenderableScene {
   viewport: { width: number; height: number };
   lights: Array<{
-    type: string;
-    position: [number, number, number];
-    direction: [number, number, number];
+    type: "directional" | "point" | "spot";
+    position?: [number, number, number];
+    direction?: [number, number, number];
     color: [number, number, number];
     intensity: number;
   }>;
   renderObjects: Array<{
-    mesh: unknown;
-    material: unknown;
+    mesh: Mesh;
+    material: BaseMaterial;
     transform: { modelMatrix: Float32Array };
   }>;
 }

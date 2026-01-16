@@ -36,6 +36,7 @@ class MockBackend implements IRenderBackend {
   }
 }
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 describe("Engine Renderer", () => {
   it("tracks mesh version changes", () => {
     const layout = createPositionLayout(3);
@@ -77,3 +78,4 @@ describe("Engine Renderer", () => {
   // TODO: add tests for multiple lights and material variants per shading model.
   // TODO: add integration tests for WebGLBackend and Canvas2DBackend output.
 });
+/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */

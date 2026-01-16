@@ -1,3 +1,4 @@
+export * from "./Builder";
 export * from "./Cloneable";
 export * from "./Configurable";
 export * from "./EventEmitter";

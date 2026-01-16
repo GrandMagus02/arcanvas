@@ -1,5 +1,5 @@
-import type { Identifiable, Named, Cloneable, JSONSerializable } from "./interfaces";
 import { TreeNode, TreeNodeCycleError, TreeNodeSelfAttachmentError } from "./graph/TreeNode";
+import type { Cloneable, Identifiable, JSONSerializable, Named } from "./interfaces";
 import { uuid } from "./utils/uuid";
 
 /**
@@ -10,6 +10,7 @@ export interface EntityJSON {
   name?: string | undefined;
   parent?: string | undefined;
   children?: EntityJSON[] | undefined;
+  visible?: boolean | undefined;
 }
 
 /**
@@ -27,6 +28,7 @@ export interface EntityLike<T extends EntityLike<T>> extends Identifiable, Named
 export class Entity extends TreeNode<Entity> implements EntityLike<Entity>, Cloneable<Entity>, JSONSerializable<EntityJSON> {
   id: string;
   name: string | null = null;
+  visible: boolean = true;
 
   constructor(name: string | null = null, id: string = uuid()) {
     super();
@@ -76,11 +78,13 @@ export class Entity extends TreeNode<Entity> implements EntityLike<Entity>, Clon
       name: this.name ?? undefined,
       parent: this.parent?.id,
       children: this.children.map((c) => c.toJSON()),
+      visible: this.visible,
     };
   }
 
   static fromJSON(json: EntityJSON): Entity {
     const node = new Entity(json.name, json.id);
+    node.visible = json.visible ?? true;
     for (const cj of json.children ?? []) {
       node.add(Entity.fromJSON(cj));
     }

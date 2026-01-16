@@ -57,9 +57,9 @@ export class PolygonGeometry {
     const shape = PolygonGeometry.createShape(points, space, zIndex);
     const builder = PolygonGeometry.pickBuilder(shape, mode, zIndex);
     if (shape.dim === 2) {
-      return (builder as MeshBuilder<Shape2D>).build(shape) as MeshBuildResult;
+      return (builder as MeshBuilder<Shape2D>).build(shape);
     } else {
-      return (builder as MeshBuilder<Shape3D>).build(shape) as MeshBuildResult;
+      return (builder as MeshBuilder<Shape3D>).build(shape);
     }
   }
 

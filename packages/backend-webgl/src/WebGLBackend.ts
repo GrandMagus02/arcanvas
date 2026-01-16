@@ -1,7 +1,7 @@
-import type { IRenderBackend, DrawArgs, Mesh, BaseMaterial, VertexAttributeDesc } from "@arcanvas/graphics";
+import type { BaseMaterial, DrawArgs, IRenderBackend, Mesh, VertexAttributeDesc } from "@arcanvas/graphics";
 import { ProgramCache } from "./ProgramCache";
-import { ShaderRegistry } from "./ShaderRegistry";
 import { isShaderProvider, type UniformContext } from "./ShaderProvider";
+import { ShaderRegistry } from "./ShaderRegistry";
 
 interface MeshCacheEntry {
   vertexBuffer: WebGLBuffer;
@@ -24,6 +24,7 @@ interface ProgramInfo {
 interface CustomProgramInfo {
   program: WebGLProgram;
   attribLocation: number;
+  uvLocation?: number;
 }
 
 /**
@@ -85,8 +86,55 @@ export class WebGLBackend implements IRenderBackend {
     });
   }
 
-  prepareMaterial(_material: BaseMaterial): void {
-    // Hook for textures/pipelines - no-op for now
+  prepareMaterial(material: BaseMaterial): void {
+    // Handle textures
+    if (material.baseColorTexture) {
+      const texture = material.baseColorTexture.source;
+      if (texture instanceof WebGLTexture) {
+        this.gl.activeTexture(this.gl.TEXTURE0);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+      }
+    }
+
+    // Handle blend modes for LayerMaterial
+    if ("blendMode" in material && typeof (material as { blendMode?: string }).blendMode === "string") {
+      this.setBlendMode((material as { blendMode: string }).blendMode);
+    }
+  }
+
+  private setBlendMode(blendMode: string): void {
+    // WebGL blend equations and functions
+    // For Normal mode, use standard alpha blending
+    // For Multiply, Screen, Overlay - we need shader-based blending
+    // For MVP, we'll use blend equations where possible
+
+    switch (blendMode) {
+      case "normal":
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+        this.gl.blendEquation(this.gl.FUNC_ADD);
+        break;
+      case "multiply":
+        // Multiply can be approximated with blend func, but not perfect
+        // For proper multiply, we need shader-based blending
+        this.gl.blendFunc(this.gl.DST_COLOR, this.gl.ZERO);
+        this.gl.blendEquation(this.gl.FUNC_ADD);
+        break;
+      case "screen":
+        // Screen: 1 - (1-a)(1-b) = a + b - ab
+        // Can use blend func ONE, ONE_MINUS_SRC_COLOR with subtract
+        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_COLOR);
+        this.gl.blendEquation(this.gl.FUNC_ADD);
+        break;
+      case "overlay":
+        // Overlay is complex and needs shader-based blending
+        // For MVP, fall back to normal
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+        this.gl.blendEquation(this.gl.FUNC_ADD);
+        break;
+      default:
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+        this.gl.blendEquation(this.gl.FUNC_ADD);
+    }
   }
 
   drawMesh(args: DrawArgs): void {
@@ -106,6 +154,7 @@ export class WebGLBackend implements IRenderBackend {
     if (!isShaderProvider(material)) return;
 
     this.prepareMesh(mesh);
+    this.prepareMaterial(material);
     const entry = this.meshCache.get(mesh);
     if (!entry) return;
 
@@ -122,9 +171,13 @@ export class WebGLBackend implements IRenderBackend {
         return;
       }
 
+      const positionLoc = this.gl.getAttribLocation(program, "a_position");
+      const uvLoc = this.gl.getAttribLocation(program, "a_uv");
+
       programInfo = {
         program,
-        attribLocation: this.gl.getAttribLocation(program, "a_position"),
+        attribLocation: positionLoc,
+        uvLocation: uvLoc,
       };
       this.customProgramCache.set(programKey, programInfo);
     }
@@ -135,8 +188,25 @@ export class WebGLBackend implements IRenderBackend {
       this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, entry.indexBuffer);
     }
 
-    this.gl.enableVertexAttribArray(programInfo.attribLocation);
-    this.gl.vertexAttribPointer(programInfo.attribLocation, drawConfig.positionComponents, this.gl.FLOAT, false, 0, 0);
+    // Bind position attribute
+    if (programInfo.attribLocation >= 0) {
+      this.gl.enableVertexAttribArray(programInfo.attribLocation);
+      // Calculate stride based on layout (position + UV = 2 + 2 = 4 floats)
+      const stride = mesh.layout.stride;
+      this.gl.vertexAttribPointer(programInfo.attribLocation, drawConfig.positionComponents, this.gl.FLOAT, false, stride, 0);
+    }
+
+    // Bind UV attribute if present
+    if (programInfo.uvLocation !== undefined && programInfo.uvLocation >= 0) {
+      this.gl.enableVertexAttribArray(programInfo.uvLocation);
+      const stride = mesh.layout.stride;
+      const uvAttr = mesh.layout.attributes.find((attr) => {
+        const semantic = attr.semantic;
+        return semantic === "uv" || (semantic as string) === "texcoord" || (semantic as string) === "texture";
+      });
+      const uvOffset = uvAttr?.offset ?? drawConfig.positionComponents * 4;
+      this.gl.vertexAttribPointer(programInfo.uvLocation, 2, this.gl.FLOAT, false, stride, uvOffset);
+    }
 
     const uniformContext: UniformContext = {
       viewMatrix: args.viewMatrix,

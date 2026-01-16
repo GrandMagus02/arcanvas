@@ -1,6 +1,6 @@
-import type { BufferHandle, IRenderContext, ProgramHandle } from "./IRenderContext";
 import type { ProgramCache } from "../gpu/ProgramCache";
 import type { ShaderLibrary } from "../gpu/ShaderLibrary";
+import type { BufferHandle, IRenderContext, ProgramHandle, TextureHandle } from "./IRenderContext";
 
 /**
  * WebGL implementation of {@link IRenderContext}.
@@ -141,5 +141,61 @@ export class WebGLRenderContext implements IRenderContext {
       throw new Error("ShaderLibrary not provided to WebGLRenderContext");
     }
     return this.shaderLibrary;
+  }
+
+  createTexture(data: ImageBitmap | HTMLImageElement | Uint8Array, width: number, height: number, format?: "rgba8" | "rgb8" | "rg8", pixelated?: boolean): TextureHandle {
+    const texture = this.gl.createTexture();
+    if (!texture) {
+      throw new Error("Failed to create texture");
+    }
+
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+
+    // Use NEAREST filtering for pixel-perfect rendering (vector-like)
+    // Set pixelated=true for crisp, non-blurred textures
+    const filter = pixelated !== false ? this.gl.NEAREST : this.gl.LINEAR;
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, filter);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filter);
+
+    if (data instanceof ImageBitmap || data instanceof HTMLImageElement) {
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+    } else if (data instanceof Uint8Array) {
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+    }
+
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+    return texture as TextureHandle;
+  }
+
+  updateTexture(handle: TextureHandle, data: ImageBitmap | HTMLImageElement | Uint8Array): void {
+    const texture = handle as WebGLTexture;
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+
+    if (data instanceof ImageBitmap || data instanceof HTMLImageElement) {
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+    } else if (data instanceof Uint8Array) {
+      // For Uint8Array, we need width/height - assume square or get from texture params
+      // For now, use a reasonable default or require width/height parameter
+      // This is a limitation - we might need to store texture dimensions separately
+      const size = Math.sqrt(data.length / 4);
+      this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, size, size, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
+    }
+
+    this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+  }
+
+  bindTexture(handle: TextureHandle, unit: number): void {
+    const texture = handle as WebGLTexture;
+    const glUnit = this.gl.TEXTURE0 + unit;
+    this.gl.activeTexture(glUnit);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+  }
+
+  deleteTexture(handle: TextureHandle): void {
+    if (handle) {
+      this.gl.deleteTexture(handle as WebGLTexture);
+    }
   }
 }

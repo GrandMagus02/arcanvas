@@ -44,5 +44,5 @@ export interface ShaderProvider {
  * Type guard to check if a material implements ShaderProvider.
  */
 export function isShaderProvider(material: BaseMaterial): material is BaseMaterial & ShaderProvider {
-  return typeof (material as ShaderProvider).getShaderSource === "function" && typeof (material as ShaderProvider).getDrawConfig === "function";
+  return typeof (material as unknown as ShaderProvider).getShaderSource === "function" && typeof (material as unknown as ShaderProvider).getDrawConfig === "function";
 }

@@ -1,15 +1,5 @@
+import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, GridObject, Polygon2DObject, PolygonObject, Scene, UnlitColorMaterial } from "@arcanvas/core";
 import type { Meta, StoryObj } from "@storybook/html";
-import {
-  Arcanvas,
-  Camera,
-  Camera2DController,
-  EngineRenderSystem,
-  GridObject,
-  Polygon2DObject,
-  PolygonObject,
-  Scene,
-  UnlitColorMaterial,
-} from "@arcanvas/core";
 
 interface ArcanvasSceneArgs {
   showGrid: boolean;
@@ -34,6 +24,14 @@ const cleanupMap = new Map<string, () => void>();
 const meta: Meta<ArcanvasSceneArgs> = {
   title: "Arcanvas/Scene",
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      source: {
+        type: "code",
+        language: "typescript",
+      },
+    },
+  },
   argTypes: {
     showGrid: {
       control: "boolean",
@@ -122,17 +120,51 @@ function render(args: ArcanvasSceneArgs, id: string): HTMLElement {
   // Create container
   const container = document.createElement("div");
   container.style.width = "100%";
-  container.style.height = "100%";
+  container.style.height = "100vh";
   container.style.display = "flex";
   container.style.justifyContent = "center";
   container.style.alignItems = "center";
+  container.style.overflow = "hidden";
 
-  // Create canvas
+  // Create canvas with fixed internal resolution (document size)
   const canvas = document.createElement("canvas");
-  canvas.width = args.canvasWidth;
-  canvas.height = args.canvasHeight;
+  canvas.width = args.canvasWidth; // Internal resolution stays at document size
+  canvas.height = args.canvasHeight; // Internal resolution stays at document size
   canvas.style.border = "1px solid #ccc";
+  canvas.style.display = "block";
   container.appendChild(canvas);
+
+  // Calculate responsive canvas CSS size - fill container while maintaining aspect ratio
+  // This prevents content distortion while maximizing canvas size
+  const updateCanvasSize = () => {
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const docAspectRatio = args.canvasWidth / args.canvasHeight;
+    const containerAspectRatio = containerWidth / containerHeight;
+
+    let displayWidth: number;
+    let displayHeight: number;
+
+    if (containerAspectRatio > docAspectRatio) {
+      // Container is wider - fit to height
+      displayHeight = containerHeight;
+      displayWidth = displayHeight * docAspectRatio;
+    } else {
+      // Container is taller - fit to width
+      displayWidth = containerWidth;
+      displayHeight = displayWidth / docAspectRatio;
+    }
+
+    // Set CSS size to maintain aspect ratio (prevents stretching)
+    // Internal resolution (canvas.width/height) stays at document size
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+    canvas.style.maxWidth = "100%";
+    canvas.style.maxHeight = "100%";
+  };
+
+  // Initial size calculation
+  updateCanvasSize();
 
   // Initialize Arcanvas
   const arc = new Arcanvas(canvas, {
@@ -208,11 +240,24 @@ function render(args: ArcanvasSceneArgs, id: string): HTMLElement {
   // Create render system
   const renderSystem = new EngineRenderSystem(canvas, scene, camera, { backend: "webgl" });
 
-  // Keep scene viewport in sync with canvas size
-  arc.on("resize", (width, height) => {
-    const w = typeof width === "number" ? width : canvas.width;
-    const h = typeof height === "number" ? height : canvas.height;
-    scene.viewport = { width: w, height: h };
+  // Keep scene viewport at document size (not CSS size) to prevent content stretching
+  // The canvas CSS size will stretch, but the viewport stays at document resolution
+  // This ensures WebGL renders at the document size, and the browser scales it to fill CSS size
+  scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+
+  // Prevent Arcanvas from resizing the internal canvas resolution
+  // We only want CSS size to change, not the internal resolution
+  arc.on("resize", () => {
+    // Reset canvas internal resolution to document size if it was changed
+    if (canvas.width !== args.canvasWidth) {
+      canvas.width = args.canvasWidth;
+    }
+    if (canvas.height !== args.canvasHeight) {
+      canvas.height = args.canvasHeight;
+    }
+    // Keep viewport at document size - this ensures WebGL viewport matches canvas internal resolution
+    scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+    // Camera controller will automatically recalculate projection using canvas.width/height (internal resolution)
   });
 
   // Render loop
@@ -223,12 +268,18 @@ function render(args: ArcanvasSceneArgs, id: string): HTMLElement {
   };
   frame();
 
+  // Handle window resize
+  const resizeObserver = new ResizeObserver(() => {
+    updateCanvasSize();
+  });
+  resizeObserver.observe(container);
+
   // Cleanup function
   const cleanup = () => {
     if (animationFrameId !== undefined) {
       cancelAnimationFrame(animationFrameId);
     }
-    // Note: Arcanvas cleanup would go here if needed
+    resizeObserver.disconnect();
   };
 
   cleanupMap.set(id, cleanup);

@@ -3,16 +3,12 @@ export * from "./core/Arcanvas";
 
 // Camera system
 export * from "./camera";
-
-// Document model
 export * from "./document/BlendMode";
 export * from "./document/compose2d";
 export * from "./document/Document";
 export * from "./document/io";
 export * from "./document/Layer";
 export * from "./document/SelectionMask";
-
-// Infrastructure
 export * from "./infrastructure/canvas/CanvasHost";
 export * from "./infrastructure/events/ArcanvasEvents";
 export * from "./infrastructure/events/EventBus";
@@ -23,17 +19,17 @@ export * from "./infrastructure/lifecycle/FrameLoop";
 
 // Plugins
 export * from "./plugins";
-
-// Rendering (high-level abstractions)
-export * from "./rendering";
-
-// Scene (Stage for UI/Editor mode)
-export * from "./scene/Stage";
-export * from "./scene/Entity";
-export * from "./scene/Mesh";
-export * from "./scene/graph/TreeNode";
-
-// Systems
+export * from "./rendering/backend/createRenderer";
+export * from "./rendering/backend/IRenderer";
+export * from "./rendering/context";
+export * from "./rendering/engine";
+export * from "./rendering/gpu/Material";
+export * from "./rendering/gpu/ProgramCache";
+export * from "./rendering/gpu/ShaderLibrary";
+export * from "./rendering/gpu/StateCache";
+export * from "./rendering/graph/RenderGraph";
+export * from "./rendering/graph/RenderPass";
+export * from "./scene";
 export * from "./systems";
 
 // Utils

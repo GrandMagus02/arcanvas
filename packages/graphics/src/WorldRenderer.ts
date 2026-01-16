@@ -1,21 +1,8 @@
+import { WorldVec3 } from "@arcanvas/scene";
 import type { IRenderBackend, LightInfo } from "./IRenderBackend";
+import type { Mesh } from "./Mesh";
 import type { RenderableCamera } from "./Renderer";
-
-/**
- * World-space 3D vector with double precision.
- */
-export interface WorldVec3 {
-  x: number;
-  y: number;
-  z: number;
-}
-
-/**
- * Creates a WorldVec3.
- */
-function createWorldVec3(x: number, y: number, z: number): WorldVec3 {
-  return { x, y, z };
-}
+import type { BaseMaterial } from "./materials";
 
 /**
  * Interface for world camera with high-precision position.
@@ -30,15 +17,15 @@ export interface WorldRenderableCamera extends RenderableCamera {
 export interface WorldRenderableScene {
   viewport: { width: number; height: number };
   lights: Array<{
-    type: string;
-    position: [number, number, number];
-    direction: [number, number, number];
+    type: LightInfo["type"];
+    position?: [number, number, number];
+    direction?: [number, number, number];
     color: [number, number, number];
     intensity: number;
   }>;
   renderObjects: Array<{
-    mesh: unknown;
-    material: unknown;
+    mesh: Mesh;
+    material: BaseMaterial;
     transform: { modelMatrix: Float32Array };
     worldPosition?: WorldVec3;
   }>;
@@ -141,7 +128,7 @@ export class WorldRenderer {
    * Renders a single object with camera-relative positioning.
    */
   private _renderObject(
-    obj: { mesh: unknown; material: unknown; transform: { modelMatrix: Float32Array }; worldPosition?: WorldVec3 },
+    obj: { mesh: Mesh; material: BaseMaterial; transform: { modelMatrix: Float32Array }; worldPosition?: WorldVec3 },
     view: Float32Array,
     proj: Float32Array,
     lights: LightInfo[]
@@ -176,7 +163,7 @@ export class WorldRenderer {
     } else {
       // Regular Camera - use its position (may lose precision for large values)
       const pos = camera.position;
-      return createWorldVec3(pos.x, pos.y, pos.z);
+      return new WorldVec3(pos.x, pos.y, pos.z);
     }
   }
 }
