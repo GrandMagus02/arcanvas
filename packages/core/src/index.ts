@@ -22,7 +22,6 @@ export * from "./plugins";
 export * from "./rendering/backend/createRenderer";
 export * from "./rendering/backend/IRenderer";
 export * from "./rendering/context";
-export * from "./rendering/engine";
 export * from "./rendering/gpu/Material";
 export * from "./rendering/gpu/ProgramCache";
 export * from "./rendering/gpu/ShaderLibrary";

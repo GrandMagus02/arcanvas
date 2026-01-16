@@ -9,7 +9,17 @@ import tseslint from "typescript-eslint";
 
 export default [
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.bun/**", "**/.vitepress/cache/**", "docs/.vitepress/cache/**", "eslint.config.js", "prettier.config.js"],
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/storybook-static/**",
+      "**/.bun/**",
+      "**/.vitepress/cache/**",
+      "docs/.vitepress/cache/**",
+      "eslint.config.js",
+      "prettier.config.js",
+    ],
   },
   js.configs.recommended,
   prettier,
@@ -35,26 +45,9 @@ export default [
       jsdoc,
     },
     rules: {
-      semi: ["error", "always"],
-      "no-trailing-spaces": "error",
-      "eol-last": ["error", "always"],
+      // Formatting rules (semi, eol-last, no-trailing-spaces, comma-dangle, etc.) are handled by Prettier
       curly: ["error", "all"],
       eqeqeq: ["error", "always"],
-      // Prefer single-line arrays (collapse when possible). If an array
-      // is written without a trailing comma, enforce single-line form.
-      "comma-dangle": [
-        "error",
-        {
-          arrays: "never",
-          objects: "only-multiline",
-          imports: "only-multiline",
-          exports: "only-multiline",
-          functions: "never",
-        },
-      ],
-      "array-bracket-newline": ["error", "never"],
-      "array-element-newline": ["error", "consistent"],
-      "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
       "padding-line-between-statements": [
         "error",
         { blankLine: "always", prev: "class", next: "class" },
@@ -131,24 +124,9 @@ export default [
       jsdoc,
     },
     rules: {
-      semi: ["error", "always"],
-      "no-trailing-spaces": "error",
-      "eol-last": ["error", "always"],
+      // Formatting rules (semi, eol-last, no-trailing-spaces, comma-dangle, etc.) are handled by Prettier
       curly: ["error", "all"],
       eqeqeq: ["error", "always"],
-      "comma-dangle": [
-        "error",
-        {
-          arrays: "never",
-          objects: "only-multiline",
-          imports: "only-multiline",
-          exports: "only-multiline",
-          functions: "never",
-        },
-      ],
-      "array-bracket-newline": ["error", "never"],
-      "array-element-newline": ["error", "consistent"],
-      "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
       "padding-line-between-statements": [
         "error",
         { blankLine: "always", prev: "class", next: "class" },

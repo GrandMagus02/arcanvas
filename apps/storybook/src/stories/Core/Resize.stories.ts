@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/html";
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, GridObject, Scene } from "@arcanvas/core";
+import { Arcanvas, Camera, Camera2DController, EngineRenderSystem } from "@arcanvas/core";
+import { GridObject } from "@arcanvas/feature-2d";
+import { Scene } from "@arcanvas/scene";
 
 interface ResizeArgs {
   canvasWidth: number;
