@@ -1,4 +1,4 @@
-import { Arcanvas, GridMesh, Plane2D } from "@arcanvas/core";
+import { Arcanvas, GridMesh, Plane2D, Polygon2D } from "@arcanvas/core";
 
 /**
  * Setup scene.
@@ -32,6 +32,21 @@ export function setupScene(arc: Arcanvas): GridMesh {
   const plane = new Plane2D(0, 0, 100, 150);
   plane.name = "TestRectangle";
   arc.stage.add(plane);
+
+  // Add a polygon mesh
+  // Hexagon points at 200, 50 with radius 50
+  const hexPoints: number[][] = [];
+  const cx = 200;
+  const cy = 50;
+  const r = 50;
+  for (let i = 0; i < 6; i++) {
+    const theta = (i / 6) * 2 * Math.PI;
+    hexPoints.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
+  }
+
+  const polygon = new Polygon2D(hexPoints);
+  polygon.name = "TestPolygon";
+  arc.stage.add(polygon);
 
   console.log("[SetupScene] Grid added to stage");
 

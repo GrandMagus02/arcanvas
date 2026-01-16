@@ -61,4 +61,3 @@ export abstract class Mesh extends Entity implements Renderable {
     }
   }
 }
-
