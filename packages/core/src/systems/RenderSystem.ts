@@ -18,7 +18,11 @@ export interface RenderSystemOptions {
 export class RenderSystem {
   private _renderer: IRenderer;
 
-  constructor(canvas: HTMLCanvasElement, private _stage: Stage, options: RenderSystemOptions) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    private _stage: Stage,
+    options: RenderSystemOptions
+  ) {
     const { backend, rendererOptions = {} } = options;
     this._renderer = createRenderer(canvas, backend, rendererOptions);
 

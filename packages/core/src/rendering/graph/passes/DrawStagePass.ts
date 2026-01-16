@@ -23,4 +23,3 @@ export class DrawStagePass extends RenderPass {
     });
   }
 }
-

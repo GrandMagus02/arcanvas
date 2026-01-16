@@ -9,7 +9,7 @@ import tseslint from "typescript-eslint";
 
 export default [
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.bun/**"],
+    ignores: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.bun/**", "**/.vitepress/cache/**", "docs/.vitepress/cache/**", "eslint.config.js", "prettier.config.js"],
   },
   js.configs.recommended,
   prettier,
@@ -53,7 +53,7 @@ export default [
         },
       ],
       "array-bracket-newline": ["error", "never"],
-      "array-element-newline": ["error", "consistent-as-needed"],
+      "array-element-newline": ["error", "consistent"],
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
       "padding-line-between-statements": [
         "error",
@@ -103,6 +103,12 @@ export default [
         },
       ],
       "jsdoc/require-description": "error",
+      // TypeScript type-checking rules (enforced via recommendedTypeChecked above, but explicit here for clarity)
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
     },
   },
   eslintPluginPrettierRecommended,
@@ -115,7 +121,7 @@ export default [
       jsonc,
     },
     rules: {
-      "jsonc/no-trailing-commas": "error",
+      "jsonc/comma-dangle": ["error", "never"],
     },
   },
   {
@@ -141,7 +147,7 @@ export default [
         },
       ],
       "array-bracket-newline": ["error", "never"],
-      "array-element-newline": ["error", "consistent-as-needed"],
+      "array-element-newline": ["error", "consistent"],
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1, maxBOF: 0 }],
       "padding-line-between-statements": [
         "error",

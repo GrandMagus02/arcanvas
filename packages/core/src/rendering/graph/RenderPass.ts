@@ -16,4 +16,3 @@ export abstract class RenderPass {
   abstract name(): string;
   abstract execute(ctx: PassContext): void;
 }
-

@@ -1,4 +1,6 @@
 import type { BufferHandle, IRenderContext, ProgramHandle } from "./IRenderContext";
+import type { ProgramCache } from "../gpu/ProgramCache";
+import type { ShaderLibrary } from "../gpu/ShaderLibrary";
 
 /**
  * WebGL implementation of {@link IRenderContext}.
@@ -6,7 +8,9 @@ import type { BufferHandle, IRenderContext, ProgramHandle } from "./IRenderConte
 export class WebGLRenderContext implements IRenderContext {
   constructor(
     private gl: WebGLRenderingContext,
-    private program: WebGLProgram | null = null
+    private program: WebGLProgram | null = null,
+    private programCache?: ProgramCache,
+    private shaderLibrary?: ShaderLibrary
   ) {
     // Don't automatically activate program - let meshes manage their own programs
     // This avoids errors when no program is set or when the program isn't properly linked
@@ -124,5 +128,18 @@ export class WebGLRenderContext implements IRenderContext {
   getProgram(): WebGLProgram | null {
     return this.program;
   }
-}
 
+  getProgramCache(): ProgramCache {
+    if (!this.programCache) {
+      throw new Error("ProgramCache not provided to WebGLRenderContext");
+    }
+    return this.programCache;
+  }
+
+  getShaderLibrary(): ShaderLibrary {
+    if (!this.shaderLibrary) {
+      throw new Error("ShaderLibrary not provided to WebGLRenderContext");
+    }
+    return this.shaderLibrary;
+  }
+}

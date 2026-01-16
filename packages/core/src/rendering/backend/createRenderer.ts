@@ -40,4 +40,3 @@ export function createRenderer(canvas: HTMLCanvasElement, backend: Backend, opti
     }
   }
 }
-

@@ -20,4 +20,3 @@ export interface Cloneable<T> {
    */
   deepClone(): T;
 }
-

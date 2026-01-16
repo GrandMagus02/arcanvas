@@ -3,6 +3,10 @@ import { Stage, Mesh } from "src";
 import type { BufferHandle, IArcanvasContext, IRenderContext } from "src";
 
 // Mock canvas for testing (Bun test doesn't have DOM)
+/**
+ * Creates a mock HTMLCanvasElement for testing purposes.
+ * @returns A mock canvas element with width and height properties.
+ */
 function createMockCanvas(): HTMLCanvasElement {
   return {
     width: 800,
@@ -11,6 +15,9 @@ function createMockCanvas(): HTMLCanvasElement {
 }
 
 // Mock IArcanvasContext for testing
+/**
+ * Mock implementation of IArcanvasContext for testing Stage functionality.
+ */
 class MockArcanvasContext implements IArcanvasContext {
   canvas: HTMLCanvasElement;
   stage: Stage;
@@ -44,6 +51,9 @@ class MockArcanvasContext implements IArcanvasContext {
 }
 
 // Concrete Mesh for testing
+/**
+ * Concrete Mesh implementation for testing purposes.
+ */
 class TestMesh extends Mesh {
   constructor(vertices: Float32Array, indices: Uint16Array) {
     super(vertices, indices);
@@ -157,9 +167,9 @@ describe("Stage", () => {
       const renderedMeshes: Mesh[] = [];
 
       const mockRenderContext: IRenderContext = {
-        createVertexBuffer: () => ({ type: "vertex" } as BufferHandle),
+        createVertexBuffer: () => ({ type: "vertex" }) as BufferHandle,
         bindVertexBuffer: () => {},
-        createIndexBuffer: () => ({ type: "index" } as BufferHandle),
+        createIndexBuffer: () => ({ type: "index" }) as BufferHandle,
         bindIndexBuffer: () => {},
         vertexAttribPointer: () => {},
         enableVertexAttribArray: () => {},
@@ -180,10 +190,12 @@ describe("Stage", () => {
       };
 
       // Override render method to track calls
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       const originalRender = Mesh.prototype.render;
-      Mesh.prototype.render = function (ctx: IRenderContext) {
+
+      Mesh.prototype.render = function (this: Mesh, ctx: IRenderContext) {
         renderCallCount++;
-        renderedMeshes.push(this as Mesh);
+        renderedMeshes.push(this);
         originalRender.call(this, ctx);
       };
 
@@ -212,9 +224,9 @@ describe("Stage", () => {
       let renderCallCount = 0;
 
       const mockRenderContext: IRenderContext = {
-        createVertexBuffer: () => ({ type: "vertex" } as BufferHandle),
+        createVertexBuffer: () => ({ type: "vertex" }) as BufferHandle,
         bindVertexBuffer: () => {},
-        createIndexBuffer: () => ({ type: "index" } as BufferHandle),
+        createIndexBuffer: () => ({ type: "index" }) as BufferHandle,
         bindIndexBuffer: () => {},
         vertexAttribPointer: () => {},
         enableVertexAttribArray: () => {},
@@ -234,8 +246,10 @@ describe("Stage", () => {
         getWebGLContext: () => null,
       };
 
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       const originalRender = Mesh.prototype.render;
-      Mesh.prototype.render = function () {
+
+      Mesh.prototype.render = function (this: Mesh) {
         renderCallCount++;
         originalRender.call(this, mockRenderContext);
       };
@@ -253,9 +267,9 @@ describe("Stage", () => {
       const stage = new Stage(mockContext);
 
       const mockRenderContext: IRenderContext = {
-        createVertexBuffer: () => ({ type: "vertex" } as BufferHandle),
+        createVertexBuffer: () => ({ type: "vertex" }) as BufferHandle,
         bindVertexBuffer: () => {},
-        createIndexBuffer: () => ({ type: "index" } as BufferHandle),
+        createIndexBuffer: () => ({ type: "index" }) as BufferHandle,
         bindIndexBuffer: () => {},
         vertexAttribPointer: () => {},
         enableVertexAttribArray: () => {},
@@ -297,4 +311,3 @@ describe("Stage", () => {
     });
   });
 });
-

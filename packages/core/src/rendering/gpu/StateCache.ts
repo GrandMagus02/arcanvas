@@ -19,4 +19,3 @@ export class StateCache {
     else gl.disable(gl.DEPTH_TEST);
   }
 }
-

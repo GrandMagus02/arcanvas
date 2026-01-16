@@ -47,4 +47,3 @@ export class FrameLoop {
     this._rafId = null;
   }
 }
-

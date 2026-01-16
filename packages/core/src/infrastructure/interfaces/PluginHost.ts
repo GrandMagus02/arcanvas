@@ -26,4 +26,3 @@ export interface PluginHost<TSelf = unknown> {
    */
   get<T = unknown>(plugin: unknown): T | undefined;
 }
-

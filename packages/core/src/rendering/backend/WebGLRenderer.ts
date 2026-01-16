@@ -1,5 +1,7 @@
 import type { IRenderContext } from "../context/IRenderContext";
 import { WebGLRenderContext } from "../context/WebGLRenderContext";
+import { ProgramCache } from "../gpu/ProgramCache";
+import { ShaderLibrary } from "../gpu/ShaderLibrary";
 import type { IRenderer } from "./IRenderer";
 import type { DrawHook, RendererOptions } from "./types";
 
@@ -20,6 +22,8 @@ export class WebGLRenderer implements IRenderer {
   private _running = false;
   private _options: RendererOptions = { ..._DEFAULT_RENDERER_OPTIONS };
   private _scissorRect: { x: number; y: number; w: number; h: number } | null = null;
+  private readonly _programCache: ProgramCache;
+  private readonly _shaderLibrary: ShaderLibrary;
 
   private _onContextLost = (e: Event) => {
     e.preventDefault();
@@ -45,7 +49,9 @@ export class WebGLRenderer implements IRenderer {
     this._canvas = canvas;
     this._gl = gl;
 
-    // Note: We don't create a default program here - meshes manage their own shader programs
+    // Create shared resources for program caching and shader library
+    this._programCache = new ProgramCache();
+    this._shaderLibrary = new ShaderLibrary();
 
     this._options = { ..._DEFAULT_RENDERER_OPTIONS, ...options };
     this.applyGlState();
@@ -149,9 +155,8 @@ export class WebGLRenderer implements IRenderer {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // Create render context for this frame
-    // Note: no default program - meshes manage their own shader programs
-    const renderContext: IRenderContext = new WebGLRenderContext(gl);
+    // Create render context for this frame with shared resources
+    const renderContext: IRenderContext = new WebGLRenderContext(gl, null, this._programCache, this._shaderLibrary);
 
     // Call draw hooks with abstract IRenderContext
     for (const fn of this._drawHooks) {
@@ -159,4 +164,3 @@ export class WebGLRenderer implements IRenderer {
     }
   }
 }
-

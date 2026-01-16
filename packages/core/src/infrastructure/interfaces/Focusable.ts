@@ -8,4 +8,3 @@ export interface Focusable {
    */
   isFocused(): boolean;
 }
-

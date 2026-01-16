@@ -61,4 +61,3 @@ export interface IRenderer {
    */
   clearScissor(): void;
 }
-

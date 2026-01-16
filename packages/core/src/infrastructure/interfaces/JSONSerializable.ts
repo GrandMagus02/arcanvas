@@ -11,4 +11,3 @@ export interface JSONSerializable<TJSON> {
    */
   toJSON(): TJSON;
 }
-

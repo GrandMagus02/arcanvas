@@ -13,4 +13,3 @@ export interface RendererOptions {
   clearColor: [number, number, number, number];
   depthTest: boolean;
 }
-

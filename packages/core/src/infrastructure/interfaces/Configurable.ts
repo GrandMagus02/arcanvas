@@ -31,4 +31,3 @@ export interface Configurable<TOptions> {
    */
   options: TOptions;
 }
-

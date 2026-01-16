@@ -7,4 +7,3 @@ export interface Named {
    */
   name: string | null;
 }
-

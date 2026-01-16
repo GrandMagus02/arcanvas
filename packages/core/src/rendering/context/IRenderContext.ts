@@ -188,5 +188,16 @@ export interface IRenderContext {
    * @returns The WebGL rendering context, or null if not available.
    */
   getWebGLContext(): WebGLRenderingContext | null;
-}
 
+  /**
+   * Gets the program cache for reusing compiled shader programs.
+   * @returns The program cache instance.
+   */
+  getProgramCache(): import("../gpu/ProgramCache").ProgramCache;
+
+  /**
+   * Gets the shader library for storing shader source code.
+   * @returns The shader library instance.
+   */
+  getShaderLibrary(): import("../gpu/ShaderLibrary").ShaderLibrary;
+}

@@ -12,4 +12,3 @@ export class ShaderLibrary {
     return this.modules.get(id);
   }
 }
-

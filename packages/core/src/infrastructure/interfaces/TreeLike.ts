@@ -41,4 +41,3 @@ export interface TreeLike<T> {
    */
   readonly level: number;
 }
-

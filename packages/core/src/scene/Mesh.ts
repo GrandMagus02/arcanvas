@@ -44,6 +44,8 @@ export abstract class Mesh extends Entity implements Renderable {
 
   /**
    * Renders this mesh using the provided render context.
+   * Sets up vertex and index buffers. Subclasses should call this first,
+   * then set up attributes/uniforms and call draw commands.
    *
    * @param ctx The render context to use for rendering.
    */
@@ -54,10 +56,13 @@ export abstract class Mesh extends Entity implements Renderable {
       ctx.bindVertexBuffer(this._vertexBuffer);
     }
 
-    if (!this._indexBuffer) {
-      this._indexBuffer = ctx.createIndexBuffer(this._indices);
-    } else {
-      ctx.bindIndexBuffer(this._indexBuffer);
+    // Only create/bind index buffer if indices exist
+    if (this._indices.length > 0) {
+      if (!this._indexBuffer) {
+        this._indexBuffer = ctx.createIndexBuffer(this._indices);
+      } else {
+        ctx.bindIndexBuffer(this._indexBuffer);
+      }
     }
   }
 }

@@ -14,4 +14,3 @@ export interface Renderable {
    */
   render(ctx: IRenderContext): void;
 }
-

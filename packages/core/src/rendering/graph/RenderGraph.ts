@@ -19,4 +19,3 @@ export class RenderGraph {
     for (const p of this.passes) p.execute(ctx);
   }
 }
-

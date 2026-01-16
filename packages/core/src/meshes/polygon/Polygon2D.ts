@@ -1,10 +1,12 @@
-import { MeshUtils } from "../../utils/MeshUtils";
-import { PointUtils, type PointsArray } from "../../utils/PointUtils";
+import { PolygonBuildMode, PolygonGeometry, PolygonSpace } from "../../utils/geometry/polygon/PolygonGeometry";
+import type { MeshBuildResult } from "../../utils/MeshUtils";
+import type { PointsArray } from "../../utils/PointUtils";
 import { PolygonMesh } from "./PolygonMesh";
 
 /**
  * A 2D Polygon mesh defined by a list of points.
  * Automatically triangulates the polygon using a triangle fan from the centroid.
+ * @deprecated Use PolygonMesh instead.
  */
 export class Polygon2D extends PolygonMesh {
   /**
@@ -14,18 +16,11 @@ export class Polygon2D extends PolygonMesh {
    * @param z - The Z-coordinate for all points (defaults to 0).
    */
   constructor(points: PointsArray, z: number = 0) {
-    // Parse input points using PointUtils
-    const parsedPoints = PointUtils.points2DFromArray(points);
-
-    if (parsedPoints.length < 3) {
-      // Not enough points to form a polygon
-      super(new Float32Array(0), new Uint16Array(0));
-      return;
-    }
-
-    // Generate triangles using MeshUtils
-    const vertices = MeshUtils.createTriangleFan(parsedPoints, z);
-
-    super(vertices, new Uint16Array(vertices.length / 3));
+    const result: MeshBuildResult = PolygonGeometry.build(points, {
+      space: PolygonSpace.Space2D,
+      mode: PolygonBuildMode.FillFan,
+      z,
+    });
+    super(result.vertices, result.indices);
   }
 }

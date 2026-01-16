@@ -10,4 +10,3 @@ export * from "./Named";
 export * from "./PluginHost";
 export * from "./Searchable";
 export * from "./TreeLike";
-

@@ -20,4 +20,3 @@ export interface Searchable<T> {
    */
   findAll(predicate: (node: T) => boolean): T[];
 }
-
