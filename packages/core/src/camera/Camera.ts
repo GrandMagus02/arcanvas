@@ -2,6 +2,7 @@ import { Vector3 } from "@arcanvas/vector";
 import type { IArcanvasContext } from "../infrastructure/interfaces/IArcanvasContext";
 import { EventKey } from "../utils";
 import { ProjectionMatrix } from "../utils/ProjectionMatrix";
+import { ProjectionMode } from "../utils/ProjectionMode";
 import { Subscribable } from "../utils/Subscribable";
 import { TransformationMatrix } from "../utils/TransformationMatrix";
 import { ViewMatrix } from "../utils/ViewMatrix";
@@ -120,8 +121,12 @@ export class Camera extends Subscribable {
   protected onResize(...args: unknown[]): void {
     const width = args[0] as number;
     const height = args[1] as number;
-    this._projection.update({
-      aspect: width / height,
-    });
+    // Only update aspect for perspective projection
+    // Orthographic projections should be handled by camera controllers
+    if (this._projection.mode === ProjectionMode.Perspective) {
+      this._projection.update({
+        aspect: width / height,
+      });
+    }
   }
 }

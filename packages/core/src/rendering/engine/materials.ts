@@ -7,7 +7,7 @@ export type ShadingModel = "unlit" | "phong" | "pbr" | "grid";
  *
  */
 export interface TextureRef {
-  source: HTMLImageElement | ImageBitmap | Uint8Array | unknown;
+  source: HTMLImageElement | ImageBitmap | Uint8Array | Record<string, unknown>;
   width: number;
   height: number;
   format: "rgba8" | "rgb8" | "rg8";

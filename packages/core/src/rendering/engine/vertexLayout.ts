@@ -23,7 +23,9 @@ export interface VertexLayout {
 }
 
 /**
- *
+ * Creates a vertex layout with only position attribute.
+ * @param components - Number of position components (2 or 3)
+ * @returns Vertex layout configuration
  */
 export function createPositionLayout(components: 2 | 3 = 3): VertexLayout {
   return {

@@ -1,9 +1,10 @@
-import type { IRenderBackend, DrawArgs } from "../IRenderBackend";
+import type { DrawArgs, IRenderBackend } from "../IRenderBackend";
 import type { Mesh } from "../Mesh";
 import type { BaseMaterial } from "../materials";
 
 /**
- *
+ * Canvas2D rendering backend implementation.
+ * Renders meshes using CPU-based 2D canvas operations.
  */
 export class Canvas2DBackend implements IRenderBackend {
   private viewportWidth = 1;
@@ -23,11 +24,11 @@ export class Canvas2DBackend implements IRenderBackend {
   }
 
   prepareMesh(_mesh: Mesh): void {
-    // No-op for CPU path
+    void _mesh; // No-op for CPU path
   }
 
   prepareMaterial(_material: BaseMaterial): void {
-    // No-op for CPU path
+    void _material; // No-op for CPU path
   }
 
   drawMesh(args: DrawArgs): void {
@@ -42,7 +43,7 @@ export class Canvas2DBackend implements IRenderBackend {
 }
 
 /**
- *
+ * Extracts and transforms vertex positions from mesh to screen coordinates.
  */
 function extractPositions(mesh: Mesh, mvp: Float32Array, width: number, height: number): Float32Array {
   const attr = mesh.layout.attributes.find((a) => a.semantic === "position");
@@ -68,7 +69,7 @@ function extractPositions(mesh: Mesh, mvp: Float32Array, width: number, height: 
 }
 
 /**
- *
+ * Draws triangles using Canvas2D fill operations.
  */
 function drawTriangles2D(ctx: CanvasRenderingContext2D, points: Float32Array, indices: Uint16Array | Uint32Array): void {
   if (indices.length > 0) {
@@ -96,7 +97,7 @@ function drawTriangles2D(ctx: CanvasRenderingContext2D, points: Float32Array, in
 }
 
 /**
- *
+ * Converts RGBA color array to CSS rgba string.
  */
 function rgbaToCss(color: [number, number, number, number]): string {
   const [r, g, b, a] = color;
@@ -107,7 +108,7 @@ function rgbaToCss(color: [number, number, number, number]): string {
 }
 
 /**
- *
+ * Multiplies two 4x4 matrices (column-major order).
  */
 function multiply4x4(a: Float32Array, b: Float32Array): Float32Array {
   const out = new Float32Array(16);
@@ -120,7 +121,7 @@ function multiply4x4(a: Float32Array, b: Float32Array): Float32Array {
 }
 
 /**
- *
+ * Transforms a 3D position by a 4x4 matrix.
  */
 function transformPosition(m: Float32Array, x: number, y: number, z: number): [number, number, number] {
   const tx = m[0]! * x + m[4]! * y + m[8]! * z + m[12]!;

@@ -1,3 +1,4 @@
+import { EventKey } from "../../utils";
 import { ProjectionMode } from "../../utils/ProjectionMode";
 import type { Camera } from "../Camera";
 import type { ICameraController } from "../ICameraController";
@@ -59,6 +60,7 @@ export class Camera2DController implements ICameraController {
   private _boundMouseMove: (e: MouseEvent) => void;
   private _boundMouseUp: (e: MouseEvent) => void;
   private _boundWheel: (e: WheelEvent) => void;
+  private _boundResize: (width: number, height: number) => void;
 
   constructor(options: Camera2DControllerOptions = {}) {
     this._options = { ...DEFAULT_OPTIONS, ...options };
@@ -66,6 +68,7 @@ export class Camera2DController implements ICameraController {
     this._boundMouseMove = this.handleMouseMove.bind(this);
     this._boundMouseUp = this.handleMouseUp.bind(this);
     this._boundWheel = this.handleWheel.bind(this);
+    this._boundResize = this.handleResize.bind(this);
   }
 
   attach(camera: Camera): void {
@@ -74,39 +77,13 @@ export class Camera2DController implements ICameraController {
     this._camera = camera;
     console.log("[Camera2DController] Attached to camera");
 
-    // Ensure camera uses orthographic projection for 2D
-    const canvas = camera.arcanvas?.canvas;
-    if (canvas) {
-      const aspect = canvas.width / canvas.height;
-      // Set initial zoom higher than minZoom to allow zooming out
-      // Initial zoom 0.1 = size 10, which shows objects up to 20 units wide/tall
-      // This allows zooming out to minZoom (0.001 = size 1000)
-      this._currentZoom = 0.1;
-
-      const ppu = camera.pixelsPerUnit;
-      const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
-
-      camera.projection.update({
-        mode: ProjectionMode.Orthographic,
-        left: -halfHeight * aspect,
-        right: halfHeight * aspect,
-        top: halfHeight,
-        bottom: -halfHeight,
-        near: -1000,
-        far: 1000,
-      } as unknown as Parameters<typeof camera.projection.update>[0]);
-    } else {
-      this._currentZoom = 0.1;
-      camera.projection.update({
-        mode: ProjectionMode.Orthographic,
-        left: -100,
-        right: 100,
-        top: 100,
-        bottom: -100,
-        near: -1000,
-        far: 1000,
-      } as unknown as Parameters<typeof camera.projection.update>[0]);
+    // Listen to resize events to update projection bounds
+    if (camera.arcanvas) {
+      camera.arcanvas.on(EventKey.Resize, this._boundResize);
     }
+
+    // Update projection with current canvas size
+    this._updateProjection();
 
     if (this._enabled) {
       this._attachEventListeners();
@@ -118,6 +95,9 @@ export class Camera2DController implements ICameraController {
 
   detach(): void {
     this._removeEventListeners();
+    if (this._camera?.arcanvas) {
+      this._camera.arcanvas.off(EventKey.Resize, this._boundResize);
+    }
     if (this._camera) {
       console.log("[Camera2DController] Detached from camera");
     }
@@ -193,6 +173,60 @@ export class Camera2DController implements ICameraController {
     event.preventDefault();
   }
 
+  /**
+   * Handle canvas resize events and update projection bounds.
+   */
+  private handleResize(_width: number, _height: number): void {
+    void _width;
+    void _height;
+    if (!this._camera) return;
+    // Update projection bounds based on current zoom and new canvas size
+    // Canvas dimensions are read directly from canvas in _updateProjection()
+    this._updateProjection();
+  }
+
+  /**
+   * Update the camera projection with current zoom and canvas dimensions.
+   */
+  private _updateProjection(): void {
+    if (!this._camera) return;
+
+    const canvas = this._camera.arcanvas?.canvas;
+    if (!canvas) {
+      // Fallback if no canvas available
+      this._currentZoom = 0.1;
+      this._camera.projection.update({
+        mode: ProjectionMode.Orthographic,
+        left: -100,
+        right: 100,
+        top: 100,
+        bottom: -100,
+        near: -1000,
+        far: 1000,
+      } as unknown as Parameters<typeof this._camera.projection.update>[0]);
+      return;
+    }
+
+    // Ensure we have a valid zoom level
+    if (this._currentZoom === 0 || !Number.isFinite(this._currentZoom)) {
+      this._currentZoom = 0.1;
+    }
+
+    const aspect = canvas.width / canvas.height;
+    const ppu = this._camera.pixelsPerUnit;
+    const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
+
+    this._camera.projection.update({
+      mode: ProjectionMode.Orthographic,
+      left: -halfHeight * aspect,
+      right: halfHeight * aspect,
+      top: halfHeight,
+      bottom: -halfHeight,
+      near: -1000,
+      far: 1000,
+    } as unknown as Parameters<typeof this._camera.projection.update>[0]);
+  }
+
   handleWheel(event: WheelEvent): void {
     console.log("[Camera2DController] Wheel event received", {
       deltaY: event.deltaY,
@@ -255,41 +289,33 @@ export class Camera2DController implements ICameraController {
     this._currentZoom = newZoom;
 
     // Update projection bounds based on zoom
+    this._updateProjection();
+
     const canvas = this._camera.arcanvas?.canvas;
-    if (!canvas) return;
+    if (canvas) {
+      const aspect = canvas.width / canvas.height;
+      const ppu = this._camera.pixelsPerUnit;
+      const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
 
-    const aspect = canvas.width / canvas.height;
-    const ppu = this._camera.pixelsPerUnit;
-    const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
-
-    console.log("[Camera2DController] Zoom", {
-      delta,
-      deltaY: event.deltaY,
-      deltaZ: event.deltaZ,
-      deltaMode: event.deltaMode,
-      isPinchGesture,
-      sensitivity,
-      zoomScale,
-      oldZoom,
-      newZoom,
-      halfHeight,
-      projection: {
-        left: -halfHeight * aspect,
-        right: halfHeight * aspect,
-        top: halfHeight,
-        bottom: -halfHeight,
-      },
-    });
-
-    this._camera.projection.update({
-      mode: ProjectionMode.Orthographic,
-      left: -halfHeight * aspect,
-      right: halfHeight * aspect,
-      top: halfHeight,
-      bottom: -halfHeight,
-      near: -1000,
-      far: 1000,
-    } as unknown as Parameters<typeof this._camera.projection.update>[0]);
+      console.log("[Camera2DController] Zoom", {
+        delta,
+        deltaY: event.deltaY,
+        deltaZ: event.deltaZ,
+        deltaMode: event.deltaMode,
+        isPinchGesture,
+        sensitivity,
+        zoomScale,
+        oldZoom,
+        newZoom,
+        halfHeight,
+        projection: {
+          left: -halfHeight * aspect,
+          right: halfHeight * aspect,
+          top: halfHeight,
+          bottom: -halfHeight,
+        },
+      });
+    }
 
     event.preventDefault();
   }
@@ -335,22 +361,8 @@ export class Camera2DController implements ICameraController {
 
     if (!this._camera) return;
 
-    const canvas = this._camera.arcanvas?.canvas;
-    if (!canvas) return;
-
-    const aspect = canvas.width / canvas.height;
-    const ppu = this._camera.pixelsPerUnit;
-    const halfHeight = canvas.height / (2 * this._currentZoom * ppu);
-
-    this._camera.projection.update({
-      mode: ProjectionMode.Orthographic,
-      left: -halfHeight * aspect,
-      right: halfHeight * aspect,
-      top: halfHeight,
-      bottom: -halfHeight,
-      near: -1000,
-      far: 1000,
-    } as unknown as Parameters<typeof this._camera.projection.update>[0]);
+    // Update projection bounds
+    this._updateProjection();
   }
 
   private _attachEventListeners(): void {

@@ -8,7 +8,8 @@ import type { Shape3D } from "../../Shape";
  */
 export class Polygon3DOutlineBuilder implements MeshBuilder<Shape3D> {
   build(shape: Shape3D): MeshBuildResult {
-    const vertices: Float32Array = shape.points;
+    // Shape3D.points is guaranteed to be Float32Array
+    const vertices = (shape as { points: Float32Array }).points;
     const vertexCount = vertices.length / 3;
 
     // Create line indices for a closed loop: [0,1, 1,2, 2,3, ..., n-1,0]

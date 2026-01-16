@@ -4,6 +4,7 @@ export * from "./Renderer";
 export * from "./createBackend";
 export * from "./materials";
 export * from "./materials/GridMaterial";
+export * from "./shaders";
 export * from "./vertexLayout";
 export * from "./backends/WebGLBackend";
 export * from "./backends/Canvas2DBackend";

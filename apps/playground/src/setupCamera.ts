@@ -19,6 +19,7 @@ export function setupCamera(arc: Arcanvas): CameraSetup {
 
   // Create and attach 2D camera controller for pan and zoom
   const controller = new Camera2DController();
+  controller.zoom = 0.1;
 
   console.log("[Playground] Setting up camera controller...");
   console.log("[Playground] Camera:", camera);
