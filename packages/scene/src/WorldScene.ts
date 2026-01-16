@@ -58,12 +58,31 @@ export class WorldScene extends Entity {
   /**
    * Gets all renderable objects in the scene.
    * Uses duck typing to identify objects with mesh and material properties.
+   * Returns objects in the format expected by WorldRenderer.
    */
-  get renderObjects(): (Entity & Renderable)[] {
-    const items: (Entity & Renderable)[] = [];
+  get renderObjects(): Array<{
+    mesh: unknown;
+    material: unknown;
+    transform: { modelMatrix: Float32Array };
+    worldPosition?: WorldVec3;
+  }> {
+    const items: Array<{
+      mesh: unknown;
+      material: unknown;
+      transform: { modelMatrix: Float32Array };
+      worldPosition?: WorldVec3;
+    }> = [];
     this.traverse((node) => {
       if (node !== this && this.isRenderable(node)) {
-        items.push(node);
+        const renderable = node as Entity & Renderable & { transform?: { modelMatrix: Float32Array }; worldPosition?: WorldVec3 };
+        if (renderable.transform && "modelMatrix" in renderable.transform) {
+          items.push({
+            mesh: renderable.mesh,
+            material: renderable.material,
+            transform: { modelMatrix: renderable.transform.modelMatrix },
+            worldPosition: renderable.worldPosition,
+          });
+        }
       }
     });
     return items;
