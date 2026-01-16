@@ -94,6 +94,7 @@ The `package.json` includes several helper scripts for development:
 | Script                 | Description                                                                         |
 | :--------------------- | :---------------------------------------------------------------------------------- |
 | `bun run play`         | Starts the playground server (`apps/playground/server.ts`) for interactive testing. |
+| `bun run story`        | Starts the Storybook web server (`apps/storybook`) for component documentation.     |
 | `bun run lint`         | Runs ESLint across the codebase to identify code quality issues.                    |
 | `bun run lint:fix`     | Runs ESLint and automatically fixes auto-fixable problems.                          |
 | `bun run format`       | Checks code formatting against Prettier rules.                                      |
