@@ -93,28 +93,49 @@ export class TransformationMatrix extends Matrix4 {
   rotateX(rad: number): this {
     const c = Math.cos(rad);
     const s = Math.sin(rad);
-    this._data[4] = c;
-    this._data[5] = -s;
-    this._data[6] = s;
-    this._data[7] = 0;
+    // Rotation around X-axis:
+    // [1   0    0   0]
+    // [0   c   -s   0]
+    // [0   s    c   0]
+    // [0   0    0   1]
+    // Row-major indices: row 1 at [4,5,6,7], row 2 at [8,9,10,11]
+    this._data[5] = c;
+    this._data[6] = -s;
+    this._data[9] = s;
+    this._data[10] = c;
+    // Preserve translation Y at [7] and translation Z at [11]
     return this;
   }
   rotateY(rad: number): this {
     const c = Math.cos(rad);
     const s = Math.sin(rad);
-    this._data[8] = c;
-    this._data[9] = -s;
-    this._data[10] = s;
-    this._data[11] = 0;
+    // Rotation around Y-axis:
+    // [c   0   s   0]
+    // [0   1   0   0]
+    // [-s  0   c   0]
+    // [0   0   0   1]
+    // Row-major indices: row 0 at [0,1,2,3], row 2 at [8,9,10,11]
+    this._data[0] = c;
+    this._data[2] = s;
+    this._data[8] = -s;
+    this._data[10] = c;
+    // Preserve translation X at [3] and translation Z at [11]
     return this;
   }
   rotateZ(rad: number): this {
     const c = Math.cos(rad);
     const s = Math.sin(rad);
+    // Rotation around Z-axis:
+    // [c  -s   0   0]
+    // [s   c   0   0]
+    // [0   0   1   0]
+    // [0   0   0   1]
+    // Row-major indices: row 0 at [0,1,2,3], row 1 at [4,5,6,7]
     this._data[0] = c;
     this._data[1] = -s;
-    this._data[2] = s;
-    this._data[3] = 0;
+    this._data[4] = s;
+    this._data[5] = c;
+    // Preserve translation X at [3] and translation Y at [7]
     return this;
   }
 

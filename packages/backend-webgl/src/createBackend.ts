@@ -10,10 +10,18 @@ export type BackendType = "webgl" | "webgl2";
  * Creates a render backend for the given canvas.
  */
 export function createBackend(target: HTMLCanvasElement, type: BackendType = "webgl"): IRenderBackend {
-  // Try to get WebGL2 context first, fall back to WebGL1
-  const gl = target.getContext("webgl2") || target.getContext("webgl");
+  let gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+
+  if (type === "webgl2") {
+    // Try WebGL2 first, fall back to WebGL1 if not available
+    gl = target.getContext("webgl2") || target.getContext("webgl");
+  } else {
+    // Only try WebGL1 when explicitly requested
+    gl = target.getContext("webgl");
+  }
+
   if (!gl) {
-    throw new Error("WebGL is not supported in this browser");
+    throw new Error(`WebGL${type === "webgl2" ? "2" : ""} is not supported in this browser`);
   }
 
   return new WebGLBackend(gl);

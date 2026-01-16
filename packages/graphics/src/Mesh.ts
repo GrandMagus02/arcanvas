@@ -79,6 +79,11 @@ export class Mesh {
    * Creates a copy of this mesh.
    */
   clone(): Mesh {
-    return new Mesh(new Float32Array(this._vertices), this._indices instanceof Uint32Array ? new Uint32Array(this._indices) : new Uint16Array(this._indices), { ...this._layout }, this._drawMode);
+    // Deep copy the layout to avoid sharing the attributes array
+    const clonedLayout: VertexLayout = {
+      stride: this._layout.stride,
+      attributes: this._layout.attributes.map((attr) => ({ ...attr })),
+    };
+    return new Mesh(new Float32Array(this._vertices), this._indices instanceof Uint32Array ? new Uint32Array(this._indices) : new Uint16Array(this._indices), clonedLayout, this._drawMode);
   }
 }
