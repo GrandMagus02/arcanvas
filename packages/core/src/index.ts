@@ -29,10 +29,10 @@ export * from "./plugins";
 export * from "./rendering";
 
 // Scene (Stage for UI/Editor mode)
+// Note: Entity, TreeNode, etc. are exported from @arcanvas/scene, not from here
+// Only Stage and Mesh are specific to core package
 export * from "./scene/Stage";
-export * from "./scene/Entity";
 export * from "./scene/Mesh";
-export * from "./scene/graph/TreeNode";
 
 // Systems
 export * from "./systems";

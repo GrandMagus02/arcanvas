@@ -9,7 +9,7 @@ const config: StorybookConfig = {
     name: "@storybook/html-vite",
     options: {},
   },
-  async viteFinal(config) {
+  viteFinal(config) {
     return mergeConfig(config, {
       resolve: {
         alias: {
@@ -26,15 +26,7 @@ const config: StorybookConfig = {
         },
       },
       optimizeDeps: {
-        exclude: [
-          "@arcanvas/core",
-          "@arcanvas/matrix",
-          "@arcanvas/vector",
-          "@arcanvas/document",
-          "@arcanvas/feature-document-2d",
-          "@arcanvas/graphics",
-          "@arcanvas/scene",
-        ],
+        exclude: ["@arcanvas/core", "@arcanvas/matrix", "@arcanvas/vector", "@arcanvas/document", "@arcanvas/feature-document-2d", "@arcanvas/graphics", "@arcanvas/scene"],
         esbuildOptions: {
           target: "es2020",
         },

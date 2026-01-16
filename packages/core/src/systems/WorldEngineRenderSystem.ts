@@ -1,7 +1,7 @@
 import type { Camera } from "../camera/Camera";
 import type { WorldCamera } from "../camera/WorldCamera";
 import type { WorldScene } from "@arcanvas/scene";
-import type { IRenderBackend } from "@arcanvas/graphics";
+import type { IRenderBackend, WorldRenderableScene, WorldRenderableCamera } from "@arcanvas/graphics";
 import { WorldRenderer } from "@arcanvas/graphics";
 import { createBackend, type BackendType } from "@arcanvas/backend-webgl";
 
@@ -83,8 +83,8 @@ export class WorldEngineRenderSystem {
    * Renders a single frame.
    */
   renderOnce(): void {
-    // Cast to any to satisfy type system - WorldScene implements WorldRenderableScene
-    this.renderer.render(this._scene as any, this._camera as any);
+    // Type assertion: WorldScene implements WorldRenderableScene, WorldCamera implements WorldRenderableCamera
+    this.renderer.render(this._scene as unknown as WorldRenderableScene, this._camera as unknown as WorldRenderableCamera);
   }
 
   /**

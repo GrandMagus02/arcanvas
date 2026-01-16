@@ -23,7 +23,7 @@ export class RasterLayerRenderer {
       if (imageBitmap) {
         return ctx.createTexture(imageBitmap, layer.width, layer.height);
       }
-    } catch (e) {
+    } catch {
       // Fallback: create ImageBitmap from canvas using createImageBitmap
       // This requires async operation, so for MVP we'll return null and handle it differently
     }
@@ -42,7 +42,8 @@ export class VectorLayerRenderer {
    * Render a vector layer to a texture.
    * For MVP, this creates a temporary canvas, draws the vector shapes, and converts to texture.
    */
-  renderToTexture(layer: VectorLayer, ctx: IRenderContext): TextureHandle | null {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  renderToTexture(_layer: VectorLayer, _ctx: IRenderContext): TextureHandle | null {
     // For MVP, vector layers are not yet fully implemented
     // This is a placeholder for Phase 3
     return null;

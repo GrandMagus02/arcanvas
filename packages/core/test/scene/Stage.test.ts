@@ -145,7 +145,6 @@ describe("Stage", () => {
       const stage = new Stage(mockContext);
       const parent = new TestMesh(new Float32Array([0]), new Uint16Array([0]));
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       parent.add(stage);
       expect(stage.parent).toBe(parent);
 
@@ -191,7 +190,7 @@ describe("Stage", () => {
       };
 
       // Override render method to track calls
-      const originalRender = Mesh.prototype.render as (this: Mesh, ctx: IRenderContext) => void;
+      const originalRender = Mesh.prototype.render.bind(Mesh.prototype) as (this: Mesh, ctx: IRenderContext) => void;
 
       Mesh.prototype.render = function (this: Mesh, ctx: IRenderContext) {
         renderCallCount++;
@@ -246,7 +245,7 @@ describe("Stage", () => {
         getWebGLContext: () => null,
       };
 
-      const originalRender = Mesh.prototype.render as (this: Mesh, ctx: IRenderContext) => void;
+      const originalRender = Mesh.prototype.render.bind(Mesh.prototype) as (this: Mesh, ctx: IRenderContext) => void;
 
       Mesh.prototype.render = function (this: Mesh) {
         renderCallCount++;
@@ -301,7 +300,7 @@ describe("Stage", () => {
       const mesh2 = new TestMesh(new Float32Array([2]), new Uint16Array([2]));
 
       stage.add(group);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       group.add(mesh1).add(mesh2);
 
       expect(stage.children).toEqual([group]);

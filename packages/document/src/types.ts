@@ -1,3 +1,6 @@
+/**
+ * Type representing different layer types in a document.
+ */
 export type LayerType = "raster" | "vector" | "text" | "group" | "adjustment";
 
 export type { BaseLayer, GroupLayer, RasterLayer, VectorLayer, TextLayer, AdjustmentLayer } from "./Layer";

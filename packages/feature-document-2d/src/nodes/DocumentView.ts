@@ -41,7 +41,7 @@ export class DocumentView extends Entity {
    * Syncs layer nodes with document layers.
    */
   syncLayers(): void {
-    const existingIds = new Set(this.layerNodes.keys());
+    // Note: existingIds tracking removed as it's not currently used
     const documentLayers = this.collectLayers(this.document.root);
 
     // Remove nodes for layers that no longer exist

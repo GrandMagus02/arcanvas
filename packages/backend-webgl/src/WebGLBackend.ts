@@ -95,19 +95,19 @@ export class WebGLBackend implements IRenderBackend {
         this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
       }
     }
-    
+
     // Handle blend modes for LayerMaterial
-    if ("blendMode" in material && typeof (material as any).blendMode === "string") {
-      this.setBlendMode((material as any).blendMode);
+    if ("blendMode" in material && typeof (material as { blendMode?: string }).blendMode === "string") {
+      this.setBlendMode((material as { blendMode: string }).blendMode);
     }
   }
-  
+
   private setBlendMode(blendMode: string): void {
     // WebGL blend equations and functions
     // For Normal mode, use standard alpha blending
     // For Multiply, Screen, Overlay - we need shader-based blending
     // For MVP, we'll use blend equations where possible
-    
+
     switch (blendMode) {
       case "normal":
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
@@ -173,7 +173,7 @@ export class WebGLBackend implements IRenderBackend {
 
       const positionLoc = this.gl.getAttribLocation(program, "a_position");
       const uvLoc = this.gl.getAttribLocation(program, "a_uv");
-      
+
       programInfo = {
         program,
         attribLocation: positionLoc,
@@ -195,12 +195,16 @@ export class WebGLBackend implements IRenderBackend {
       const stride = mesh.layout.stride;
       this.gl.vertexAttribPointer(programInfo.attribLocation, drawConfig.positionComponents, this.gl.FLOAT, false, stride, 0);
     }
-    
+
     // Bind UV attribute if present
     if (programInfo.uvLocation !== undefined && programInfo.uvLocation >= 0) {
       this.gl.enableVertexAttribArray(programInfo.uvLocation);
       const stride = mesh.layout.stride;
-      const uvOffset = mesh.layout.attributes.find(attr => attr.semantic === "uv" || attr.semantic === "texcoord")?.offset ?? drawConfig.positionComponents * 4;
+      const uvAttr = mesh.layout.attributes.find((attr) => {
+        const semantic = attr.semantic;
+        return semantic === "uv" || (semantic as string) === "texcoord" || (semantic as string) === "texture";
+      });
+      const uvOffset = uvAttr?.offset ?? drawConfig.positionComponents * 4;
       this.gl.vertexAttribPointer(programInfo.uvLocation, 2, this.gl.FLOAT, false, stride, uvOffset);
     }
 

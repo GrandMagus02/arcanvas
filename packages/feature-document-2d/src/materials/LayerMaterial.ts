@@ -1,7 +1,7 @@
 import type { BaseMaterial } from "@arcanvas/graphics";
 import type { TextureRef } from "@arcanvas/graphics";
 import { BlendMode } from "@arcanvas/document";
-import type { ShaderProvider, ShaderSource, CustomDrawConfig, UniformContext } from "@arcanvas/backend-webgl";
+import type { ShaderProvider, ShaderSource, CustomDrawConfig } from "@arcanvas/backend-webgl";
 
 /**
  * Material for rendering a document layer with blend mode and opacity support.
@@ -66,33 +66,33 @@ export class LayerMaterial implements BaseMaterial, ShaderProvider {
       disableDepthWrite: true, // Layers should composite, not write depth
       setUniforms: (gl, program, material, context) => {
         const layerMat = material as LayerMaterial;
-        
+
         // Set texture
         const textureLoc = gl.getUniformLocation(program, "u_texture");
         const opacityLoc = gl.getUniformLocation(program, "u_opacity");
         const blendModeLoc = gl.getUniformLocation(program, "u_blendMode");
-        
+
         if (opacityLoc !== null) {
           gl.uniform1f(opacityLoc, layerMat.opacity);
         }
-        
+
         if (blendModeLoc !== null) {
           // Map blend mode to integer for shader
           const blendModeValue = this.getBlendModeValue(layerMat.blendMode);
           gl.uniform1i(blendModeLoc, blendModeValue);
         }
-        
+
         // Bind texture if available
         if (layerMat.baseColorTexture && textureLoc !== null) {
           // Texture should be bound by the backend's prepareMaterial
           gl.uniform1i(textureLoc, 0); // Use texture unit 0
         }
-        
+
         // Set matrices
         const modelLoc = gl.getUniformLocation(program, "u_model");
         const viewLoc = gl.getUniformLocation(program, "u_view");
         const projLoc = gl.getUniformLocation(program, "u_proj");
-        
+
         if (modelLoc !== null) {
           gl.uniformMatrix4fv(modelLoc, false, context.modelMatrix);
         }

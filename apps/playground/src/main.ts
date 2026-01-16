@@ -39,7 +39,7 @@ if (useWorldCoords) {
   const worldSetup = setupWorldCamera(arc);
   camera = worldSetup.camera;
   controller = worldSetup.controller;
-  renderSystem = new WorldEngineRenderSystem(canvas, scene as WorldScene, camera, { backend: "webgl" });
+  renderSystem = new WorldEngineRenderSystem(canvas, scene, camera, { backend: "webgl" });
 } else {
   // Standard mode - uses regular coordinates
   console.log("[Main] Using STANDARD mode");

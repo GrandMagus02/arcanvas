@@ -93,7 +93,8 @@ export class DocumentRenderPass extends RenderPass {
    * Render a single layer node.
    * For MVP, this is a placeholder - actual rendering will be handled by the material system.
    */
-  private renderLayerNode(layerNode: any, ctx: any): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private renderLayerNode(_layerNode: unknown, _ctx: unknown): void {
     // TODO: Implement actual rendering with blend modes
     // This will require shader support for blend modes
     // For now, this is a placeholder

@@ -1,13 +1,13 @@
 import type { Arcanvas } from "@arcanvas/core";
 import { createDocument, createRasterLayer } from "@arcanvas/document";
-import { DocumentRenderPass } from "@arcanvas/feature-document-2d";
 import type { Document } from "@arcanvas/document";
 
 /**
  * Example: Create document, add layers, render.
  * Demonstrates document creation, layer management, and rendering using new packages.
  */
-export function setupDocument(arcanvas: Arcanvas): Document {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function setupDocument(_arc: Arcanvas): Document {
   // Create a document
   const doc = createDocument(800, 600);
 
@@ -46,7 +46,7 @@ export function setupDocument(arcanvas: Arcanvas): Document {
   doc.setLayerOpacity(foregroundLayer.id, 0.8);
 
   // Create document render pass and add to render graph
-  const documentPass = new DocumentRenderPass(doc);
+  // const documentPass = new DocumentRenderPass(doc);
   // Note: In a real implementation, you would add this to the render graph
   // For now, this demonstrates the API
 

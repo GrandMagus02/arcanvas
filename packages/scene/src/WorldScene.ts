@@ -63,7 +63,7 @@ export class WorldScene extends Entity {
     const items: (Entity & Renderable)[] = [];
     this.traverse((node) => {
       if (node !== this && this.isRenderable(node)) {
-        items.push(node as Entity & Renderable);
+        items.push(node);
       }
     });
     return items;

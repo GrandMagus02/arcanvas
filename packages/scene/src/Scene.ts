@@ -58,12 +58,28 @@ export class Scene extends Entity {
   /**
    * Gets all renderable objects in the scene.
    * Uses duck typing to identify objects with mesh and material properties.
+   * Returns objects in the format expected by Renderer.
    */
-  get renderObjects(): (Entity & Renderable)[] {
-    const items: (Entity & Renderable)[] = [];
+  get renderObjects(): Array<{
+    mesh: unknown;
+    material: unknown;
+    transform: { modelMatrix: Float32Array };
+  }> {
+    const items: Array<{
+      mesh: unknown;
+      material: unknown;
+      transform: { modelMatrix: Float32Array };
+    }> = [];
     this.traverse((node) => {
       if (node !== this && this.isRenderable(node)) {
-        items.push(node as Entity & Renderable);
+        const renderable = node as Entity & Renderable & { transform?: { modelMatrix: Float32Array } };
+        if (renderable.transform && "modelMatrix" in renderable.transform) {
+          items.push({
+            mesh: renderable.mesh,
+            material: renderable.material,
+            transform: { modelMatrix: renderable.transform.modelMatrix },
+          });
+        }
       }
     });
     return items;

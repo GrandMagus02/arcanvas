@@ -16,19 +16,51 @@ export function createQuadMesh(width: number, height: number): Mesh {
   // UV: (0, 0) to (1, 1)
   const vertices = new Float32Array([
     // Bottom-left: position (x, y, z), normal (0, 0, 1), uv (u, v)
-    0, 0, 0, 0, 0, 1, 0, 0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
     // Bottom-right
-    width, 0, 0, 0, 0, 1, 1, 0,
+    width,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
     // Top-right
-    width, height, 0, 0, 0, 1, 1, 1,
+    width,
+    height,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
     // Top-left
-    0, height, 0, 0, 0, 1, 0, 1,
+    0,
+    height,
+    0,
+    0,
+    0,
+    1,
+    0,
+    1,
   ]);
 
   // Indices for two triangles forming the quad
   const indices = new Uint16Array([
-    0, 1, 2, // First triangle
-    0, 2, 3, // Second triangle
+    0,
+    1,
+    2, // First triangle
+    0,
+    2,
+    3, // Second triangle
   ]);
 
   const layout = createPositionNormalUVLayout();

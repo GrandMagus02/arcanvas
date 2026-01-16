@@ -69,7 +69,7 @@ export class LayerRenderCache {
 
     // Get ImageData from the canvas
     const imageData = ctx2d.getImageData(0, 0, layer.width, layer.height);
-    
+
     // Convert ImageData to Uint8Array (RGBA format)
     const rgbaData = new Uint8Array(imageData.data);
 
