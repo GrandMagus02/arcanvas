@@ -1,5 +1,5 @@
 import type { IRenderContext } from "../../rendering/context";
-import FS_SOURCE from "./polygon.frag";
+import type { PolygonFill, PolygonFillUniformLocations } from "./fills/PolygonFill";
 import VS_SOURCE from "./polygon.vert";
 
 /**
@@ -9,13 +9,14 @@ export class PolygonMaterial {
   private _program: WebGLProgram | null = null;
   private _aPosition: number = -1;
   private _uProjection: number | null = null;
+  private _fillUniformLocations: PolygonFillUniformLocations = {};
   private _initialized = false;
 
   /**
    * Initialize the material with shader sources.
    * This should be called once before using the material.
    */
-  async initialize(ctx: IRenderContext): Promise<void> {
+  async initialize(ctx: IRenderContext, fill: PolygonFill): Promise<void> {
     if (this._initialized) return;
 
     const gl = ctx.getWebGLContext();
@@ -28,7 +29,7 @@ export class PolygonMaterial {
 
     // Get shader sources (may need to fetch if URLs)
     let vsSource = VS_SOURCE;
-    let fsSource = FS_SOURCE;
+    let fsSource = fill.getFragmentSource();
 
     // Check if sources are URLs that need fetching
     if (!PolygonMaterial.isInlineSource(vsSource)) {
@@ -40,10 +41,10 @@ export class PolygonMaterial {
 
     // Store shaders in library (optional, for future use)
     shaderLibrary.add("polygon:vs", vsSource);
-    shaderLibrary.add("polygon:fs", fsSource);
+    shaderLibrary.add(`polygon:fs:${fill.getCacheKey()}`, fsSource);
 
     // Get or create program from cache
-    const cacheKey = `polygon:${this.hashShaderSource(vsSource)}:${this.hashShaderSource(fsSource)}`;
+    const cacheKey = `polygon:${this.hashShaderSource(vsSource)}:${this.hashShaderSource(fsSource)}:${fill.getCacheKey()}`;
     this._program = programCache.getOrCreate(gl, cacheKey, vsSource, fsSource);
 
     if (!this._program) {
@@ -53,6 +54,7 @@ export class PolygonMaterial {
     // Cache attribute and uniform locations
     this._aPosition = gl.getAttribLocation(this._program, "a_position");
     this._uProjection = gl.getUniformLocation(this._program, "u_projection") as number | null;
+    this._fillUniformLocations = fill.getUniformLocations(gl, this._program);
 
     if (this._aPosition < 0) {
       console.warn("[PolygonMaterial] Attribute a_position not found in shader");
@@ -67,7 +69,7 @@ export class PolygonMaterial {
   /**
    * Bind the material: activate program, set uniforms, enable attributes.
    */
-  bind(ctx: IRenderContext, viewProjectionMatrix: Float32Array | null): void {
+  bind(ctx: IRenderContext, viewProjectionMatrix: Float32Array | null, fill: PolygonFill): void {
     const gl = ctx.getWebGLContext();
     if (!gl || !this._program) {
       throw new Error("PolygonMaterial not initialized or WebGL context unavailable");
@@ -77,7 +79,7 @@ export class PolygonMaterial {
     ctx.useProgram(this._program);
 
     // Set view-projection matrix uniform
-    if (this._uProjection) {
+    if (this._uProjection !== null) {
       if (viewProjectionMatrix) {
         ctx.uniformMatrix4fv(this._uProjection, false, viewProjectionMatrix);
       } else {
@@ -86,6 +88,8 @@ export class PolygonMaterial {
         ctx.uniformMatrix4fv(this._uProjection, false, identity);
       }
     }
+
+    fill.applyUniforms(ctx, this._fillUniformLocations);
 
     // Enable and set up vertex attribute
     if (this._aPosition >= 0) {

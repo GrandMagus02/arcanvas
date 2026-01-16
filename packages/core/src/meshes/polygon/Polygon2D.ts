@@ -4,9 +4,18 @@ import type { PointsArray } from "../../utils/PointUtils";
 import { PolygonMesh } from "./PolygonMesh";
 
 /**
+ * Options for creating a Polygon2D.
+ */
+export interface Polygon2DOptions {
+  /**
+   * The Z-index of the polygon.
+   */
+  zIndex?: number;
+}
+
+/**
  * A 2D Polygon mesh defined by a list of points.
  * Automatically triangulates the polygon using a triangle fan from the centroid.
- * @deprecated Use PolygonMesh instead.
  */
 export class Polygon2D extends PolygonMesh {
   /**
@@ -15,11 +24,11 @@ export class Polygon2D extends PolygonMesh {
    *                 If a flat array has odd length, the last value is treated as X and Y defaults to 0.
    * @param z - The Z-coordinate for all points (defaults to 0).
    */
-  constructor(points: PointsArray, z: number = 0) {
+  constructor(points: PointsArray, options?: Polygon2DOptions) {
     const result: MeshBuildResult = PolygonGeometry.build(points, {
       space: PolygonSpace.Space2D,
       mode: PolygonBuildMode.FillFan,
-      z,
+      zIndex: options?.zIndex ?? 0,
     });
     super(result.vertices, result.indices);
   }

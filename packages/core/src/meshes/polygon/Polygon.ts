@@ -6,7 +6,6 @@ import { PolygonMesh } from "./PolygonMesh";
 /**
  * A 3D Polygon mesh defined by a list of points.
  * Points can be provided as a flat array [x0, y0, z0, x1, y1, z1, ...] or as 2D points [x0, y0, x1, y1, ...] with z=0.
- * @deprecated Use PolygonMesh instead.
  */
 export class Polygon extends PolygonMesh {
   /**

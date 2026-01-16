@@ -34,8 +34,8 @@ export enum PolygonBuildMode {
 export interface PolygonGeometryOptions {
   /** Space/dimension mode (default: Auto) */
   space?: PolygonSpace;
-  /** Z coordinate for 2D polygons (default: 0) */
-  z?: number;
+  /** Z-index for 2D polygons (default: 0) */
+  zIndex?: number;
   /** Build mode (default: Outline) */
   mode?: PolygonBuildMode;
 }
@@ -52,10 +52,10 @@ export class PolygonGeometry {
    * @returns Mesh build result with vertices and indices
    */
   static build(points: PointsArray | number[], options?: PolygonGeometryOptions): MeshBuildResult {
-    const { space = PolygonSpace.Auto, z = 0, mode = PolygonBuildMode.Outline } = options ?? {};
+    const { space = PolygonSpace.Auto, zIndex = 0, mode = PolygonBuildMode.Outline } = options ?? {};
 
-    const shape = PolygonGeometry.createShape(points, space, z);
-    const builder = PolygonGeometry.pickBuilder(shape, mode, z);
+    const shape = PolygonGeometry.createShape(points, space, zIndex);
+    const builder = PolygonGeometry.pickBuilder(shape, mode, zIndex);
     if (shape.dim === 2) {
       return (builder as MeshBuilder<Shape2D>).build(shape) as MeshBuildResult;
     } else {
@@ -66,12 +66,12 @@ export class PolygonGeometry {
   /**
    * Create a shape from points based on space mode.
    */
-  private static createShape(points: PointsArray | number[], space: PolygonSpace, z: number): Shape2D | Shape3D {
+  private static createShape(points: PointsArray | number[], space: PolygonSpace, zIndex: number): Shape2D | Shape3D {
     if (space === PolygonSpace.Space2D) {
       return new PolygonShape2D(points);
     }
     if (space === PolygonSpace.Space3D) {
-      return new PolygonShape3D(points as number[], z);
+      return new PolygonShape3D(points as number[], zIndex);
     }
 
     // Auto: detect based on input format
@@ -85,7 +85,7 @@ export class PolygonGeometry {
         const flat = points as number[];
         if (flat.length % 3 === 0) {
           // Length divisible by 3 -> 3D
-          return new PolygonShape3D(flat, z);
+          return new PolygonShape3D(flat, zIndex);
         }
         // Otherwise -> 2D
         return new PolygonShape2D(flat);
@@ -99,12 +99,12 @@ export class PolygonGeometry {
   /**
    * Pick the appropriate builder based on shape dimension and mode.
    */
-  private static pickBuilder(shape: Shape2D | Shape3D, mode: PolygonBuildMode, z: number): MeshBuilder<Shape2D> | MeshBuilder<Shape3D> {
+  private static pickBuilder(shape: Shape2D | Shape3D, mode: PolygonBuildMode, zIndex: number): MeshBuilder<Shape2D> | MeshBuilder<Shape3D> {
     if (shape.dim === 2) {
       if (mode === PolygonBuildMode.FillFan) {
-        return new Polygon2DFanBuilder(z);
+        return new Polygon2DFanBuilder(zIndex);
       }
-      return new Polygon2DOutlineBuilder(z);
+      return new Polygon2DOutlineBuilder(zIndex);
     } else {
       // dim === 3
       // For 3D, only outline mode is currently supported
