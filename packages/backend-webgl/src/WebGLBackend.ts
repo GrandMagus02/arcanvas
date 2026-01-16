@@ -1,7 +1,7 @@
-import type { IRenderBackend, DrawArgs, Mesh, BaseMaterial, VertexAttributeDesc } from "@arcanvas/graphics";
+import type { BaseMaterial, DrawArgs, IRenderBackend, Mesh, VertexAttributeDesc } from "@arcanvas/graphics";
 import { ProgramCache } from "./ProgramCache";
-import { ShaderRegistry } from "./ShaderRegistry";
 import { isShaderProvider, type UniformContext } from "./ShaderProvider";
+import { ShaderRegistry } from "./ShaderRegistry";
 
 interface MeshCacheEntry {
   vertexBuffer: WebGLBuffer;

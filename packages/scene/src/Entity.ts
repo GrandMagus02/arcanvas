@@ -1,5 +1,5 @@
-import type { Identifiable, Named, Cloneable, JSONSerializable } from "./interfaces";
 import { TreeNode, TreeNodeCycleError, TreeNodeSelfAttachmentError } from "./graph/TreeNode";
+import type { Cloneable, Identifiable, JSONSerializable, Named } from "./interfaces";
 import { uuid } from "./utils/uuid";
 
 /**

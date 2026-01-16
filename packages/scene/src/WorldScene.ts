@@ -1,8 +1,8 @@
 import { Entity } from "./Entity";
 import { Light } from "./Light";
 import type { Renderable } from "./Scene";
-import { WorldVec3 } from "./utils/WorldVec3";
 import { WorldOrigin, type WorldOriginOptions, type WorldPositioned } from "./utils/WorldOrigin";
+import { WorldVec3 } from "./utils/WorldVec3";
 
 /**
  * Scene viewport dimensions.
