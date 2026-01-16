@@ -17,14 +17,30 @@ These packages have zero dependencies on the engine and can be used in any proje
 
 ### Core & Abstractions
 
-- **`@arcanvas/core`**: The "Glue". Handles lifecycle, dependency injection, typed event bus, and plugin management.
-- **`@arcanvas/scene`**: (Part of Core) Abstract Scene Graph nodes, transforms, and hierarchy management.
-- **`@arcanvas/rendering`**: (Part of Core) Interfaces for Renderers (`IRenderer`) and Backends (`IRenderBackend`).
+- **`@arcanvas/core`**: The "Glue". Minimal orchestrator handling lifecycle, dependency injection, typed event bus, camera system, and plugin management.
+- **`@arcanvas/scene`**: Scene graph abstractions - TreeNode, Entity, Transform, Scene, WorldScene with floating origin support.
+- **`@arcanvas/graphics`**: Graphics primitives - Mesh, Material, RenderObject, IRenderBackend interface, Renderer.
+- **`@arcanvas/backend-webgl`**: WebGL2 implementation of IRenderBackend - WebGLBackend, ProgramCache, ShaderRegistry.
 
-### Implementations
+### Feature Packages
 
-- **Backend Implementations**: WebGL2 is currently implemented; WebGPU and Canvas2D are planned.
-- **Feature Sets**: 2D and 3D logic are separated into features/plugins to keep the core lightweight.
+- **`@arcanvas/feature-2d`**: 2D rendering features - GridObject, Polygon2DObject, PolygonObject, geometry utilities.
+- **`@arcanvas/feature-3d`**: (Planned) 3D rendering features - 3D meshes, materials, etc.
+
+### Convenience Packages (All-in-One)
+
+For end users who want a single import:
+
+- **`@arcanvas/engine-2d`**: Complete 2D engine - re-exports from core, scene, graphics, backend-webgl, feature-2d.
+- **`@arcanvas/engine-3d`**: Complete 3D engine - re-exports from core, scene, graphics, backend-webgl (feature-3d when ready).
+
+### Tree-Shaking Support
+
+All packages are optimized for tree-shaking:
+- ✅ ESM-only exports (`"type": "module"`)
+- ✅ `sideEffects: false` in package.json (or minimal side-effect lists)
+- ✅ No global side effects on import
+- ✅ Named exports for granular imports
 
 ## Feature Status
 

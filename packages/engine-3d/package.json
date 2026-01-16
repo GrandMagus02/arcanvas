@@ -1,8 +1,8 @@
 {
-  "name": "@arcanvas/core",
-  "version": "0.1.0",
+  "name": "@arcanvas/engine-3d",
+  "version": "0.0.0",
   "type": "module",
-  "description": "Core orchestrator for Arcanvas - Events, Plugins, Camera, Lifecycle",
+  "description": "Complete 3D canvas engine - all-in-one package for 3D rendering",
   "module": "./index.ts",
   "sideEffects": false,
   "exports": {
@@ -12,10 +12,9 @@
     }
   },
   "dependencies": {
-    "@arcanvas/math": "workspace:*",
+    "@arcanvas/core": "workspace:*",
     "@arcanvas/scene": "workspace:*",
     "@arcanvas/graphics": "workspace:*",
-    "@arcanvas/backend-webgl": "workspace:*",
-    "@arcanvas/feature-2d": "workspace:*"
+    "@arcanvas/backend-webgl": "workspace:*"
   }
 }

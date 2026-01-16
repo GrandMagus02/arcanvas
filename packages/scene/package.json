@@ -1,0 +1,17 @@
+{
+  "name": "@arcanvas/scene",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Scene graph abstractions for Arcanvas - Node, Entity, Transform, Scene",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@arcanvas/math": "workspace:*"
+  }
+}

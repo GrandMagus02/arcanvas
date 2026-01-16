@@ -1,4 +1,7 @@
-import { Arcanvas, GridObject, Polygon2DObject, PolygonObject, Scene, UnlitColorMaterial } from "@arcanvas/core";
+import { Arcanvas } from "@arcanvas/core";
+import { GridObject, Polygon2DObject, PolygonObject } from "@arcanvas/feature-2d";
+import { UnlitColorMaterial } from "@arcanvas/graphics";
+import { Scene } from "@arcanvas/scene";
 
 /**
  * Setup scene.

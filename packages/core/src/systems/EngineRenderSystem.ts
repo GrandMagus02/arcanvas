@@ -1,11 +1,11 @@
 import type { Camera } from "../camera/Camera";
-import type { Scene } from "../scene/Scene";
-import { Renderer } from "../rendering/engine/Renderer";
-import type { IRenderBackend } from "../rendering/engine/IRenderBackend";
-import { createBackend, type BackendType } from "../rendering/engine/createBackend";
+import type { Scene } from "@arcanvas/scene";
+import { Renderer } from "@arcanvas/graphics";
+import type { IRenderBackend } from "@arcanvas/graphics";
+import { createBackend, type BackendType } from "@arcanvas/backend-webgl";
 
 /**
- *
+ * Options for EngineRenderSystem.
  */
 export interface EngineRenderSystemOptions {
   backend: BackendType;

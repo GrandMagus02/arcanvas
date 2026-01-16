@@ -1,10 +1,12 @@
 {
-  "name": "@arcanvas/core",
-  "version": "0.1.0",
+  "name": "@arcanvas/feature-2d",
+  "version": "0.0.0",
   "type": "module",
-  "description": "Core orchestrator for Arcanvas - Events, Plugins, Camera, Lifecycle",
+  "description": "2D rendering features for Arcanvas - Grid, Polygon2D",
   "module": "./index.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/meshes/grid/GridMaterial.ts"
+  ],
   "exports": {
     ".": {
       "types": "./index.ts",
@@ -15,7 +17,6 @@
     "@arcanvas/math": "workspace:*",
     "@arcanvas/scene": "workspace:*",
     "@arcanvas/graphics": "workspace:*",
-    "@arcanvas/backend-webgl": "workspace:*",
-    "@arcanvas/feature-2d": "workspace:*"
+    "@arcanvas/backend-webgl": "workspace:*"
   }
 }
