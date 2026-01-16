@@ -1,8 +1,10 @@
 {
   "name": "@arcanvas/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "description": "Core orchestrator for Arcanvas - Events, Plugins, Camera, Lifecycle",
   "module": "./index.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./index.ts",
@@ -10,7 +12,10 @@
     }
   },
   "dependencies": {
-    "@arcanvas/matrix": "workspace:*",
-    "@arcanvas/vector": "workspace:*"
+    "@arcanvas/math": "workspace:*",
+    "@arcanvas/scene": "workspace:*",
+    "@arcanvas/graphics": "workspace:*",
+    "@arcanvas/backend-webgl": "workspace:*",
+    "@arcanvas/feature-2d": "workspace:*"
   }
 }

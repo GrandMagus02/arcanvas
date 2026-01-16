@@ -1,0 +1,18 @@
+{
+  "name": "@arcanvas/math",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "N-dimensional Vector and Matrix math for Arcanvas",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@arcanvas/vector": "workspace:*",
+    "@arcanvas/matrix": "workspace:*"
+  }
+}

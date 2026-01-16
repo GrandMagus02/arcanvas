@@ -1,4 +1,5 @@
-import { Arcanvas, AutoResizePlugin, EngineRenderSystem, WorldEngineRenderSystem, type Camera, type Scene, type WorldCamera, type WorldScene } from "@arcanvas/core";
+import { Arcanvas, AutoResizePlugin, EngineRenderSystem, WorldEngineRenderSystem, type Camera, type WorldCamera } from "@arcanvas/core";
+import type { Scene, WorldScene } from "@arcanvas/scene";
 import { DebugInfo } from "./DebugInfo";
 import { setupCamera } from "./setupCamera";
 import { setupArcanvasEvents, setupKeyboardControls } from "./setupEvents";

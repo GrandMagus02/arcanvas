@@ -28,6 +28,7 @@
   },
   "scripts": {
     "play": "bun run apps/playground/server.ts",
+    "story": "bun --cwd apps/storybook run storybook",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier -c .",

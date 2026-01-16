@@ -1,4 +1,7 @@
-import { Arcanvas, GridObject, Polygon2DObject, PolygonObject, UnlitColorMaterial, WorldScene } from "@arcanvas/core";
+import { Arcanvas } from "@arcanvas/core";
+import { WorldScene } from "@arcanvas/scene";
+import { UnlitColorMaterial } from "@arcanvas/graphics";
+import { GridObject, Polygon2DObject, PolygonObject } from "@arcanvas/feature-2d";
 
 /**
  * Setup scene using WorldScene for large coordinate testing.

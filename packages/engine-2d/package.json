@@ -1,0 +1,21 @@
+{
+  "name": "@arcanvas/engine-2d",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Complete 2D canvas engine - all-in-one package for 2D rendering",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@arcanvas/core": "workspace:*",
+    "@arcanvas/scene": "workspace:*",
+    "@arcanvas/graphics": "workspace:*",
+    "@arcanvas/backend-webgl": "workspace:*",
+    "@arcanvas/feature-2d": "workspace:*"
+  }
+}

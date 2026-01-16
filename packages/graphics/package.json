@@ -1,0 +1,17 @@
+{
+  "name": "@arcanvas/graphics",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Graphics primitives for Arcanvas - Mesh, Material, RenderObject",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@arcanvas/scene": "workspace:*"
+  }
+}
