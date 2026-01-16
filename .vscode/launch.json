@@ -16,6 +16,13 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "Storybook dev (Bun)",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "bun run storybook",
+            "cwd": "${workspaceFolder}/apps/storybook"
+        },
+        {
             "name": "Playground dev (Bun, inspect)",
             "type": "node",
             "request": "launch",
