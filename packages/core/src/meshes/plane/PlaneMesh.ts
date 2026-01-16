@@ -1,8 +1,20 @@
 import type { IRenderContext } from "../../rendering/context";
 import { Mesh } from "../../scene/Mesh";
 import { TransformationMatrix } from "../../utils/TransformationMatrix";
-import FS_SOURCE from "./plane.frag";
-import VS_SOURCE from "./plane.vert";
+
+const VS_SOURCE = `attribute vec3 a_position;
+uniform mat4 u_projection;
+
+void main() {
+  vec4 pos = u_projection * vec4(a_position.x, a_position.y, a_position.z, 1.0);
+  gl_Position = pos;
+}`;
+
+const FS_SOURCE = `precision mediump float;
+
+void main() {
+  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}`;
 
 /**
  *

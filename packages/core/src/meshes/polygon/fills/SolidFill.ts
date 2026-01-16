@@ -1,6 +1,13 @@
 import type { IRenderContext } from "../../../rendering/context";
 import type { PolygonFill, PolygonFillUniformLocations } from "./PolygonFill";
-import FRAG_SOURCE from "../polygon.frag";
+
+const FRAG_SOURCE = `precision mediump float;
+
+uniform vec4 u_color;
+
+void main() {
+  gl_FragColor = u_color;
+}`;
 
 /**
  *

@@ -1,6 +1,13 @@
 import type { IRenderContext } from "../../rendering/context";
 import type { PolygonFill, PolygonFillUniformLocations } from "./fills/PolygonFill";
-import VS_SOURCE from "./polygon.vert";
+
+const VS_SOURCE = `attribute vec3 a_position;
+uniform mat4 u_projection;
+
+void main() {
+  vec4 pos = u_projection * vec4(a_position.x, a_position.y, a_position.z, 1.0);
+  gl_Position = pos;
+}`;
 
 /**
  * Material for polygon meshes that manages shader program and cached locations.
