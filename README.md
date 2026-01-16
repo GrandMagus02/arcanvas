@@ -26,31 +26,42 @@ These packages have zero dependencies on the engine and can be used in any proje
 - **Backend Implementations**: WebGL2 is currently implemented; WebGPU and Canvas2D are planned.
 - **Feature Sets**: 2D and 3D logic are separated into features/plugins to keep the core lightweight.
 
-## Milestones
+## Feature Status
 
-### Core Foundation
+### Legend
 
-- [x] **Event Bus**: Typed, decoupled pub/sub system.
-- [x] **Service Locator**: Dependency injection system for loosely coupled modules.
-- [x] **Plugin System**: Lifecycle management for extensions.
-- [x] **Math Libraries**: Vector and Matrix math packages.
-- [x] **Color Library**: Core color structures and conversions.
+| Status          | Color | Description                                     |
+| :-------------- | :---: | :---------------------------------------------- |
+| **Not Started** |  🟥   | Planned but no code written yet.                |
+| **Concept**     |  🟧   | Design/Architecture phase, no implementation.   |
+| **In Progress** |  🟨   | Implementation started, but incomplete.         |
+| **MVP**         |  🟩   | Basic functionality working, may lack features. |
+| **Polished**    |  🟦   | Feature complete, tested, and stable.           |
+| **Optimized**   |  🟪   | Highly optimized, production-ready.             |
 
-### Scene & Rendering
+### Development Roadmap
 
-- [x] **Scene Graph**: Hierarchical Node/Entity system with transforms.
-- [x] **Camera System**: Flexible CameraManager with support for multiple controllers.
-- [x] **WebGL Backend**: MVP WebGL2 implementation.
-- [ ] **Render Graph**: Multi-pass rendering pipeline with dependency sorting.
-- [ ] **Dirty Rectangles**: Optimized partial rendering for 2D editors.
-- [ ] **WebGPU Backend**: High-performance next-gen rendering.
-- [ ] **Raymarching**: Support for SDF-based rendering.
-
-### Tools & Interaction
-
-- [ ] **Interaction System**: Raycasting and hit-testing.
-- [ ] **Editor Tools**: Select, Transform, Brush tools (as plugins).
-- [ ] **Large Worlds**: Floating origin support for infinite coordinate systems.
+| Module          | Feature              | Status | Notes                                  |
+| :-------------- | :------------------- | :----: | :------------------------------------- |
+| **Foundation**  | Vector/Matrix Math   |   🟩   | Core N-dimensional math is ready.      |
+|                 | Color Management     |   🟩   | Basic spaces supported, need profiles. |
+| **Core System** | Event Bus            |   🟩   | Typed, decoupled pub/sub system.       |
+|                 | Service Locator (DI) |   🟩   | Dependency injection system.           |
+|                 | Plugin System        |   🟩   | Lifecycle management working.          |
+|                 | Scheduler/Loop       |   🟩   | Basic RAF loop implemented.            |
+| **Scene Graph** | Node Hierarchy       |   🟩   | Parent/Child, Scene root.              |
+|                 | Transform System     |   🟩   | Matrix-based transforms.               |
+|                 | Camera System        |   🟩   | CameraManager, Controllers.            |
+|                 | Large Worlds         |   🟥   | Floating origin / Double precision.    |
+| **Rendering**   | WebGL2 Backend       |   🟩   | Basic mesh rendering working.          |
+|                 | Render Graph         |   🟨   | Pass system designed, partial impl.    |
+|                 | Materials/Shaders    |   🟨   | Basic materials, need ShaderGraph.     |
+|                 | Dirty Rects          |   🟥   | Partial rendering optimization.        |
+|                 | WebGPU Backend       |   🟥   | Planned for future.                    |
+|                 | Raymarching          |   🟥   | SDF rendering support.                 |
+| **Tools**       | Interaction          |   🟥   | Raycasting/Hit-testing.                |
+|                 | Editor Tools         |   🟥   | Select, Brush, Transform tools.        |
+|                 | History/Undo         |   🟥   | Command pattern implementation.        |
 
 ## Getting Started
 
