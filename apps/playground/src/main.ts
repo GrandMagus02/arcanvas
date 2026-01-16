@@ -1,9 +1,9 @@
-import { Arcanvas, AutoResizePlugin, EngineRenderSystem, WorldEngineRenderSystem, type Camera, type WorldCamera, type Scene, type WorldScene } from "@arcanvas/core";
+import { Arcanvas, AutoResizePlugin, EngineRenderSystem, WorldEngineRenderSystem, type Camera, type Scene, type WorldCamera, type WorldScene } from "@arcanvas/core";
 import { DebugInfo } from "./DebugInfo";
 import { setupCamera } from "./setupCamera";
-import { setupWorldCamera } from "./setupWorldCamera";
 import { setupArcanvasEvents, setupKeyboardControls } from "./setupEvents";
 import { setupScene } from "./setupScene";
+import { setupWorldCamera } from "./setupWorldCamera";
 import { setupWorldScene } from "./setupWorldScene";
 
 // Check if we should use world coordinates mode
