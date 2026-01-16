@@ -1,0 +1,46 @@
+---
+description: Architecture, Extensibility, and SOLID Principles for Arcanvas
+globs: packages/**/*, apps/**/*
+alwaysApply: true
+---
+
+# Architecture & Extensibility Principles
+
+## Core Philosophy: "Puzzles and Bricks"
+
+The engine is built as a collection of loose, interchangeable "bricks" (modules/plugins) that fit together to form the "puzzle" (application).
+
+1.  **Everything is Removable**: No feature (2D, 3D, Raymarching, Tools) is hard-coded into the core. If you don't need it, you don't include it.
+2.  **Everything is Replaceable**: Core systems (Renderer, Input, Scene Graph) are defined by **Interfaces**. Default implementations can be completely swapped out via Dependency Injection.
+3.  **Standalone Logic**: Code that can be used without the engine (e.g., Math, Color, Geometry) MUST be in separate, dependency-free packages.
+
+## SOLID Principles
+
+1.  **Single Responsibility (SRP)**: Packages and classes should do one thing.
+    - _Bad_: A `Layer` class that stores data _and_ knows how to render itself to WebGL.
+    - _Good_: A `Layer` data struct, a `LayerRenderer` for drawing, and a `LayerSerializer` for saving.
+2.  **Open/Closed (OCP)**: Extend functionality by adding new classes/plugins, not by modifying existing ones.
+    - _Example_: Add 4D support by creating a `@arcanvas/feature-4d` package with `Mesh4D` and `Renderer4D`, without touching the core rendering loop.
+3.  **Liskov Substitution (LSP)**: Interchangeable parts must behave consistently. A `WebGPURenderer` must fulfill the `IRenderer` contract exactly like the `WebGLRenderer`.
+4.  **Interface Segregation (ISP)**: distinct interfaces for distinct behaviors.
+    - _Example_: `IRenderable`, `ISerializable`, `IInteractive`. Don't force a 3D Mesh to implement `pixelManipulation` methods.
+5.  **Dependency Inversion (DIP)**: High-level modules (Engine) depend on abstractions (Interfaces), not concrete details (WebGL classes).
+
+## Multi-Dimensional & Agnostic Design
+
+1.  **Dimension Agnostic Core**: The core `Node` or `Entity` system should not assume 2D or 3D. Transforms and Bounds should be generic or abstracted where possible.
+2.  **Explicit Dimensions**: 2D, 3D, and 4D logic resides in specific feature packages (`@arcanvas/2d`, `@arcanvas/3d`).
+3.  **Math**: Use generic or generated math libraries that can handle N-dimensions to facilitate easy addition of 4D+ logic.
+
+## Plugin System
+
+1.  **Non-Essential = Plugin**: If the engine can boot without it, it's a plugin.
+    - Tools (Brush, Select) -> Plugins.
+    - File Formats (PSD, PNG) -> Plugins.
+    - UI Overlays -> Plugins.
+2.  **Isolation**: Plugins interact with the core via restricted contexts or the Command Bus, never by direct mutation of private state.
+
+## Implementation Rules
+
+1.  **Web-First but API Agnostic**: Prioritize WebGL/WebGPU, but ensure the `IRenderBackend` allows for CPU Canvas2D or Headless implementations.
+2.  **Data-Oriented**: Prefer simple data structures for scene objects to allow easy processing by Workers or WASM modules.
