@@ -1,8 +1,9 @@
 import { Entity } from "@arcanvas/scene";
-import type { Document, BaseLayer } from "@arcanvas/document";
+import type { Document, BaseLayer, RasterLayer } from "@arcanvas/document";
 import { GroupLayer } from "@arcanvas/document";
 import { LayerNode } from "./LayerNode";
 import { LayerRenderCache } from "../rendering/LayerRenderCache";
+import type { IRenderContext } from "@arcanvas/core";
 
 /**
  * Root view for document rendering (bridges Document to Scene).
@@ -46,7 +47,7 @@ export class DocumentView extends Entity {
     // Remove nodes for layers that no longer exist
     for (const [id, node] of this.layerNodes.entries()) {
       if (!documentLayers.has(id)) {
-        this.remove(node);
+        this.removeChild(node);
         this.layerNodes.delete(id);
         this.renderCache.invalidate({ id } as BaseLayer);
       }
@@ -103,8 +104,8 @@ export class DocumentView extends Entity {
       const layer = orderedLayers[i];
       const node = this.layerNodes.get(layer.id);
       if (node && this.children.indexOf(node) !== i) {
-        this.remove(node);
-        this.insert(node, i);
+        this.removeChild(node);
+        this.addAt(node, i);
       }
     }
   }
@@ -121,5 +122,30 @@ export class DocumentView extends Entity {
    */
   getRenderCache(): LayerRenderCache {
     return this.renderCache;
+  }
+
+  /**
+   * Update textures for all dirty layers.
+   * Should be called before rendering each frame.
+   */
+  updateTextures(renderContext: IRenderContext): void {
+    const layers = this.collectLayers(this.document.root);
+    for (const layer of layers.values()) {
+      if (layer.kind() === "raster") {
+        const rasterLayer = layer as RasterLayer;
+        if (rasterLayer.isDirty() || this.renderCache.isDirty(rasterLayer)) {
+          const textureHandle = this.renderCache.updateLayerTexture(rasterLayer, renderContext);
+          if (textureHandle) {
+            const layerNode = this.layerNodes.get(layer.id);
+            if (layerNode) {
+              const textureRef = this.renderCache.getTextureRef(layer);
+              if (textureRef) {
+                layerNode.material.setTexture(textureRef);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

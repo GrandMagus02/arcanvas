@@ -1,5 +1,5 @@
 import { Document, type DocumentOptions } from "./Document";
-import { RasterLayer, GroupLayer, type BaseLayer } from "./Layer";
+import { GroupLayer, RasterLayer } from "./Layer";
 
 /**
  * Create a new document.

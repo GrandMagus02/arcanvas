@@ -213,9 +213,11 @@ export interface IRenderContext {
    * @param data Image data (ImageBitmap, HTMLImageElement, or Uint8Array).
    * @param width Texture width.
    * @param height Texture height.
+   * @param format Texture format (rgba8, rgb8, rg8).
+   * @param pixelated If true, uses NEAREST filtering for pixel-perfect rendering. Defaults to true.
    * @returns A handle to the created texture.
    */
-  createTexture(data: ImageBitmap | HTMLImageElement | Uint8Array, width: number, height: number): TextureHandle;
+  createTexture(data: ImageBitmap | HTMLImageElement | Uint8Array, width: number, height: number, format?: "rgba8" | "rgb8" | "rg8", pixelated?: boolean): TextureHandle;
 
   /**
    * Updates an existing texture with new image data.

@@ -6,4 +6,4 @@ export * from "./RasterSource";
 export * from "./types";
 
 // Factory functions
-export { createDocument, createRasterLayer, createGroupLayer } from "./factories";
+export { createDocument, createGroupLayer, createRasterLayer } from "./factories";

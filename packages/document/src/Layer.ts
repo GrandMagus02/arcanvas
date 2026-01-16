@@ -112,6 +112,22 @@ export class RasterLayer extends BaseLayer {
     return this.surface;
   }
 
+  /**
+   * Gets a 2D rendering context with image smoothing disabled for pixel-perfect rendering.
+   * This ensures crisp, vector-like rendering at any zoom level.
+   */
+  getContext2D(): OffscreenCanvasRenderingContext2D | null {
+    if (!this.surface) return null;
+    const ctx = this.surface.getContext("2d", {
+      willReadFrequently: true,
+      alpha: true,
+    });
+    if (ctx) {
+      ctx.imageSmoothingEnabled = false;
+    }
+    return ctx;
+  }
+
   override kind(): string {
     return "raster";
   }

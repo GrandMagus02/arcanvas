@@ -61,22 +61,17 @@ export class LayerRenderCache {
     }
 
     // Get image data from OffscreenCanvas
-    // Try transferToImageBitmap first (preferred, but may not be available)
-    let imageData: ImageBitmap | null = null;
-    try {
-      if (typeof (surface as any).transferToImageBitmap === "function") {
-        imageData = (surface as any).transferToImageBitmap();
-      }
-    } catch (e) {
-      // Fall through to createImageBitmap
-    }
-
-    // Fallback: use createImageBitmap (async, but we'll handle it synchronously for MVP)
-    if (!imageData) {
-      // For MVP, we'll need to handle this differently
-      // For now, return null and the texture will be created on next frame
+    // Use the helper method that disables image smoothing for pixel-perfect rendering
+    const ctx2d = layer.getContext2D();
+    if (!ctx2d) {
       return null;
     }
+
+    // Get ImageData from the canvas
+    const imageData = ctx2d.getImageData(0, 0, layer.width, layer.height);
+    
+    // Convert ImageData to Uint8Array (RGBA format)
+    const rgbaData = new Uint8Array(imageData.data);
 
     // Delete old texture if it exists
     const oldHandle = this.textureCache.get(layer.id);
@@ -84,13 +79,13 @@ export class LayerRenderCache {
       ctx.deleteTexture(oldHandle);
     }
 
-    // Create new texture
-    const textureHandle = ctx.createTexture(imageData, layer.width, layer.height);
+    // Create new texture from RGBA data with pixelated=true for crisp rendering
+    const textureHandle = ctx.createTexture(rgbaData, layer.width, layer.height, "rgba8", true);
 
     // Cache the texture
     this.textureCache.set(layer.id, textureHandle);
     this.textureRefCache.set(layer.id, {
-      source: imageData,
+      source: textureHandle as unknown as WebGLTexture, // Store the WebGLTexture handle
       width: layer.width,
       height: layer.height,
       format: "rgba8",

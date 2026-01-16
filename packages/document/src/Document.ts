@@ -1,10 +1,13 @@
-import { GroupLayer, type BaseLayer, type Transform2D } from "./Layer";
 import { BlendMode } from "./BlendMode";
+import { GroupLayer, type BaseLayer, type Transform2D } from "./Layer";
 
 // Simple event map type
 type EventMap = Record<string, unknown[]>;
 
 // Simple event bus implementation (to avoid dependency on core)
+/**
+ *
+ */
 class EventBus<T extends EventMap = Record<string, unknown[]>> {
   private map = new Map<keyof T & string, Set<(...args: unknown[]) => void>>();
 

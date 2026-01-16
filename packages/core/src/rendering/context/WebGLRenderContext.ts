@@ -1,6 +1,6 @@
-import type { BufferHandle, IRenderContext, ProgramHandle, TextureHandle } from "./IRenderContext";
 import type { ProgramCache } from "../gpu/ProgramCache";
 import type { ShaderLibrary } from "../gpu/ShaderLibrary";
+import type { BufferHandle, IRenderContext, ProgramHandle, TextureHandle } from "./IRenderContext";
 
 /**
  * WebGL implementation of {@link IRenderContext}.
@@ -143,7 +143,7 @@ export class WebGLRenderContext implements IRenderContext {
     return this.shaderLibrary;
   }
 
-  createTexture(data: ImageBitmap | HTMLImageElement | Uint8Array, width: number, height: number): TextureHandle {
+  createTexture(data: ImageBitmap | HTMLImageElement | Uint8Array, width: number, height: number, format?: "rgba8" | "rgb8" | "rg8", pixelated?: boolean): TextureHandle {
     const texture = this.gl.createTexture();
     if (!texture) {
       throw new Error("Failed to create texture");
@@ -152,8 +152,12 @@ export class WebGLRenderContext implements IRenderContext {
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+
+    // Use NEAREST filtering for pixel-perfect rendering (vector-like)
+    // Set pixelated=true for crisp, non-blurred textures
+    const filter = pixelated !== false ? this.gl.NEAREST : this.gl.LINEAR;
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, filter);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filter);
 
     if (data instanceof ImageBitmap || data instanceof HTMLImageElement) {
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);

@@ -1,38 +1,21 @@
 import type { Meta, StoryObj } from "@storybook/html";
-import {
-  Arcanvas,
-  Camera,
-  Camera2DController,
-  EngineRenderSystem,
-  GridObject,
-  Polygon2DObject,
-  PolygonObject,
-  Scene,
-  UnlitColorMaterial,
-} from "@arcanvas/core";
+import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, Scene, TransformationMatrix } from "@arcanvas/core";
+import { RenderObject, Mesh, createPositionNormalUVLayout, UnlitColorMaterial } from "@arcanvas/graphics";
+import { Transform } from "@arcanvas/scene";
 
-interface ArcanvasSceneArgs {
-  showGrid: boolean;
-  gridCellSize: number;
-  polygonRadius: number;
-  polygonColorR: number;
-  polygonColorG: number;
-  polygonColorB: number;
-  polygonColorA: number;
-  outlineColorR: number;
-  outlineColorG: number;
-  outlineColorB: number;
-  outlineColorA: number;
-  cameraZoom: number;
+interface SpritesArgs {
   canvasWidth: number;
   canvasHeight: number;
+  spriteCount: number;
+  spriteSize: number;
+  cameraZoom: number;
 }
 
 // Store cleanup functions for each story instance
 const cleanupMap = new Map<string, () => void>();
 
-const meta: Meta<ArcanvasSceneArgs> = {
-  title: "Arcanvas/Scene",
+const meta: Meta<SpritesArgs> = {
+  title: "Arcanvas/Sprites",
   tags: ["autodocs"],
   parameters: {
     docs: {
@@ -43,66 +26,6 @@ const meta: Meta<ArcanvasSceneArgs> = {
     },
   },
   argTypes: {
-    showGrid: {
-      control: "boolean",
-      description: "Show or hide the grid",
-      defaultValue: true,
-    },
-    gridCellSize: {
-      control: { type: "range", min: 0.1, max: 5, step: 0.1 },
-      description: "Grid cell size",
-      defaultValue: 1,
-    },
-    polygonRadius: {
-      control: { type: "range", min: 5, max: 50, step: 1 },
-      description: "Radius of the hexagon polygon",
-      defaultValue: 20,
-    },
-    polygonColorR: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Polygon red color component",
-      defaultValue: 0.2,
-    },
-    polygonColorG: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Polygon green color component",
-      defaultValue: 0.7,
-    },
-    polygonColorB: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Polygon blue color component",
-      defaultValue: 0.9,
-    },
-    polygonColorA: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Polygon alpha component",
-      defaultValue: 1,
-    },
-    outlineColorR: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Outline red color component",
-      defaultValue: 1,
-    },
-    outlineColorG: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Outline green color component",
-      defaultValue: 0.4,
-    },
-    outlineColorB: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Outline blue color component",
-      defaultValue: 0.2,
-    },
-    outlineColorA: {
-      control: { type: "range", min: 0, max: 1, step: 0.01 },
-      description: "Outline alpha component",
-      defaultValue: 1,
-    },
-    cameraZoom: {
-      control: { type: "range", min: 0.01, max: 2, step: 0.01 },
-      description: "Camera zoom level",
-      defaultValue: 0.1,
-    },
     canvasWidth: {
       control: { type: "number", min: 200, max: 1920, step: 10 },
       description: "Canvas width",
@@ -113,13 +36,65 @@ const meta: Meta<ArcanvasSceneArgs> = {
       description: "Canvas height",
       defaultValue: 600,
     },
+    spriteCount: {
+      control: { type: "number", min: 1, max: 50, step: 1 },
+      description: "Number of sprites",
+      defaultValue: 10,
+    },
+    spriteSize: {
+      control: { type: "number", min: 10, max: 200, step: 5 },
+      description: "Sprite size in pixels",
+      defaultValue: 50,
+    },
+    cameraZoom: {
+      control: { type: "range", min: 0.01, max: 2, step: 0.01 },
+      description: "Camera zoom level",
+      defaultValue: 1,
+    },
   },
 };
 
 export default meta;
-type Story = StoryObj<ArcanvasSceneArgs>;
+type Story = StoryObj<SpritesArgs>;
 
-function render(args: ArcanvasSceneArgs, id: string): HTMLElement {
+/**
+ * Creates a simple quad mesh for a sprite.
+ */
+function createSpriteMesh(width: number, height: number): Mesh {
+  const vertices = new Float32Array([
+    // Bottom-left: position (x, y, z), normal (0, 0, 1), uv (u, v)
+    0, 0, 0, 0, 0, 1, 0, 0,
+    // Bottom-right
+    width, 0, 0, 0, 0, 1, 1, 0,
+    // Top-right
+    width, height, 0, 0, 0, 1, 1, 1,
+    // Top-left
+    0, height, 0, 0, 0, 1, 0, 1,
+  ]);
+
+  const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+
+  const layout = createPositionNormalUVLayout();
+
+  return new Mesh(vertices, indices, layout, "triangles");
+}
+
+/**
+ * Creates a colored sprite using RenderObject.
+ * For MVP, this uses a solid color material. In a full implementation,
+ * this would use a texture material.
+ */
+function createSprite(x: number, y: number, size: number, color: [number, number, number, number]): RenderObject {
+  const mesh = createSpriteMesh(size, size);
+  const material = new UnlitColorMaterial({ baseColor: color });
+  const matrix = new TransformationMatrix();
+  matrix.translate(x, y, 0);
+  const transform = new Transform(matrix);
+
+  return new RenderObject(mesh, material, transform);
+}
+
+function renderSprites(args: SpritesArgs, id: string): HTMLElement {
   // Cleanup previous instance if it exists
   const existingCleanup = cleanupMap.get(id);
   if (existingCleanup) {
@@ -185,61 +160,37 @@ function render(args: ArcanvasSceneArgs, id: string): HTMLElement {
   // Create scene
   const scene = new Scene({ width: args.canvasWidth, height: args.canvasHeight });
 
-  // Create grid if enabled
-  if (args.showGrid) {
-    const grid = new GridObject({
-      plane: "XY",
-      cellSize: args.gridCellSize,
-      majorDivisions: 4,
-      adaptiveSpacing: true,
-      fixedPixelSize: true,
-      axisLineWidth: 2,
-      majorLineWidth: 1,
-      minorLineWidth: 1,
-      minCellPixelSize: 20,
-      baseColor: [0.1, 0.1, 0.1, 1],
-      minorColor: [0.3, 0.3, 0.3, 0.5],
-      majorColor: [0.5, 0.5, 0.5, 0.8],
-      xAxisColor: [0.8, 0.2, 0.2, 1],
-      yAxisColor: [0.2, 0.8, 0.2, 1],
-    });
-    scene.addObject(grid);
+  // Create sprites in a grid pattern
+  const cols = Math.ceil(Math.sqrt(args.spriteCount));
+  const rows = Math.ceil(args.spriteCount / cols);
+  const spacing = args.spriteSize * 1.5;
+  const startX = (args.canvasWidth - (cols - 1) * spacing) / 2;
+  const startY = (args.canvasHeight - (rows - 1) * spacing) / 2;
+
+  const colors: Array<[number, number, number, number]> = [
+    [1, 0, 0, 1], // Red
+    [0, 1, 0, 1], // Green
+    [0, 0, 1, 1], // Blue
+    [1, 1, 0, 1], // Yellow
+    [1, 0, 1, 1], // Magenta
+    [0, 1, 1, 1], // Cyan
+  ];
+
+  for (let i = 0; i < args.spriteCount; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = startX + col * spacing;
+    const y = startY + row * spacing;
+    const color = colors[i % colors.length];
+
+    const sprite = createSprite(x, y, args.spriteSize, color);
+    sprite.name = `Sprite-${i}`;
+    scene.addObject(sprite);
   }
-
-  // Create hexagon polygon
-  const hexPoints: number[][] = [];
-  const cx = 0;
-  const cy = 0;
-  const r = args.polygonRadius;
-  for (let i = 0; i < 6; i++) {
-    const theta = (i / 6) * 2 * Math.PI;
-    hexPoints.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
-  }
-
-  const polygonFill = new Polygon2DObject(
-    hexPoints,
-    { zIndex: 0 },
-    new UnlitColorMaterial({
-      baseColor: [args.polygonColorR, args.polygonColorG, args.polygonColorB, args.polygonColorA],
-    })
-  );
-  polygonFill.name = "TestPolygonFill";
-  scene.addObject(polygonFill);
-
-  // Create outline polygon (rectangle)
-  const outlinePoints = [-30, -20, 0, 30, -20, 0, 30, 20, 0, -30, 20, 0];
-  const polygonOutline = new PolygonObject(
-    outlinePoints,
-    new UnlitColorMaterial({
-      baseColor: [args.outlineColorR, args.outlineColorG, args.outlineColorB, args.outlineColorA],
-    })
-  );
-  polygonOutline.name = "TestPolygonOutline";
-  scene.addObject(polygonOutline);
 
   // Setup camera
   const camera = new Camera(arc);
-  camera.pixelsPerUnit = 100;
+  camera.pixelsPerUnit = 1;
   arc.setCamera(camera);
 
   const controller = new Camera2DController();
@@ -297,38 +248,38 @@ function render(args: ArcanvasSceneArgs, id: string): HTMLElement {
   return container;
 }
 
-export const Default: Story = {
-  render: (args) => render(args, "default"),
+export const BasicSprites: Story = {
+  render: (args) => renderSprites(args, "basic-sprites"),
   args: {
-    showGrid: true,
-    gridCellSize: 1,
-    polygonRadius: 20,
-    polygonColorR: 0.2,
-    polygonColorG: 0.7,
-    polygonColorB: 0.9,
-    polygonColorA: 1,
-    outlineColorR: 1,
-    outlineColorG: 0.4,
-    outlineColorB: 0.2,
-    outlineColorA: 1,
-    cameraZoom: 0.1,
     canvasWidth: 800,
     canvasHeight: 600,
+    spriteCount: 10,
+    spriteSize: 50,
+    cameraZoom: 1,
   },
 };
 
-export const NoGrid: Story = {
-  render: (args) => render(args, "no-grid"),
+export const ManySprites: Story = {
+  render: (args) => renderSprites(args, "many-sprites"),
   args: {
-    ...Default.args!,
-    showGrid: false,
+    ...BasicSprites.args!,
+    spriteCount: 25,
   },
 };
 
-export const ZoomedIn: Story = {
-  render: (args) => render(args, "zoomed-in"),
+export const LargeSprites: Story = {
+  render: (args) => renderSprites(args, "large-sprites"),
   args: {
-    ...Default.args!,
+    ...BasicSprites.args!,
+    spriteSize: 100,
+    spriteCount: 6,
+  },
+};
+
+export const ZoomedSprites: Story = {
+  render: (args) => renderSprites(args, "zoomed-sprites"),
+  args: {
+    ...BasicSprites.args!,
     cameraZoom: 0.5,
   },
 };

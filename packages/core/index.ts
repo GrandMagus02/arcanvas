@@ -1,6 +1,5 @@
 // Core orchestrator
 export * from "./src";
-export * from "./src/utils";
 
 // Re-export from new packages for backward compatibility
 export * from "@arcanvas/math";

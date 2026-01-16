@@ -8,13 +8,17 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@arcanvas/core": "workspace:*"
+    "@arcanvas/core": "workspace:*",
+    "@arcanvas/document": "workspace:*",
+    "@arcanvas/feature-document-2d": "workspace:*",
+    "@arcanvas/graphics": "workspace:*",
+    "@arcanvas/scene": "workspace:*"
   },
   "devDependencies": {
-    "@storybook/addon-essentials": "latest",
-    "@storybook/html": "latest",
-    "@storybook/html-vite": "latest",
-    "storybook": "latest",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/html": "^8.6.14",
+    "@storybook/html-vite": "^8.6.14",
+    "storybook": "^8.6.14",
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
   }
