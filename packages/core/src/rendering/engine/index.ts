@@ -9,3 +9,4 @@ export * from "./vertexLayout";
 export * from "./backends/WebGLBackend";
 export * from "./backends/Canvas2DBackend";
 export * from "./backends/WebGPUBackend";
+export * from "./WorldRenderer";

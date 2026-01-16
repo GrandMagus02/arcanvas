@@ -7,3 +7,4 @@ export * from "./PluginSystem";
 export * from "./EngineRenderSystem";
 export * from "./RenderSystem";
 export * from "./SceneSystem";
+export * from "./WorldEngineRenderSystem";

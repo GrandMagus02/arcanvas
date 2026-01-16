@@ -6,3 +6,6 @@ export * from "./RenderObject";
 export * from "./Scene";
 export * from "./Light";
 export * from "./Transform";
+export * from "./WorldTransform";
+export * from "./WorldRenderObject";
+export * from "./WorldScene";
