@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/html";
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, Scene, UnlitColorMaterial } from "@arcanvas/core";
-import { RenderObject, Mesh, createPositionNormalUVLayout } from "@arcanvas/graphics";
-import { Transform } from "@arcanvas/scene";
-import { TransformationMatrix } from "@arcanvas/core";
+import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
+import { RenderObject, Mesh, createPositionNormalUVLayout, UnlitColorMaterial } from "@arcanvas/graphics";
+import { Scene, Transform } from "@arcanvas/scene";
 
 interface BackendSwitchArgs {
   backend: "webgl" | "canvas2d" | "webgpu";

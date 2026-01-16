@@ -1,6 +1,6 @@
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, Scene, TransformationMatrix } from "@arcanvas/core";
+import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
 import { createPositionNormalUVLayout, Mesh, PBRMaterial, RenderObject, UnlitColorMaterial } from "@arcanvas/graphics";
-import { Transform } from "@arcanvas/scene";
+import { Scene, Transform } from "@arcanvas/scene";
 import type { Meta, StoryObj } from "@storybook/html";
 
 interface MaterialsArgs {

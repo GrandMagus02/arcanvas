@@ -3,12 +3,17 @@ export * from "./core/Arcanvas";
 
 // Camera system
 export * from "./camera";
-export * from "./document/BlendMode";
-export * from "./document/compose2d";
-export * from "./document/Document";
-export * from "./document/io";
-export * from "./document/Layer";
-export * from "./document/SelectionMask";
+
+// Document model - moved to @arcanvas/document
+// These exports are deprecated. Use @arcanvas/document instead.
+// export * from "./document/BlendMode";
+// export * from "./document/compose2d";
+// export * from "./document/Document";
+// export * from "./document/io";
+// export * from "./document/Layer";
+// export * from "./document/SelectionMask";
+
+// Infrastructure
 export * from "./infrastructure/canvas/CanvasHost";
 export * from "./infrastructure/events/ArcanvasEvents";
 export * from "./infrastructure/events/EventBus";
@@ -19,17 +24,17 @@ export * from "./infrastructure/lifecycle/FrameLoop";
 
 // Plugins
 export * from "./plugins";
-export * from "./rendering/backend/createRenderer";
-export * from "./rendering/backend/IRenderer";
-export * from "./rendering/context";
-export * from "./rendering/engine";
-export * from "./rendering/gpu/Material";
-export * from "./rendering/gpu/ProgramCache";
-export * from "./rendering/gpu/ShaderLibrary";
-export * from "./rendering/gpu/StateCache";
-export * from "./rendering/graph/RenderGraph";
-export * from "./rendering/graph/RenderPass";
-export * from "./scene";
+
+// Rendering (high-level abstractions)
+export * from "./rendering";
+
+// Scene (Stage for UI/Editor mode)
+// Note: Entity, TreeNode, etc. are exported from @arcanvas/scene, not from here
+// Only Stage and Mesh are specific to core package
+export * from "./scene/Stage";
+export * from "./scene/Mesh";
+
+// Systems
 export * from "./systems";
 
 // Utils
