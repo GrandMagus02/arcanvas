@@ -1,6 +1,6 @@
 import { Arcanvas } from "@arcanvas/core";
-import { GridObject, Polygon2DObject, PolygonObject } from "@arcanvas/feature-2d";
-import { UnlitColorMaterial } from "@arcanvas/graphics";
+import { GridObject, Polygon2DObject } from "@arcanvas/feature-2d";
+import { MaterialBuilder } from "@arcanvas/graphics";
 import { Scene } from "@arcanvas/scene";
 
 /**
@@ -39,15 +39,12 @@ export function setupScene(arc: Arcanvas): Scene {
     hexPoints.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
   }
 
-  const polygonFill = new Polygon2DObject(hexPoints, { zIndex: 0 }, new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] }));
-  polygonFill.name = "TestPolygonFill";
-  scene.addObject(polygonFill);
+  // const material = new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] });
+  const material = new MaterialBuilder().baseColor([0.2, 0.7, 0.9, 1]).outline([1, 0, 0, 1], 2).build();
 
-  // Add an outline polygon (rectangle) centered at origin: -30 to 30 on X, -20 to 20 on Y
-  const outlinePoints = [-30, -20, 0, 30, -20, 0, 30, 20, 0, -30, 20, 0];
-  const polygonOutline = new PolygonObject(outlinePoints, new UnlitColorMaterial({ baseColor: [1, 0.4, 0.2, 1] }));
-  polygonOutline.name = "TestPolygonOutline";
-  scene.addObject(polygonOutline);
+  const polygon = new Polygon2DObject(hexPoints, { zIndex: 0 }, material);
+  polygon.name = "TestPolygon";
+  scene.addObject(polygon);
 
   console.log("[SetupScene] Engine scene created with GridObject");
   return scene;

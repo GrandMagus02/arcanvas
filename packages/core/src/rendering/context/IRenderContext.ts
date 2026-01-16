@@ -11,6 +11,12 @@ export type BufferHandle = object | null;
 export type ProgramHandle = unknown;
 
 /**
+ * Handle for a texture resource managed by the render context.
+ * The actual type depends on the implementation (WebGLTexture, GPUTexture, etc.).
+ */
+export type TextureHandle = object | null;
+
+/**
  * Abstraction over rendering API (WebGL, WebGPU, Canvas2D, etc.).
  *
  * This interface provides a unified API for mesh rendering operations,
@@ -200,4 +206,37 @@ export interface IRenderContext {
    * @returns The shader library instance.
    */
   getShaderLibrary(): import("../gpu/ShaderLibrary").ShaderLibrary;
+
+  /**
+   * Creates a texture from image data.
+   *
+   * @param data Image data (ImageBitmap, HTMLImageElement, or Uint8Array).
+   * @param width Texture width.
+   * @param height Texture height.
+   * @returns A handle to the created texture.
+   */
+  createTexture(data: ImageBitmap | HTMLImageElement | Uint8Array, width: number, height: number): TextureHandle;
+
+  /**
+   * Updates an existing texture with new image data.
+   *
+   * @param handle Handle to the texture to update.
+   * @param data New image data.
+   */
+  updateTexture(handle: TextureHandle, data: ImageBitmap | HTMLImageElement | Uint8Array): void;
+
+  /**
+   * Binds a texture to a texture unit for rendering.
+   *
+   * @param handle Handle to the texture to bind.
+   * @param unit Texture unit index (0, 1, 2, etc.).
+   */
+  bindTexture(handle: TextureHandle, unit: number): void;
+
+  /**
+   * Deletes a texture and frees its resources.
+   *
+   * @param handle Handle to the texture to delete.
+   */
+  deleteTexture(handle: TextureHandle): void;
 }

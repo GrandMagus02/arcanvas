@@ -4,13 +4,14 @@ export * from "./core/Arcanvas";
 // Camera system
 export * from "./camera";
 
-// Document model
-export * from "./document/BlendMode";
-export * from "./document/compose2d";
-export * from "./document/Document";
-export * from "./document/io";
-export * from "./document/Layer";
-export * from "./document/SelectionMask";
+// Document model - moved to @arcanvas/document
+// These exports are deprecated. Use @arcanvas/document instead.
+// export * from "./document/BlendMode";
+// export * from "./document/compose2d";
+// export * from "./document/Document";
+// export * from "./document/io";
+// export * from "./document/Layer";
+// export * from "./document/SelectionMask";
 
 // Infrastructure
 export * from "./infrastructure/canvas/CanvasHost";

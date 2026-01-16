@@ -1,5 +1,4 @@
-import { Matrix4 } from "@arcanvas/matrix";
-import { MatrixOrientation } from "@arcanvas/matrix";
+import { Matrix4, MatrixOrientation } from "@arcanvas/matrix";
 import { Vector } from "@arcanvas/vector";
 
 /**

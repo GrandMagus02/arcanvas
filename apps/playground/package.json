@@ -7,7 +7,9 @@
     "@arcanvas/core": "workspace:*",
     "@arcanvas/scene": "workspace:*",
     "@arcanvas/graphics": "workspace:*",
-    "@arcanvas/feature-2d": "workspace:*"
+    "@arcanvas/feature-2d": "workspace:*",
+    "@arcanvas/document": "workspace:*",
+    "@arcanvas/feature-document-2d": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",
