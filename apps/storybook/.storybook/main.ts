@@ -17,6 +17,7 @@ const config: StorybookConfig = {
           "@arcanvas/matrix": resolve(__dirname, "../../../packages/matrix/index.ts"),
           "@arcanvas/vector": resolve(__dirname, "../../../packages/vector/index.ts"),
           "@arcanvas/document": resolve(__dirname, "../../../packages/document/index.ts"),
+          "@arcanvas/feature-2d": resolve(__dirname, "../../../packages/feature-2d/index.ts"),
           "@arcanvas/feature-document-2d": resolve(__dirname, "../../../packages/feature-document-2d/index.ts"),
           "@arcanvas/graphics": resolve(__dirname, "../../../packages/graphics/index.ts"),
           "@arcanvas/scene": resolve(__dirname, "../../../packages/scene/index.ts"),
@@ -26,7 +27,7 @@ const config: StorybookConfig = {
         },
       },
       optimizeDeps: {
-        exclude: ["@arcanvas/core", "@arcanvas/matrix", "@arcanvas/vector", "@arcanvas/document", "@arcanvas/feature-document-2d", "@arcanvas/graphics", "@arcanvas/scene"],
+        exclude: ["@arcanvas/core", "@arcanvas/matrix", "@arcanvas/vector", "@arcanvas/document", "@arcanvas/feature-2d", "@arcanvas/feature-document-2d", "@arcanvas/graphics", "@arcanvas/scene"],
         esbuildOptions: {
           target: "es2020",
         },

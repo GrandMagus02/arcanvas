@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/html";
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, Plugin, Scene } from "@arcanvas/core";
+import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, Plugin } from "@arcanvas/core";
+import { Scene } from "@arcanvas/scene";
 
 interface PluginRegistrationArgs {
   enablePlugin: boolean;
