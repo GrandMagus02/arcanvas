@@ -190,7 +190,7 @@ describe("Stage", () => {
       };
 
       // Override render method to track calls
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
       const originalRender = Mesh.prototype.render;
 
       Mesh.prototype.render = function (this: Mesh, ctx: IRenderContext) {
@@ -246,7 +246,6 @@ describe("Stage", () => {
         getWebGLContext: () => null,
       };
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       const originalRender = Mesh.prototype.render;
 
       Mesh.prototype.render = function (this: Mesh) {

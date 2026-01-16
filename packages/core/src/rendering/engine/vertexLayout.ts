@@ -1,0 +1,41 @@
+/**
+ *
+ */
+export type VertexAttributeSemantic = "position" | "normal" | "uv" | "color" | "tangent";
+
+/**
+ *
+ */
+export interface VertexAttributeDesc {
+  semantic: VertexAttributeSemantic;
+  components: 2 | 3 | 4;
+  type: "float" | "uint8" | "uint16";
+  normalized: boolean;
+  offset: number;
+}
+
+/**
+ *
+ */
+export interface VertexLayout {
+  stride: number;
+  attributes: VertexAttributeDesc[];
+}
+
+/**
+ *
+ */
+export function createPositionLayout(components: 2 | 3 = 3): VertexLayout {
+  return {
+    stride: components * Float32Array.BYTES_PER_ELEMENT,
+    attributes: [
+      {
+        semantic: "position",
+        components,
+        type: "float",
+        normalized: false,
+        offset: 0,
+      },
+    ],
+  };
+}

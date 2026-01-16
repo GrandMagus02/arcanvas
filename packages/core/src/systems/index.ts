@@ -4,5 +4,6 @@ export * from "../infrastructure/events/EventMap";
 export * from "../infrastructure/events/EventSystem";
 export * from "../infrastructure/lifecycle/FrameLoop";
 export * from "./PluginSystem";
+export * from "./EngineRenderSystem";
 export * from "./RenderSystem";
 export * from "./SceneSystem";

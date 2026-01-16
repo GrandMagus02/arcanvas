@@ -4,17 +4,23 @@ import type { Shape3D } from "../../Shape";
 
 /**
  * Builder that creates an outline from a 3D polygon shape (no triangulation).
+ * Creates line indices to draw a closed loop outline.
  */
 export class Polygon3DOutlineBuilder implements MeshBuilder<Shape3D> {
   build(shape: Shape3D): MeshBuildResult {
-    // Use vertices directly
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const vertices: Float32Array = shape.points;
+    const vertexCount = vertices.length / 3;
 
-    // For outline, use empty indices (will use drawArrays)
+    // Create line indices for a closed loop: [0,1, 1,2, 2,3, ..., n-1,0]
+    const indices = new Uint16Array(vertexCount * 2);
+    for (let i = 0; i < vertexCount; i++) {
+      indices[i * 2] = i;
+      indices[i * 2 + 1] = (i + 1) % vertexCount;
+    }
+
     return {
       vertices,
-      indices: new Uint16Array(0),
+      indices,
     };
   }
 }

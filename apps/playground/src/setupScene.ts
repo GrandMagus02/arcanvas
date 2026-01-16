@@ -1,54 +1,51 @@
-import { Arcanvas, GridMesh, Plane2D, Polygon2D } from "@arcanvas/core";
+import { Arcanvas, GridObject, Polygon2DObject, PolygonObject, Scene, UnlitColorMaterial } from "@arcanvas/core";
 
 /**
  * Setup scene.
  */
-export function setupScene(arc: Arcanvas): GridMesh {
-  // Create a grid mesh
-  const grid = new GridMesh();
-  grid.name = "Grid";
+export function setupScene(arc: Arcanvas): Scene {
+  // TODO: remove eslint disables once engine exports are fully typed in playground build.
+  const scene = new Scene({ width: arc.canvas.width, height: arc.canvas.height });
 
-  // Configure grid
-  grid.setPlane("XY"); // Grid on ground
-  grid.setCellSize(1); // Base cell size 1 unit
-  grid.setMajorDivisions(4); // 4 minor cells per major cell
-  grid.setAdaptiveSpacing(true); // Enable adaptive
-  grid.setFixedPixelSize(true); // 1px lines
-  grid.setAxisLineWidth(2);
-  grid.setMajorLineWidth(1);
-  grid.setMinorLineWidth(1);
-  grid.setMinCellPixelSize(20); // Minimum 50px per cell before collapsing
+  // Create grid using the new engine-level GridObject
+  const grid = new GridObject({
+    plane: "XY",
+    cellSize: 1,
+    majorDivisions: 4,
+    adaptiveSpacing: true,
+    fixedPixelSize: true,
+    axisLineWidth: 2,
+    majorLineWidth: 1,
+    minorLineWidth: 1,
+    minCellPixelSize: 20,
+    baseColor: [0.1, 0.1, 0.1, 1],
+    minorColor: [0.3, 0.3, 0.3, 0.5],
+    majorColor: [0.5, 0.5, 0.5, 0.8],
+    xAxisColor: [0.8, 0.2, 0.2, 1],
+    yAxisColor: [0.2, 0.8, 0.2, 1],
+  });
+  scene.addObject(grid);
 
-  // Set colors (r, g, b, a)
-  grid.setBaseColor(0.1, 0.1, 0.1, 1);
-  grid.setMinorColor(0.3, 0.3, 0.3, 0.5);
-  grid.setMajorColor(0.5, 0.5, 0.5, 0.8);
-  grid.setXAxisColor(0.8, 0.2, 0.2, 1);
-  grid.setYAxisColor(0.2, 0.8, 0.2, 1);
-
-  arc.stage.add(grid);
-
-  // Add a plane mesh
-  const plane = new Plane2D(0, 0, 100, 150);
-  plane.name = "TestRectangle";
-  arc.stage.add(plane);
-
-  // Add a polygon mesh
-  // Hexagon points at 200, 50 with radius 50
+  // Add a filled polygon mesh (2D) - hexagon centered at (0, 0) with radius 20
   const hexPoints: number[][] = [];
-  const cx = 200;
-  const cy = 50;
-  const r = 50;
+  const cx = 0;
+  const cy = 0;
+  const r = 20;
   for (let i = 0; i < 6; i++) {
     const theta = (i / 6) * 2 * Math.PI;
     hexPoints.push([cx + r * Math.cos(theta), cy + r * Math.sin(theta)]);
   }
 
-  const polygon = new Polygon2D(hexPoints);
-  polygon.name = "TestPolygon";
-  arc.stage.add(polygon);
+  const polygonFill = new Polygon2DObject(hexPoints, { zIndex: 0 }, new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] }));
+  polygonFill.name = "TestPolygonFill";
+  scene.addObject(polygonFill);
 
-  console.log("[SetupScene] Grid added to stage");
+  // Add an outline polygon (rectangle) centered at origin: -30 to 30 on X, -20 to 20 on Y
+  const outlinePoints = [-30, -20, 0, 30, -20, 0, 30, 20, 0, -30, 20, 0];
+  const polygonOutline = new PolygonObject(outlinePoints, new UnlitColorMaterial({ baseColor: [1, 0.4, 0.2, 1] }));
+  polygonOutline.name = "TestPolygonOutline";
+  scene.addObject(polygonOutline);
 
-  return grid;
+  console.log("[SetupScene] Engine scene created with GridObject");
+  return scene;
 }

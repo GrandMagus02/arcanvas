@@ -22,3 +22,32 @@ export function toColumnMajor3x3(rowMajor: Float32Array): Float32Array {
     rowMajor[8]!, // column 2
   ]);
 }
+
+/**
+ * Converts a 4x4 matrix from row-major to column-major order.
+ * Row-major: [m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33]
+ * Column-major: [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33]
+ */
+export function toColumnMajor4x4(rowMajor: Float32Array): Float32Array {
+  if (rowMajor.length !== 16) {
+    throw new Error("Matrix must have exactly 16 elements");
+  }
+  return new Float32Array([
+    rowMajor[0]!,
+    rowMajor[4]!,
+    rowMajor[8]!,
+    rowMajor[12]!,
+    rowMajor[1]!,
+    rowMajor[5]!,
+    rowMajor[9]!,
+    rowMajor[13]!,
+    rowMajor[2]!,
+    rowMajor[6]!,
+    rowMajor[10]!,
+    rowMajor[14]!,
+    rowMajor[3]!,
+    rowMajor[7]!,
+    rowMajor[11]!,
+    rowMajor[15]!,
+  ]);
+}

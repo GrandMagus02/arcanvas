@@ -7,3 +7,4 @@ export * from "./gpu/Material";
 export * from "./gpu/ProgramCache";
 export * from "./gpu/ShaderLibrary";
 export * from "./gpu/StateCache";
+export * from "./engine";

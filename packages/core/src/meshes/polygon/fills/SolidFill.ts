@@ -2,6 +2,9 @@ import type { IRenderContext } from "../../../rendering/context";
 import type { PolygonFill, PolygonFillUniformLocations } from "./PolygonFill";
 import FRAG_SOURCE from "../polygon.frag";
 
+/**
+ *
+ */
 export interface SolidFillColor {
   r: number;
   g: number;
