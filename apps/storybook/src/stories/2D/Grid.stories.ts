@@ -1,11 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/html";
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem } from "@arcanvas/core";
+import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem } from "@arcanvas/core";
 import { GridObject } from "@arcanvas/feature-2d";
 import { Scene } from "@arcanvas/scene";
 
 interface GridArgs {
-  canvasWidth: number;
-  canvasHeight: number;
   cellSize: number;
   majorDivisions: number;
   adaptiveSpacing: boolean;
@@ -28,16 +26,6 @@ const meta: Meta<GridArgs> = {
     },
   },
   argTypes: {
-    canvasWidth: {
-      control: { type: "number", min: 200, max: 1920, step: 10 },
-      description: "Canvas width",
-      defaultValue: 800,
-    },
-    canvasHeight: {
-      control: { type: "number", min: 200, max: 1080, step: 10 },
-      description: "Canvas height",
-      defaultValue: 600,
-    },
     cellSize: {
       control: { type: "range", min: 0.1, max: 5, step: 0.1 },
       description: "Grid cell size",
@@ -88,50 +76,20 @@ function render(args: GridArgs, id: string): HTMLElement {
   container.style.width = "100%";
   container.style.height = "100vh";
   container.style.display = "flex";
-  container.style.justifyContent = "center";
-  container.style.alignItems = "center";
   container.style.overflow = "hidden";
 
   const canvas = document.createElement("canvas");
-  canvas.width = args.canvasWidth;
-  canvas.height = args.canvasHeight;
-  canvas.style.border = "1px solid #ccc";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   canvas.style.display = "block";
   container.appendChild(canvas);
 
-  const updateCanvasSize = () => {
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const docAspectRatio = args.canvasWidth / args.canvasHeight;
-    const containerAspectRatio = containerWidth / containerHeight;
-
-    let displayWidth: number;
-    let displayHeight: number;
-
-    if (containerAspectRatio > docAspectRatio) {
-      displayHeight = containerHeight;
-      displayWidth = displayHeight * docAspectRatio;
-    } else {
-      displayWidth = containerWidth;
-      displayHeight = displayWidth / docAspectRatio;
-    }
-
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-    canvas.style.maxWidth = "100%";
-    canvas.style.maxHeight = "100%";
-  };
-
-  updateCanvasSize();
-
   // Initialize Arcanvas
-  const arc = new Arcanvas(canvas, {
-    width: args.canvasWidth,
-    height: args.canvasHeight,
-  });
+  const arc = new Arcanvas(canvas);
+  arc.use(AutoResizePlugin);
 
-  // Create scene
-  const scene = new Scene({ width: args.canvasWidth, height: args.canvasHeight });
+  // Create scene - will be updated on resize
+  const scene = new Scene({ width: canvas.width || 800, height: canvas.height || 600 });
 
   // Create grid
   const grid = new GridObject({
@@ -176,16 +134,10 @@ function render(args: GridArgs, id: string): HTMLElement {
   // Create render system
   const renderSystem = new EngineRenderSystem(canvas, scene, camera, { backend: "webgl" });
 
-  scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+  scene.viewport = { width: canvas.width || 800, height: canvas.height || 600 };
 
   arc.on("resize", () => {
-    if (canvas.width !== args.canvasWidth) {
-      canvas.width = args.canvasWidth;
-    }
-    if (canvas.height !== args.canvasHeight) {
-      canvas.height = args.canvasHeight;
-    }
-    scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+    scene.viewport = { width: canvas.width, height: canvas.height };
   });
 
   // Render loop
@@ -197,16 +149,10 @@ function render(args: GridArgs, id: string): HTMLElement {
   };
   frame();
 
-  const resizeObserver = new ResizeObserver(() => {
-    updateCanvasSize();
-  });
-  resizeObserver.observe(container);
-
   const cleanup = () => {
     if (animationFrameId !== undefined) {
       cancelAnimationFrame(animationFrameId);
     }
-    resizeObserver.disconnect();
   };
 
   cleanupMap.set(id, cleanup);
@@ -217,8 +163,6 @@ function render(args: GridArgs, id: string): HTMLElement {
 export const Default: Story = {
   render: (args) => render(args, "default"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     cellSize: 1,
     majorDivisions: 4,
     adaptiveSpacing: true,
@@ -231,8 +175,6 @@ export const Default: Story = {
 export const SmallCells: Story = {
   render: (args) => render(args, "small-cells"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     cellSize: 0.5,
     majorDivisions: 4,
     adaptiveSpacing: true,
@@ -245,8 +187,6 @@ export const SmallCells: Story = {
 export const LargeCells: Story = {
   render: (args) => render(args, "large-cells"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     cellSize: 2,
     majorDivisions: 4,
     adaptiveSpacing: true,

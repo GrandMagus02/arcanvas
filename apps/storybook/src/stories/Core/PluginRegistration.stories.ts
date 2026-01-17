@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/html";
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, Plugin } from "@arcanvas/core";
+import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem, Plugin } from "@arcanvas/core";
 import { Scene } from "@arcanvas/scene";
 
 interface PluginRegistrationArgs {
   enablePlugin: boolean;
   logEvents: boolean;
-  canvasWidth: number;
-  canvasHeight: number;
 }
 
 const cleanupMap = new Map<string, () => void>();
@@ -77,16 +75,6 @@ const meta: Meta<PluginRegistrationArgs> = {
       description: "Show event log",
       defaultValue: true,
     },
-    canvasWidth: {
-      control: { type: "number", min: 200, max: 1920, step: 10 },
-      description: "Canvas width",
-      defaultValue: 800,
-    },
-    canvasHeight: {
-      control: { type: "number", min: 200, max: 1080, step: 10 },
-      description: "Canvas height",
-      defaultValue: 600,
-    },
   },
 };
 
@@ -108,22 +96,25 @@ function render(args: PluginRegistrationArgs, id: string): HTMLElement {
   container.style.height = "100vh";
   container.style.display = "flex";
   container.style.flexDirection = "column";
-  container.style.justifyContent = "center";
-  container.style.alignItems = "center";
   container.style.overflow = "hidden";
   container.style.gap = "10px";
   container.style.padding = "10px";
 
+  const canvasWrapper = document.createElement("div");
+  canvasWrapper.style.flex = "1 1 auto";
+  canvasWrapper.style.minHeight = "0";
+  canvasWrapper.style.display = "flex";
+  container.appendChild(canvasWrapper);
+
   const canvas = document.createElement("canvas");
-  canvas.width = args.canvasWidth;
-  canvas.height = args.canvasHeight;
-  canvas.style.border = "1px solid #ccc";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   canvas.style.display = "block";
-  container.appendChild(canvas);
+  canvasWrapper.appendChild(canvas);
 
   // Create event log display
   const logContainer = document.createElement("div");
-  logContainer.style.width = `${args.canvasWidth}px`;
+  logContainer.style.width = "100%";
   logContainer.style.maxHeight = "200px";
   logContainer.style.overflow = "auto";
   logContainer.style.backgroundColor = "#1a1a1a";
@@ -133,38 +124,12 @@ function render(args: PluginRegistrationArgs, id: string): HTMLElement {
   logContainer.style.padding = "10px";
   logContainer.style.border = "1px solid #333";
   logContainer.style.display = args.logEvents ? "block" : "none";
+  logContainer.style.flexShrink = "0";
   container.appendChild(logContainer);
 
-  const updateCanvasSize = () => {
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight - (args.logEvents ? 220 : 0);
-    const docAspectRatio = args.canvasWidth / args.canvasHeight;
-    const containerAspectRatio = containerWidth / containerHeight;
-
-    let displayWidth: number;
-    let displayHeight: number;
-
-    if (containerAspectRatio > docAspectRatio) {
-      displayHeight = containerHeight;
-      displayWidth = displayHeight * docAspectRatio;
-    } else {
-      displayWidth = containerWidth;
-      displayHeight = displayWidth / docAspectRatio;
-    }
-
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-    canvas.style.maxWidth = "100%";
-    canvas.style.maxHeight = "100%";
-  };
-
-  updateCanvasSize();
-
   // Initialize Arcanvas
-  const arc = new Arcanvas(canvas, {
-    width: args.canvasWidth,
-    height: args.canvasHeight,
-  });
+  const arc = new Arcanvas(canvas);
+  arc.use(AutoResizePlugin);
 
   // Register plugin
   let plugin: LoggingPlugin | undefined = undefined;
@@ -175,8 +140,8 @@ function render(args: PluginRegistrationArgs, id: string): HTMLElement {
     plugin = arc.get(LoggingPlugin) as LoggingPlugin | undefined;
   }
 
-  // Create scene
-  const scene = new Scene({ width: args.canvasWidth, height: args.canvasHeight });
+  // Create scene - will be updated on resize
+  const scene = new Scene({ width: canvas.width || 800, height: canvas.height || 600 });
 
   // Setup camera
   const camera = new Camera(arc);
@@ -191,7 +156,7 @@ function render(args: PluginRegistrationArgs, id: string): HTMLElement {
   // Create render system
   const renderSystem = new EngineRenderSystem(canvas, scene, camera, { backend: "webgl" });
 
-  scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+  scene.viewport = { width: canvas.width || 800, height: canvas.height || 600 };
 
   // Update log display
   const updateLog = () => {
@@ -202,13 +167,7 @@ function render(args: PluginRegistrationArgs, id: string): HTMLElement {
   };
 
   arc.on("resize", () => {
-    if (canvas.width !== args.canvasWidth) {
-      canvas.width = args.canvasWidth;
-    }
-    if (canvas.height !== args.canvasHeight) {
-      canvas.height = args.canvasHeight;
-    }
-    scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+    scene.viewport = { width: canvas.width, height: canvas.height };
     updateLog();
   });
 
@@ -221,16 +180,10 @@ function render(args: PluginRegistrationArgs, id: string): HTMLElement {
   };
   frame();
 
-  const resizeObserver = new ResizeObserver(() => {
-    updateCanvasSize();
-  });
-  resizeObserver.observe(container);
-
   const cleanup = () => {
     if (animationFrameId !== undefined) {
       cancelAnimationFrame(animationFrameId);
     }
-    resizeObserver.disconnect();
     // Plugin cleanup is handled by Arcanvas.destroy() if needed
     // For now, we just stop the render loop
   };
@@ -245,8 +198,6 @@ export const Default: Story = {
   args: {
     enablePlugin: true,
     logEvents: true,
-    canvasWidth: 800,
-    canvasHeight: 600,
   },
 };
 
@@ -255,7 +206,5 @@ export const PluginDisabled: Story = {
   args: {
     enablePlugin: false,
     logEvents: true,
-    canvasWidth: 800,
-    canvasHeight: 600,
   },
 };

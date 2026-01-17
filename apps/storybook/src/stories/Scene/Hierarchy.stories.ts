@@ -1,11 +1,9 @@
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
-import { Mesh, RenderObject, createPositionNormalUVLayout, UnlitColorMaterial } from "@arcanvas/graphics";
+import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
+import { createPositionNormalUVLayout, Mesh, RenderObject, UnlitColorMaterial } from "@arcanvas/graphics";
 import { Entity, Scene, Transform } from "@arcanvas/scene";
 import type { Meta, StoryObj } from "@storybook/html";
 
 interface HierarchyArgs {
-  canvasWidth: number;
-  canvasHeight: number;
   showGroup1: boolean;
   showGroup2: boolean;
   showObject1: boolean;
@@ -28,16 +26,6 @@ const meta: Meta<HierarchyArgs> = {
     },
   },
   argTypes: {
-    canvasWidth: {
-      control: { type: "number", min: 200, max: 1920, step: 10 },
-      description: "Canvas width",
-      defaultValue: 800,
-    },
-    canvasHeight: {
-      control: { type: "number", min: 200, max: 1080, step: 10 },
-      description: "Canvas height",
-      defaultValue: 600,
-    },
     showGroup1: {
       control: "boolean",
       description: "Show Group 1",
@@ -115,50 +103,20 @@ function render(args: HierarchyArgs, id: string): HTMLElement {
   container.style.width = "100%";
   container.style.height = "100vh";
   container.style.display = "flex";
-  container.style.justifyContent = "center";
-  container.style.alignItems = "center";
   container.style.overflow = "hidden";
 
   const canvas = document.createElement("canvas");
-  canvas.width = args.canvasWidth;
-  canvas.height = args.canvasHeight;
-  canvas.style.border = "1px solid #ccc";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   canvas.style.display = "block";
   container.appendChild(canvas);
 
-  const updateCanvasSize = () => {
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const docAspectRatio = args.canvasWidth / args.canvasHeight;
-    const containerAspectRatio = containerWidth / containerHeight;
-
-    let displayWidth: number;
-    let displayHeight: number;
-
-    if (containerAspectRatio > docAspectRatio) {
-      displayHeight = containerHeight;
-      displayWidth = displayHeight * docAspectRatio;
-    } else {
-      displayWidth = containerWidth;
-      displayHeight = displayWidth / docAspectRatio;
-    }
-
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-    canvas.style.maxWidth = "100%";
-    canvas.style.maxHeight = "100%";
-  };
-
-  updateCanvasSize();
-
   // Initialize Arcanvas
-  const arc = new Arcanvas(canvas, {
-    width: args.canvasWidth,
-    height: args.canvasHeight,
-  });
+  const arc = new Arcanvas(canvas);
+  arc.use(AutoResizePlugin);
 
-  // Create scene
-  const scene = new Scene({ width: args.canvasWidth, height: args.canvasHeight });
+  // Create scene - will be updated on resize
+  const scene = new Scene({ width: canvas.width || 800, height: canvas.height || 600 });
 
   // Create hierarchy: root → group1 → object1, object2 | group2 → object3
   const root = new Entity("Root");
@@ -203,16 +161,10 @@ function render(args: HierarchyArgs, id: string): HTMLElement {
   // Create render system
   const renderSystem = new EngineRenderSystem(canvas, scene, camera, { backend: "webgl" });
 
-  scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+  scene.viewport = { width: canvas.width || 800, height: canvas.height || 600 };
 
   arc.on("resize", () => {
-    if (canvas.width !== args.canvasWidth) {
-      canvas.width = args.canvasWidth;
-    }
-    if (canvas.height !== args.canvasHeight) {
-      canvas.height = args.canvasHeight;
-    }
-    scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+    scene.viewport = { width: canvas.width, height: canvas.height };
   });
 
   // Render loop
@@ -224,16 +176,10 @@ function render(args: HierarchyArgs, id: string): HTMLElement {
   };
   frame();
 
-  const resizeObserver = new ResizeObserver(() => {
-    updateCanvasSize();
-  });
-  resizeObserver.observe(container);
-
   const cleanup = () => {
     if (animationFrameId !== undefined) {
       cancelAnimationFrame(animationFrameId);
     }
-    resizeObserver.disconnect();
   };
 
   cleanupMap.set(id, cleanup);
@@ -244,8 +190,6 @@ function render(args: HierarchyArgs, id: string): HTMLElement {
 export const Default: Story = {
   render: (args) => render(args, "default"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     showGroup1: true,
     showGroup2: true,
     showObject1: true,

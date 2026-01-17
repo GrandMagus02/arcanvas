@@ -1,11 +1,9 @@
-import { Arcanvas, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
+import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
 import { createPositionNormalUVLayout, Mesh, PBRMaterial, RenderObject, UnlitColorMaterial } from "@arcanvas/graphics";
 import { Scene, Transform } from "@arcanvas/scene";
 import type { Meta, StoryObj } from "@storybook/html";
 
 interface MaterialsArgs {
-  canvasWidth: number;
-  canvasHeight: number;
   materialType: "unlit" | "pbr";
   baseColorR: number;
   baseColorG: number;
@@ -31,16 +29,6 @@ const meta: Meta<MaterialsArgs> = {
     },
   },
   argTypes: {
-    canvasWidth: {
-      control: { type: "number", min: 200, max: 1920, step: 10 },
-      description: "Canvas width",
-      defaultValue: 800,
-    },
-    canvasHeight: {
-      control: { type: "number", min: 200, max: 1080, step: 10 },
-      description: "Canvas height",
-      defaultValue: 600,
-    },
     materialType: {
       control: "select",
       options: ["unlit", "pbr"],
@@ -120,50 +108,20 @@ function render(args: MaterialsArgs, id: string): HTMLElement {
   container.style.width = "100%";
   container.style.height = "100vh";
   container.style.display = "flex";
-  container.style.justifyContent = "center";
-  container.style.alignItems = "center";
   container.style.overflow = "hidden";
 
   const canvas = document.createElement("canvas");
-  canvas.width = args.canvasWidth;
-  canvas.height = args.canvasHeight;
-  canvas.style.border = "1px solid #ccc";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   canvas.style.display = "block";
   container.appendChild(canvas);
 
-  const updateCanvasSize = () => {
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const docAspectRatio = args.canvasWidth / args.canvasHeight;
-    const containerAspectRatio = containerWidth / containerHeight;
-
-    let displayWidth: number;
-    let displayHeight: number;
-
-    if (containerAspectRatio > docAspectRatio) {
-      displayHeight = containerHeight;
-      displayWidth = displayHeight * docAspectRatio;
-    } else {
-      displayWidth = containerWidth;
-      displayHeight = displayWidth / docAspectRatio;
-    }
-
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-    canvas.style.maxWidth = "100%";
-    canvas.style.maxHeight = "100%";
-  };
-
-  updateCanvasSize();
-
   // Initialize Arcanvas
-  const arc = new Arcanvas(canvas, {
-    width: args.canvasWidth,
-    height: args.canvasHeight,
-  });
+  const arc = new Arcanvas(canvas);
+  arc.use(AutoResizePlugin);
 
-  // Create scene
-  const scene = new Scene({ width: args.canvasWidth, height: args.canvasHeight });
+  // Create scene - will be updated on resize
+  const scene = new Scene({ width: canvas.width || 800, height: canvas.height || 600 });
 
   // Create mesh
   const mesh = createQuadMesh(150);
@@ -186,7 +144,18 @@ function render(args: MaterialsArgs, id: string): HTMLElement {
   }
 
   const matrix = new TransformationMatrix();
-  matrix.translate(args.canvasWidth / 2, args.canvasHeight / 2, 0);
+  const updateQuadPosition = () => {
+    const width = canvas.width || 800;
+    const height = canvas.height || 600;
+    // Reset matrix to identity by directly modifying _data
+    const data = (matrix as unknown as { _data: Float32Array })._data;
+    data[0] = 1; data[1] = 0; data[2] = 0; data[3] = 0;
+    data[4] = 0; data[5] = 1; data[6] = 0; data[7] = 0;
+    data[8] = 0; data[9] = 0; data[10] = 1; data[11] = 0;
+    data[12] = 0; data[13] = 0; data[14] = 0; data[15] = 1;
+    matrix.translate(width / 2, height / 2, 0);
+  };
+  updateQuadPosition();
   const transform = new Transform(matrix);
 
   const obj = new RenderObject(mesh, material, transform);
@@ -245,16 +214,11 @@ function render(args: MaterialsArgs, id: string): HTMLElement {
   // Create render system
   const renderSystem = new EngineRenderSystem(canvas, scene, camera, { backend: "webgl" });
 
-  scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+  scene.viewport = { width: canvas.width || 800, height: canvas.height || 600 };
 
   arc.on("resize", () => {
-    if (canvas.width !== args.canvasWidth) {
-      canvas.width = args.canvasWidth;
-    }
-    if (canvas.height !== args.canvasHeight) {
-      canvas.height = args.canvasHeight;
-    }
-    scene.viewport = { width: args.canvasWidth, height: args.canvasHeight };
+    updateQuadPosition();
+    scene.viewport = { width: canvas.width, height: canvas.height };
   });
 
   // Render loop
@@ -266,16 +230,10 @@ function render(args: MaterialsArgs, id: string): HTMLElement {
   };
   frame();
 
-  const resizeObserver = new ResizeObserver(() => {
-    updateCanvasSize();
-  });
-  resizeObserver.observe(container);
-
   const cleanup = () => {
     if (animationFrameId !== undefined) {
       cancelAnimationFrame(animationFrameId);
     }
-    resizeObserver.disconnect();
   };
 
   cleanupMap.set(id, cleanup);
@@ -286,8 +244,6 @@ function render(args: MaterialsArgs, id: string): HTMLElement {
 export const UnlitColor: Story = {
   render: (args) => render(args, "unlit"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     materialType: "unlit",
     baseColorR: 0.2,
     baseColorG: 0.7,
@@ -303,8 +259,6 @@ export const UnlitColor: Story = {
 export const PBR: Story = {
   render: (args) => render(args, "pbr"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     materialType: "pbr",
     baseColorR: 0.8,
     baseColorG: 0.6,
@@ -320,8 +274,6 @@ export const PBR: Story = {
 export const Wireframe: Story = {
   render: (args) => render(args, "wireframe"),
   args: {
-    canvasWidth: 800,
-    canvasHeight: 600,
     materialType: "unlit",
     baseColorR: 0.2,
     baseColorG: 0.7,
