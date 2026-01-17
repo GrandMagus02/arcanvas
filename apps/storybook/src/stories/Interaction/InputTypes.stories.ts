@@ -38,46 +38,48 @@ const meta: Meta<InputTypesArgs> = {
       },
     },
   },
+  args: {
+    showKeyboard: true,
+    showMouse: true,
+    showTouch: true,
+    showPen: true,
+    showGestures: true,
+    showClicks: true,
+    showLongPress: true,
+    showShortcuts: true,
+  },
   argTypes: {
     showKeyboard: {
       control: { type: "boolean" },
       description: "Show keyboard input",
-      defaultValue: true,
     },
     showMouse: {
       control: { type: "boolean" },
       description: "Show mouse input",
-      defaultValue: true,
     },
     showTouch: {
       control: { type: "boolean" },
       description: "Show touch input",
-      defaultValue: true,
     },
     showPen: {
       control: { type: "boolean" },
       description: "Show pen input",
-      defaultValue: true,
     },
     showGestures: {
       control: { type: "boolean" },
       description: "Show gesture detection",
-      defaultValue: true,
     },
     showClicks: {
       control: { type: "boolean" },
       description: "Show multi-click detection",
-      defaultValue: true,
     },
     showLongPress: {
       control: { type: "boolean" },
       description: "Show long press detection",
-      defaultValue: true,
     },
     showShortcuts: {
       control: { type: "boolean" },
       description: "Show shortcut detection",
-      defaultValue: true,
     },
   },
 };
@@ -92,10 +94,24 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
   const container = document.createElement("div");
   container.style.cssText = `
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 20px;
     padding: 20px;
     font-family: system-ui, -apple-system, sans-serif;
+    align-items: stretch;
+    height: calc(100vh - 40px);
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
+  `;
+
+  // Left column wrapper (demo area + legend)
+  const leftColumn = document.createElement("div");
+  leftColumn.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 0 0 auto;
+    min-width: 400px;
   `;
 
   // Main demo area
@@ -121,10 +137,14 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
   demoArea.addEventListener("blur", () => {
     demoArea.style.border = "2px solid #ccc";
   });
-  // Focus on click for better UX
-  demoArea.addEventListener("click", () => {
-    demoArea.focus();
-  });
+  // Focus on mousedown for better UX (but don't prevent default to allow mouse handlers to work)
+  const focusHandler = (e: MouseEvent) => {
+    // Only focus on left click to avoid interfering with right-click context menu
+    if (e.button === 0 && document.activeElement !== demoArea) {
+      demoArea.focus();
+    }
+  };
+  demoArea.addEventListener("mousedown", focusHandler);
 
   const demoText = document.createElement("div");
   demoText.style.cssText = `
@@ -145,6 +165,13 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
     border-radius: 4px;
     font-family: monospace;
     font-size: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    overflow: hidden;
   `;
 
   const statusTitle = document.createElement("div");
@@ -172,12 +199,17 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
   const statusContent = document.createElement("div");
   statusContent.id = `input-status-${storyId}`;
   statusContent.style.cssText = `
-    max-height: 200px;
+    flex: 1 1 auto;
     overflow-y: auto;
+    min-height: 0;
   `;
   statusDiv.appendChild(statusContent);
 
-  container.appendChild(demoArea);
+  // Add demoArea to left column
+  leftColumn.appendChild(demoArea);
+
+  // Add left column and status div to container
+  container.appendChild(leftColumn);
   container.appendChild(statusDiv);
 
   // Initialize interaction system
@@ -222,8 +254,13 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
   };
 
   const updateCurrentState = () => {
-    const currentStateEl = document.getElementById(`current-state-${storyId}`);
-    if (!currentStateEl) return;
+    // Always use the direct reference to avoid DOM lookup issues
+    // Check if element exists and is in the document
+    if (!currentStateDiv || !currentStateDiv.isConnected) {
+      // Element not yet in DOM, retry
+      requestAnimationFrame(() => updateCurrentState());
+      return;
+    }
 
     const keys = Array.from(state.keysDown).sort();
     const modifiers = state.modifiers;
@@ -244,6 +281,30 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
       html += `<div><strong>Modifiers:</strong> ${modifiers.join(", ")}</div>`;
     } else {
       html += `<div><strong>Modifiers:</strong> <span style="color: #999;">none</span></div>`;
+    }
+
+    // Mouse buttons (aggregate from all mouse pointers)
+    const mouseButtons = new Set<MouseButton>();
+    pointers.forEach((p) => {
+      const deviceStr = String(p.device);
+      if (deviceStr === "mouse") {
+        p.buttons.forEach((b) => mouseButtons.add(b));
+      }
+    });
+    if (mouseButtons.size > 0) {
+      const buttonNames = Array.from(mouseButtons)
+        .sort()
+        .map((b) => {
+          if (b === MouseButton.Left) return "Left";
+          if (b === MouseButton.Middle) return "Middle";
+          if (b === MouseButton.Right) return "Right";
+          if (b === MouseButton.Back) return "Back";
+          if (b === MouseButton.Forward) return "Forward";
+          return `Button${String(b)}`;
+        });
+      html += `<div><strong>Mouse Buttons:</strong> ${buttonNames.join(", ")}</div>`;
+    } else {
+      html += `<div><strong>Mouse Buttons:</strong> <span style="color: #999;">none</span></div>`;
     }
 
     // Mouse buttons / Pointers
@@ -269,28 +330,29 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
       html += `<div><strong>Last Position:</strong> <span style="color: #999;">none</span></div>`;
     }
 
-    currentStateEl.innerHTML = html;
+    currentStateDiv.innerHTML = html;
     updateDemoText();
   };
 
   const updateStatus = (text: string, color: string = "#4CAF50") => {
-    const statusEl = document.getElementById(`input-status-${storyId}`);
-    if (statusEl) {
-      const time = new Date().toLocaleTimeString();
-      statusEl.innerHTML = `<div style="color: ${color}; margin-bottom: 5px;">[${time}] ${text}</div>${statusEl.innerHTML}`;
-      // Keep only last 20 entries
-      const entries = statusEl.children;
-      if (entries.length > 20) {
-        statusEl.removeChild(entries[entries.length - 1] as Node);
-      }
+    // Always use the direct reference to avoid DOM lookup issues
+    if (!statusContent || !statusContent.isConnected) {
+      // Element not yet in DOM, retry
+      requestAnimationFrame(() => updateStatus(text, color));
+      return;
+    }
+
+    const time = new Date().toLocaleTimeString();
+    statusContent.innerHTML = `<div style="color: ${color}; margin-bottom: 5px;">[${time}] ${text}</div>${statusContent.innerHTML}`;
+    // Keep only last 100 entries
+    const entries = statusContent.children;
+    if (entries.length > 100) {
+      statusContent.removeChild(entries[entries.length - 1] as Node);
     }
 
     // Update current state display (which also updates demo text)
     updateCurrentState();
   };
-
-  // Initialize current state display (which also updates demo text)
-  updateCurrentState();
 
   // Keyboard detection
   if (args.showKeyboard) {
@@ -318,6 +380,10 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
   // Mouse detection
   if (args.showMouse) {
     const handleMouse = (e: MouseEvent) => {
+      // Only prevent default for left and middle buttons to allow right-click context menu
+      if (e.button === 0 || e.button === 1) {
+        e.preventDefault();
+      }
       const normalized = normalizeEvent(e, demoArea);
       if (normalized) {
         state.update(normalized);
@@ -328,26 +394,36 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
           return `Button${b}`;
         });
         updateStatus(`Mouse: ${normalized.type} - Buttons: ${buttonNames.join(", ") || "None"}`, "#FF9800");
-        updateCurrentState();
+      }
+    };
+
+    const handleMouseLeave = (e: MouseEvent) => {
+      const normalized = normalizeEvent(e, demoArea);
+      if (normalized) {
+        state.update(normalized);
+        updateStatus(`Mouse: ${normalized.type}`, "#FF9800");
       }
     };
 
     demoArea.addEventListener("mousedown", handleMouse);
     demoArea.addEventListener("mouseup", handleMouse);
     demoArea.addEventListener("mousemove", handleMouse);
+    demoArea.addEventListener("mouseleave", handleMouseLeave);
+
     const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
       const normalized = normalizeEvent(e, demoArea);
       if (normalized) {
         state.update(normalized);
         updateStatus(`Wheel: deltaY=${normalized.deltaY}`, "#9C27B0");
-        updateCurrentState();
       }
     };
-    demoArea.addEventListener("wheel", handleWheel);
+    demoArea.addEventListener("wheel", handleWheel, { passive: false });
     cleanupMap.set(`input-${storyId}-mouse`, () => {
       demoArea.removeEventListener("mousedown", handleMouse);
       demoArea.removeEventListener("mouseup", handleMouse);
       demoArea.removeEventListener("mousemove", handleMouse);
+      demoArea.removeEventListener("mouseleave", handleMouseLeave);
       demoArea.removeEventListener("wheel", handleWheel);
     });
   }
@@ -552,7 +628,6 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
 
     const handleLongPressEvent = (e: Event) => {
       const normalized = normalizeEvent(e, demoArea);
-      console.log("handleLongPressEvent", normalized);
       if (normalized) {
         // Update state first (long press detector needs current state)
         state.update(normalized);
@@ -668,7 +743,7 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
     });
   }
 
-  // Instructions
+  // Instructions (Legend)
   const instructions = document.createElement("div");
   instructions.style.cssText = `
     padding: 15px;
@@ -689,7 +764,10 @@ function createInputDemo(args: InputTypesArgs, storyId: string): HTMLElement {
     • Long Press: Hold for 500ms<br/>
     • Shortcuts: Ctrl+Shift+H, Ctrl+K then Ctrl+C, Ctrl+LeftClick, Alt+RightClick, A + S + D (key sequence)
   `;
-  container.insertBefore(instructions, statusDiv);
+  leftColumn.appendChild(instructions);
+
+  // Store updateCurrentState on the container so it can be called from renderStory
+  (container as HTMLElement & { __updateCurrentState?: () => void }).__updateCurrentState = updateCurrentState;
 
   return container;
 }
@@ -730,6 +808,34 @@ function renderStory(args: InputTypesArgs, storyId: string): HTMLElement {
     cleanupFunctions.forEach((fn) => fn());
     cleanupMap.delete(storyId);
   });
+
+  // Ensure initial state is displayed after element is added to DOM
+  const updateCurrentState = (element as HTMLElement & { __updateCurrentState?: () => void }).__updateCurrentState;
+
+  if (updateCurrentState) {
+    // Try to update state multiple times to catch when element is added to DOM
+    const tryUpdate = () => {
+      if (element.isConnected) {
+        // Element is in DOM, update state
+        updateCurrentState();
+      } else {
+        // Element not yet in DOM, try again
+        requestAnimationFrame(tryUpdate);
+      }
+    };
+
+    // Start trying immediately
+    requestAnimationFrame(tryUpdate);
+
+    // Also try after a few frames to ensure DOM is ready
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (element.isConnected && updateCurrentState) {
+          updateCurrentState();
+        }
+      });
+    });
+  }
 
   return element;
 }
