@@ -7,4 +7,3 @@ export * from "./keys";
 export * from "./ModifierKey";
 export * from "./MouseButton";
 export * from "./PointerType";
-

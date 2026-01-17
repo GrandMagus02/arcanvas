@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from "@storybook/html";
 import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
-import { RenderObject, Mesh, createPositionNormalUVLayout, UnlitColorMaterial } from "@arcanvas/graphics";
+import { createPositionNormalUVLayout, Mesh, RenderObject, UnlitColorMaterial } from "@arcanvas/graphics";
 import { Scene, Transform } from "@arcanvas/scene";
+import type { Meta, StoryObj } from "@storybook/html";
 
 interface BackendSwitchArgs {
   backend: "webgl" | "canvas2d" | "webgpu";
@@ -96,10 +96,22 @@ function render(args: BackendSwitchArgs, id: string): HTMLElement {
     const height = canvas.height || 600;
     // Reset matrix to identity by directly modifying _data
     const data = (matrix as unknown as { _data: Float32Array })._data;
-    data[0] = 1; data[1] = 0; data[2] = 0; data[3] = 0;
-    data[4] = 0; data[5] = 1; data[6] = 0; data[7] = 0;
-    data[8] = 0; data[9] = 0; data[10] = 1; data[11] = 0;
-    data[12] = 0; data[13] = 0; data[14] = 0; data[15] = 1;
+    data[0] = 1;
+    data[1] = 0;
+    data[2] = 0;
+    data[3] = 0;
+    data[4] = 0;
+    data[5] = 1;
+    data[6] = 0;
+    data[7] = 0;
+    data[8] = 0;
+    data[9] = 0;
+    data[10] = 1;
+    data[11] = 0;
+    data[12] = 0;
+    data[13] = 0;
+    data[14] = 0;
+    data[15] = 1;
     matrix.translate(width / 2 - 50, height / 2 - 50, 0);
   };
   updateQuadPosition();

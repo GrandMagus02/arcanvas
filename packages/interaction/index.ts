@@ -56,4 +56,3 @@ export { KeyboardDevice } from "./src/devices/KeyboardDevice";
 export { MouseDevice } from "./src/devices/MouseDevice";
 export { PenButton, PenDevice } from "./src/devices/PenDevice";
 export { TouchDevice } from "./src/devices/TouchDevice";
-
