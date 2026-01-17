@@ -20,6 +20,7 @@ const config: StorybookConfig = {
           "@arcanvas/feature-2d": resolve(__dirname, "../../../packages/feature-2d/index.ts"),
           "@arcanvas/feature-document-2d": resolve(__dirname, "../../../packages/feature-document-2d/index.ts"),
           "@arcanvas/graphics": resolve(__dirname, "../../../packages/graphics/index.ts"),
+          "@arcanvas/interaction": resolve(__dirname, "../../../packages/interaction/index.ts"),
           "@arcanvas/scene": resolve(__dirname, "../../../packages/scene/index.ts"),
           // Resolve internal src/ imports in core package (using baseUrl from tsconfig)
           "src/systems": resolve(__dirname, "../../../packages/core/src/systems/index.ts"),
@@ -27,7 +28,17 @@ const config: StorybookConfig = {
         },
       },
       optimizeDeps: {
-        exclude: ["@arcanvas/core", "@arcanvas/matrix", "@arcanvas/vector", "@arcanvas/document", "@arcanvas/feature-2d", "@arcanvas/feature-document-2d", "@arcanvas/graphics", "@arcanvas/scene"],
+        exclude: [
+          "@arcanvas/core",
+          "@arcanvas/matrix",
+          "@arcanvas/vector",
+          "@arcanvas/document",
+          "@arcanvas/feature-2d",
+          "@arcanvas/feature-document-2d",
+          "@arcanvas/graphics",
+          "@arcanvas/interaction",
+          "@arcanvas/scene",
+        ],
         esbuildOptions: {
           target: "es2020",
         },

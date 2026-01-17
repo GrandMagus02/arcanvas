@@ -12,6 +12,7 @@
     "@arcanvas/document": "workspace:*",
     "@arcanvas/feature-document-2d": "workspace:*",
     "@arcanvas/graphics": "workspace:*",
+    "@arcanvas/interaction": "workspace:*",
     "@arcanvas/scene": "workspace:*"
   },
   "devDependencies": {

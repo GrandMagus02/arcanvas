@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { Entity } from "src";
+import { Entity } from "../../src/scene/Entity";
 
 describe("Entity", () => {
   describe("Initialization", () => {
