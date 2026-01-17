@@ -2,14 +2,29 @@ import { type NumberArray, type NumberArrayConstructor, type TypedArray, type Ty
 import { MatrixOrientation } from "./MatrixOrientation";
 
 /**
+ * Interface for the static side of Matrix classes, requiring identity method.
+ */
+export interface MatrixConstructor<TArr extends NumberArray, TRows extends number, TCols extends number = TRows> {
+  /**
+   * Creates a new identity matrix.
+   * @returns A new identity matrix.
+   */
+  identity(): Matrix<TArr, TRows, TCols>;
+
+  new (data: TArr, rows: TRows, cols: TCols): Matrix<TArr, TRows, TCols>;
+}
+
+/**
  * BaseMatrix is a base class for all matrices.
  * @param TArr - The typed array constructor.
  * @param data - The data of the matrix.
  * @param rows - The number of rows in the matrix.
  * @param cols - The number of columns in the matrix.
  * @param initiallyRowMajor - Whether the matrix is initially row-major.
+ * - Subclasses must implement static method: identity.
+ * - Subclasses may implement static methods: of, fromArray, fromVector, fromMatrix.
  */
-export class Matrix<TArr extends NumberArray, TRows extends number, TCols extends number = TRows> {
+export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCols extends number = TRows> {
   /**
    * The data of the matrix.
    */
@@ -82,18 +97,21 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
 
   /**
    * Returns a copy of the underlying storage as-is (in current major order).
+   * @param constructor - The typed array constructor.
    * @param orientation - The orientation of the typed array.
    * @returns The typed array.
    */
   protected toTypedArray(constructor: TypedArrayConstructor, orientation: MatrixOrientation = MatrixOrientation.RowMajor): TypedArray {
     const out = new constructor(this._data.length) as TypedArray;
-    out.set(this._data);
     if (orientation === MatrixOrientation.ColumnMajor) {
-      // Transpose and return in row-major (which is column-major of original)
-      const transposed = this.transpose();
-      const result = new constructor(transposed._data.length) as TypedArray;
-      result.set(transposed._data);
-      return result;
+      // Transpose in-place: copy data in column-major order
+      for (let r = 0; r < this._rows; r++) {
+        for (let c = 0; c < this._cols; c++) {
+          out[c * this._rows + r] = this._data[r * this._cols + c]!;
+        }
+      }
+    } else {
+      out.set(this._data);
     }
     return out;
   }
@@ -139,58 +157,6 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
   }
 
   /**
-   * Creates a matrix from an array.
-   * @param array - The array.
-   * @param rows - The number of rows.
-   * @param cols - The number of columns.
-   * @returns The new matrix.
-   */
-  static fromArray<TNewArr extends NumberArray, TNewRows extends number, TNewCols extends number>(array: ArrayLike<number>, rows: TNewRows, cols: TNewCols): Matrix<TNewArr, TNewRows, TNewCols> {
-    const ctor = array.constructor as unknown as NumberArrayConstructor;
-    const data = new ctor(rows * cols) as TNewArr;
-    if (Array.isArray(data)) {
-      data.splice(0, data.length, ...Array.from(array));
-    } else {
-      (data as unknown as TypedArray).set(array as unknown as TypedArray);
-    }
-    return new Matrix<TNewArr, TNewRows, TNewCols>(data, rows, cols);
-  }
-
-  /**
-   * Creates a matrix from a vector.
-   * @param vector - The vector.
-   * @returns The new matrix.
-   */
-  static fromVector<TVecArr extends NumberArray, TVecSize extends number>(vector: Vector<TVecArr, TVecSize>): Matrix<TVecArr, TVecSize, 1> {
-    const data = new (vector.data.constructor as unknown as NumberArrayConstructor)(vector.data.length) as TVecArr;
-    if (Array.isArray(data)) {
-      data.splice(0, data.length, ...vector.data);
-    } else {
-      (data as unknown as TypedArray).set(vector.data as unknown as TypedArray);
-    }
-    return new Matrix<TVecArr, TVecSize, 1>(data, vector.size, 1);
-  }
-
-  /**
-   * Creates a matrix from another matrix.
-   * @param matrix - The matrix.
-   * @returns The new matrix.
-   */
-  static fromMatrix<TArr extends NumberArray, TRows extends number, TCols extends number, TSelf extends Matrix<TArr, TRows, TCols>>(
-    this: { new (data: TArr, rows: TRows, cols: TCols): TSelf },
-    matrix: Matrix<TArr, TRows, TCols>
-  ): TSelf {
-    const ctor = matrix._data.constructor as unknown as NumberArrayConstructor;
-    const data = new ctor(matrix._rows * matrix._cols) as TArr;
-    if (Array.isArray(data)) {
-      data.splice(0, data.length, ...matrix._data);
-    } else {
-      (data as unknown as TypedArray).set(matrix._data as unknown as TypedArray);
-    }
-    return new this(data, matrix._rows, matrix._cols);
-  }
-
-  /**
    * Check if a value is a Matrix.
    * @param value - The value to check.
    * @returns True if the value is a Matrix.
@@ -198,6 +164,15 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
   static isMatrix(value: unknown): value is Matrix<NumberArray, number, number> {
     return value instanceof Matrix && typeof value.rows === "number" && typeof value.cols === "number";
   }
+
+  /**
+   * Converts a vector to a matrix (column vector).
+   * Internal helper method for operations that accept both matrices and vectors.
+   * Must be implemented by subclasses to accept the correct vector type.
+   * @param vector - The vector to convert.
+   * @returns A matrix representation of the vector.
+   */
+  protected abstract vectorToMatrix<TVecSize extends number>(vector: Vector<NumberArray, TVecSize>): Matrix<NumberArray, TRows, 1>;
 
   /**
    * Returns the value of the matrix at the given row and column.
@@ -327,9 +302,10 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
   }
 
   /**
-   * Fills the matrix with the given value.
+   * Fills the matrix with the given value (in-place mutation).
+   * Mutates this matrix and returns it for method chaining.
    * @param value - The value to fill the matrix with.
-   * @returns The matrix.
+   * @returns This matrix after filling (for chaining).
    */
   fill(value: number): this {
     for (let i = 0; i < this._rows * this._cols; i++) {
@@ -340,52 +316,105 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
 
   /**
    * Returns a copy of the matrix multiplied by the other matrix.
-   * @param other - The other matrix.
+   * @param other - The other matrix or vector.
    * @returns The multiplied matrix.
    */
   mult<TOtherRows extends number, TOtherCols extends number>(other: Matrix<NumberArray, TOtherRows, TOtherCols> | Vector<NumberArray, TOtherCols>): Matrix<TArr, TRows, TOtherCols> {
-    const otherMat = other instanceof Matrix ? other : Matrix.fromVector(other).transpose();
-    if (this._cols !== otherMat.rows && this._rows !== (otherMat.columns as number)) {
-      throw new Error("Matrix dimensions do not match");
+    // Convert vector to matrix if needed
+    const otherMat = other instanceof Matrix ? other : this.vectorToMatrix(other);
+    const thisCols = this._cols as number;
+    const otherRows = otherMat.rows as number;
+    if (thisCols !== otherRows) {
+      throw new Error(`Matrix dimensions do not match: ${this._rows}x${this._cols} * ${otherMat.rows}x${otherMat.columns}`);
     }
-    const data: TArr = new (this._data.constructor as unknown as NumberArrayConstructor)(this._rows * otherMat.columns) as TArr;
+    const resultCols = otherMat.columns as number as TOtherCols;
+    const data: TArr = new (this._data.constructor as unknown as NumberArrayConstructor)(this._rows * resultCols) as TArr;
     for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < otherMat.columns; c++) {
+      for (let c = 0; c < resultCols; c++) {
         let sum = 0;
-        for (let k = 0; k < this._cols; k++) {
-          sum += this.get(r, k) * other.get(k, c);
+        for (let k = 0; k < thisCols; k++) {
+          sum += this.get(r, k) * otherMat.get(k, c);
         }
-        data[r * otherMat.columns + c] = sum;
+        data[r * resultCols + c] = sum;
       }
     }
-    return new Matrix<TArr, TRows, TOtherCols>(data, this._rows, otherMat.columns);
+    // @ts-expect-error - Abstract class instantiation for backward compatibility
+    return new Matrix<TArr, TRows, TOtherCols>(data, this._rows, resultCols) as Matrix<TArr, TRows, TOtherCols>;
   }
 
   /**
-   * Returns a copy of the matrix added by the other matrix.
+   * Returns a copy of the matrix added by the other matrix (non-mutating).
+   * Creates a new matrix instance without modifying this one.
    * @param other - The other matrix.
-   * @returns The added matrix.
+   * @returns A new matrix with the result of addition.
    */
   add(other: Matrix<NumberArray, TRows, TCols>): Matrix<TArr, TRows, TCols> {
     return this.map((value, r, c) => value + other.get(r, c));
   }
 
   /**
-   * Returns a copy of the matrix subtracted by the other matrix.
+   * Returns a copy of the matrix subtracted by the other matrix (non-mutating).
+   * Creates a new matrix instance without modifying this one.
    * @param other - The other matrix.
-   * @returns The subtracted matrix.
+   * @returns A new matrix with the result of subtraction.
    */
   sub(other: Matrix<NumberArray, TRows, TCols>): Matrix<TArr, TRows, TCols> {
     return this.map((value, r, c) => value - other.get(r, c));
   }
 
   /**
-   * Returns a copy of the matrix divided by the other matrix.
+   * Returns a copy of the matrix divided by the other matrix (non-mutating).
+   * Creates a new matrix instance without modifying this one.
    * @param other - The other matrix.
-   * @returns The divided matrix.
+   * @returns A new matrix with the result of division.
    */
   div(other: Matrix<NumberArray, TRows, TCols>): Matrix<TArr, TRows, TCols> {
     return this.map((value, r, c) => value / other.get(r, c));
+  }
+
+  /**
+   * Adds the other matrix to this matrix (in-place mutation).
+   * Mutates this matrix and returns it for method chaining.
+   * @param other - The other matrix.
+   * @returns This matrix after addition (for chaining).
+   */
+  addSelf(other: Matrix<NumberArray, TRows, TCols>): this {
+    for (let r = 0; r < this._rows; r++) {
+      for (let c = 0; c < this._cols; c++) {
+        const idx = r * this._cols + c;
+        this._data[idx] = (this._data[idx] as number) + other.get(r, c);
+      }
+    }
+    return this;
+  }
+
+  /**
+   * Subtracts the other matrix from this matrix (in-place mutation).
+   * Mutates this matrix and returns it for method chaining.
+   * @param other - The other matrix.
+   * @returns This matrix after subtraction (for chaining).
+   */
+  subSelf(other: Matrix<NumberArray, TRows, TCols>): this {
+    for (let r = 0; r < this._rows; r++) {
+      for (let c = 0; c < this._cols; c++) {
+        const idx = r * this._cols + c;
+        this._data[idx] = (this._data[idx] as number) - other.get(r, c);
+      }
+    }
+    return this;
+  }
+
+  /**
+   * Multiplies this matrix by a scalar (in-place mutation).
+   * Mutates this matrix and returns it for method chaining.
+   * @param scalar - The scalar value.
+   * @returns This matrix after scaling (for chaining).
+   */
+  scaleSelf(scalar: number): this {
+    for (let i = 0; i < this._rows * this._cols; i++) {
+      this._data[i] = (this._data[i] as number) * scalar;
+    }
+    return this;
   }
 
   /**
@@ -394,7 +423,7 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
    * @returns The dot product.
    */
   dot(other: Matrix<NumberArray, TRows, TCols> | Vector<NumberArray, TCols>): number {
-    const otherMat = other instanceof Matrix ? other : Matrix.fromVector(other).transpose();
+    const otherMat = other instanceof Matrix ? other : this.vectorToMatrix(other).transpose();
     return this.reduce((accumulator, value, r, c) => accumulator + value * otherMat.get(r, c), 0);
   }
 
@@ -404,28 +433,30 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
    * @returns True if the matrix is equal to the other matrix.
    */
   equals(other: Matrix<NumberArray, TRows, TCols> | Vector<NumberArray, TCols>): boolean {
-    const otherMat = other instanceof Matrix ? other : Matrix.fromVector(other).transpose();
+    const otherMat = other instanceof Matrix ? other : this.vectorToMatrix(other).transpose();
     return this.every((value, r, c) => value === otherMat.get(r, c));
   }
 
   /**
-   * Returns a copy of the matrix.
-   * @returns The copy.
+   * Returns a copy of the matrix of the same type as this matrix.
+   * @returns A new matrix instance of the same class with copied data.
    */
-  clone(): Matrix<TArr, TRows, TCols> {
-    const ctor = this._data.constructor as unknown as NumberArrayConstructor;
-    const newData = new ctor(this._data.length) as TArr;
+  clone(): this {
+    const ctor = this.constructor as new (data: TArr, rows: TRows, cols?: TCols) => this;
+    const bufCtor = this._data.constructor as unknown as NumberArrayConstructor;
+    const newData = new bufCtor(this._data.length) as TArr;
     if (Array.isArray(newData)) {
       newData.splice(0, newData.length, ...this._data);
     } else {
       (newData as unknown as TypedArray).set(this._data as unknown as TypedArray);
     }
-    return new (this.constructor as new (data: TArr, rows: TRows, cols: TCols) => Matrix<TArr, TRows, TCols>)(newData, this._rows, this._cols);
+    return new ctor(newData, this._rows, this._cols);
   }
 
   /**
-   * Transposes the matrix.
-   * @returns The transposed matrix.
+   * Returns a transposed copy of the matrix (non-mutating).
+   * Creates a new matrix instance without modifying this one.
+   * @returns A new transposed matrix.
    */
   transpose(): Matrix<TArr, TCols, TRows> {
     const out = new (this._data.constructor as unknown as NumberArrayConstructor)(this._rows * this._cols) as TArr;
@@ -434,7 +465,8 @@ export class Matrix<TArr extends NumberArray, TRows extends number, TCols extend
         out[c * this._rows + r] = this._data[r * this._cols + c]! as TArr[number];
       }
     }
-    return new Matrix<TArr, TCols, TRows>(out, this._cols, this._rows);
+    // @ts-expect-error - Abstract class instantiation for backward compatibility
+    return new Matrix<TArr, TCols, TRows>(out, this._cols, this._rows) as Matrix<TArr, TCols, TRows>;
   }
 
   /**

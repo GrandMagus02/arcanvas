@@ -1,6 +1,28 @@
 import type { NumberArray, NumberArrayConstructor, TypedArray, TypedArrayConstructor } from "./types";
 
 /**
+ * Interface for the static side of Vector classes, requiring fromArray and fromBuffer methods.
+ */
+export interface VectorConstructor<TArr extends NumberArray, TSize extends number> {
+  /**
+   * Creates a vector from an array-like object.
+   * @param array - The array-like object.
+   * @returns A new vector instance.
+   */
+  fromArray<TNewArr extends NumberArray = Float32Array>(array: ArrayLike<number>): Vector<TNewArr, TSize>;
+
+  /**
+   * Creates a vector view into an existing ArrayBuffer.
+   * @param buffer - The array buffer.
+   * @param byteOffset - The byte offset (default: 0).
+   * @returns A new vector instance.
+   */
+  fromBuffer(buffer: ArrayBuffer, byteOffset?: number): Vector<Float32Array, TSize>;
+
+  new (data: TArr, size?: TSize, validate?: boolean): Vector<TArr, TSize>;
+}
+
+/**
  * WebGL-friendly BaseVector with support for:
  * - Owned storage (allocates own typed array)
  * - Views over shared buffers (ArrayBuffer or existing NumberArray + byteOffset)
@@ -8,8 +30,9 @@ import type { NumberArray, NumberArrayConstructor, TypedArray, TypedArrayConstru
  * Notes:
  * - Prefer Float32Array for WebGL attributes.
  * - For large collections, create many vectors as views into one big typed array.
+ * - Subclasses must implement static methods: fromArray and fromBuffer.
  */
-export class Vector<TArr extends NumberArray, TSize extends number> {
+export abstract class Vector<TArr extends NumberArray, TSize extends number = TArr["length"]> {
   /**
    * The data of the vector.
    */
@@ -23,13 +46,16 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
    * Create from an existing typed array instance (owned or a view).
    * Use this when you already have a correctly-sized TArr slice/view.
    * @param data - The data of the vector.
+   * @param size - The size of the vector (defaults to data.length).
+   * @param validate - Whether to validate and copy the data (defaults to true).
+   *                   Set to false when data is already validated and you want to avoid copying.
    */
-  constructor(data: TArr, size?: TSize) {
+  constructor(data: TArr, size?: TSize, validate = true) {
     if ((data.length <= 0 && size === undefined) || (size !== undefined && size <= 0)) {
       throw new RangeError("Vector dimensions must be positive or the data must have a length");
     }
     this._size = size ?? (data.length as TSize);
-    this._data = this.validateData(data);
+    this._data = validate ? this.validateData(data) : data;
   }
 
   /**
@@ -46,20 +72,22 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
 
   /**
    * Validates the data of the vector.
+   * Creates a new array and copies/validates the data.
    * @param data - The data of the vector.
+   * @returns A new validated array.
    */
   protected validateData(data: TArr): TArr {
-    const newData = new (data.constructor as unknown as NumberArrayConstructor)(this.size) as TArr;
-    if (Array.isArray(newData)) {
-      newData.splice(0, newData.length, ...data);
+    const ctor = data.constructor as unknown as NumberArrayConstructor;
+    const out = new ctor(this.size) as TArr;
+    if (Array.isArray(out)) {
+      out.splice(0, out.length, ...data);
     } else {
-      newData.fill(0);
-      (newData as unknown as TypedArray).set(data as unknown as TypedArray);
+      (out as unknown as TypedArray).set(data as unknown as TypedArray);
     }
     for (let i = 0; i < this.size; i++) {
-      newData[i] = this.validateValue(data[i]!);
+      out[i] = this.validateValue(out[i] as number);
     }
-    return newData;
+    return out;
   }
 
   /**
@@ -100,25 +128,25 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
     return Math.sqrt(this.lengthSquared);
   }
 
-  /**
-   * Creates a vector from an array.
-   * @param array - The array.
-   * @param size - The size of the vector.
-   * @returns The new vector.
-   */
-  static fromArray<TNewArr extends NumberArray, TNewSize extends number>(array: ArrayLike<number>, size?: TNewSize): Vector<TNewArr, TNewSize> {
-    const ctor = array.constructor as unknown as NumberArrayConstructor;
-    if (size === undefined) {
-      size = array.length as TNewSize;
-    }
-    const data = new ctor(size) as TNewArr;
-    if (Array.isArray(data)) {
-      data.splice(0, data.length, ...Array.from(array));
-    } else {
-      (data as unknown as TypedArray).set(array as unknown as TypedArray);
-    }
-    return new Vector<TNewArr, TNewSize>(data, size);
-  }
+  // /**
+  //  * Creates a vector from an array.
+  //  * @param array - The array.
+  //  * @param size - The size of the vector.
+  //  * @returns The new vector.
+  //  */
+  // static fromArray<TNewArr extends NumberArray, TNewSize extends number = TNewArr["length"]>(array: ArrayLike<number>, size?: TNewSize): Vector<TNewArr, TNewSize> {
+  //   const ctor = array.constructor as unknown as NumberArrayConstructor;
+  //   if (size === undefined) {
+  //     size = array.length as TNewSize;
+  //   }
+  //   const data = new ctor(size) as TNewArr;
+  //   if (Array.isArray(data)) {
+  //     data.splice(0, data.length, ...Array.from(array));
+  //   } else {
+  //     (data as unknown as TypedArray).set(array as unknown as TypedArray);
+  //   }
+  //   return new Vector<TNewArr, TNewSize>(data, size);
+  // }
 
   /**
    * Allocates an owned vector of given dimension using a typed array constructor.
@@ -164,25 +192,6 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
    */
   static isVector(value: unknown): value is Vector<NumberArray, number> {
     return value instanceof Vector;
-  }
-
-  /**
-   * Create a view into an existing ArrayBuffer.
-   * @param ctor - The typed array constructor.
-   * @param buffer - The array buffer.
-   * @param byteOffset - The byte offset.
-   * @param count - The number of elements.
-   * @returns The view.
-   */
-  protected static fromBuffer<TArr extends TypedArray, TSize extends number, TSelf extends Vector<TArr, TSize>>(
-    this: { new (data: TArr): TSelf },
-    ctor: TypedArrayConstructor,
-    buffer: ArrayBuffer,
-    byteOffset: number,
-    count: number
-  ): TSelf {
-    const arr = new ctor(buffer, byteOffset, count) as TArr;
-    return new this(arr);
   }
 
   /**
@@ -235,9 +244,10 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Adds the other vector to the current vector.
-   * @param other - The other vector.
-   * @returns The added vector.
+   * Adds the other vector to the current vector (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @param other - The other vector or a scalar number.
+   * @returns This vector after addition (for chaining).
    */
   add(other: this | number): this {
     if (Vector.isVector(other)) {
@@ -254,9 +264,10 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Subtracts the other vector from the current vector.
-   * @param other - The other vector.
-   * @returns The subtracted vector.
+   * Subtracts the other vector from the current vector (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @param other - The other vector or a scalar number.
+   * @returns This vector after subtraction (for chaining).
    */
   sub(other: this | number): this {
     if (Vector.isVector(other)) {
@@ -273,9 +284,10 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Multiplies the current vector by the other vector.
-   * @param other - The other vector.
-   * @returns The multiplied vector.
+   * Multiplies the current vector by the other vector (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @param other - The other vector or a scalar number.
+   * @returns This vector after multiplication (for chaining).
    */
   mult(other: this | number): this {
     if (Vector.isVector(other)) {
@@ -292,9 +304,10 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Divides the current vector by the other vector.
-   * @param other - The other vector.
-   * @returns The divided vector.
+   * Divides the current vector by the other vector (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @param other - The other vector or a scalar number.
+   * @returns This vector after division (for chaining).
    */
   div(other: this | number): this {
     if (Vector.isVector(other)) {
@@ -311,9 +324,10 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Scales the current vector by the given scalar.
-   * @param scalar - The scalar.
-   * @returns The scaled vector.
+   * Scales the current vector by the given scalar (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @param scalar - The scalar value.
+   * @returns This vector after scaling (for chaining).
    */
   scale(scalar: number): this {
     for (let i = 0; i < this._size; i++) {
@@ -323,11 +337,12 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Calculates the cross product of the current vector and the other vector.
+   * Element-wise multiplication (Hadamard product) of the current vector and the other vector.
+   * For 3D vectors, use Vector3.cross() for the cross product.
    * @param other - The other vector.
-   * @returns The cross product.
+   * @returns This vector after element-wise multiplication.
    */
-  cross(other: this): this {
+  mulElementWise(other: this): this {
     this.ensureSameSize(other);
     for (let i = 0; i < this._size; i++) {
       this._data[i] = (this._data[i] as number) * (other._data[i] as number);
@@ -336,8 +351,9 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Normalizes the current vector.
-   * @returns The normalized vector.
+   * Normalizes the current vector (in-place mutation).
+   * Mutates this vector to unit length and returns it for method chaining.
+   * @returns This vector after normalization (for chaining).
    */
   normalize(): this {
     const len = this.length;
@@ -379,9 +395,10 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Fills the matrix with the given value.
-   * @param value - The value to fill the matrix with.
-   * @returns The matrix.
+   * Fills the vector with the given value (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @param value - The value to fill the vector with.
+   * @returns This vector after filling (for chaining).
    */
   fill(value: number): this {
     for (let i = 0; i < this._size; i++) {
@@ -391,8 +408,9 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Reverses the current vector.
-   * @returns The reversed vector.
+   * Reverses the current vector (in-place mutation).
+   * Mutates this vector and returns it for method chaining.
+   * @returns This vector after reversal (for chaining).
    */
   reverse(): this {
     for (let i = 0; i < this._size / 2; i++) {
@@ -404,26 +422,29 @@ export class Vector<TArr extends NumberArray, TSize extends number> {
   }
 
   /**
-   * Clone returns an owned clone (copy of data).
+   * Clone returns an owned clone (copy of data) of the same type as this vector.
    * If you want a view on the same buffer, use fromBuffer/fromArrayView
    * in your concrete subclass.
+   * @returns A new vector instance of the same class with copied data.
    */
-  clone(): Vector<TArr, TSize> {
-    const ctor = this._data.constructor as unknown as NumberArrayConstructor;
-    const copy = new ctor(this._size) as TArr;
+  clone(): this {
+    const ctor = this.constructor as new (data: TArr, size?: TSize, validate?: boolean) => this;
+    const bufCtor = this._data.constructor as unknown as NumberArrayConstructor;
+    const copy = new bufCtor(this._size) as TArr;
     if (Array.isArray(copy)) {
       copy.splice(0, copy.length, ...this._data);
     } else {
       (copy as unknown as TypedArray).set(this._data as unknown as TypedArray);
     }
-    return new Vector(copy, this._size);
+    return new ctor(copy, this._size, false);
   }
 
   /**
-   * Returns a reversed copy of the current vector.
-   * @returns The reversed vector.
+   * Returns a reversed copy of the current vector (non-mutating).
+   * Creates a new vector instance without modifying this one.
+   * @returns A new reversed vector.
    */
-  toReversed(): Vector<TArr, TSize> {
+  toReversed(): this {
     return this.clone().reverse();
   }
 
