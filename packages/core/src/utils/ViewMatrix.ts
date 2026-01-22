@@ -70,24 +70,29 @@ export class ViewMatrix extends Matrix4 {
     const diffLength = eyeCenterDiff.length;
 
     // If eye and center are the same or very close, use simple translation matrix for 2D.
-    // IMPORTANT: Matrices in @arcanvas/matrix are stored row-major.
-    // Translation lives in the last column: indices 3, 7, 11.
+    // IMPORTANT: Matrices in @arcanvas/math are stored column-major.
+    // Column-major layout: column 0 at [0,1,2,3], column 1 at [4,5,6,7], etc.
+    // Translation lives in column 3: indices 12, 13, 14, 15.
     if (diffLength < 0.0001) {
+      // Column 0: [1, 0, 0, 0]
       this._data[0] = 1;
       this._data[1] = 0;
       this._data[2] = 0;
-      this._data[3] = -this._eye.x;
+      this._data[3] = 0;
+      // Column 1: [0, 1, 0, 0]
       this._data[4] = 0;
       this._data[5] = 1;
       this._data[6] = 0;
-      this._data[7] = -this._eye.y;
+      this._data[7] = 0;
+      // Column 2: [0, 0, 1, 0]
       this._data[8] = 0;
       this._data[9] = 0;
       this._data[10] = 1;
-      this._data[11] = -this._eye.z;
-      this._data[12] = 0;
-      this._data[13] = 0;
-      this._data[14] = 0;
+      this._data[11] = 0;
+      // Column 3: [-eye.x, -eye.y, -eye.z, 1]
+      this._data[12] = -this._eye.x;
+      this._data[13] = -this._eye.y;
+      this._data[14] = -this._eye.z;
       this._data[15] = 1;
       return;
     }
@@ -97,26 +102,34 @@ export class ViewMatrix extends Matrix4 {
     const x = this._up.cross(z).normalize();
     const y = z.cross(x).normalize();
 
-    // Row-major view matrix:
-    // [ x0 x1 x2 -dot(x,eye) ]
-    // [ y0 y1 y2 -dot(y,eye) ]
-    // [ z0 z1 z2 -dot(z,eye) ]
+    // Column-major view matrix:
+    // Column 0: x-axis vector
+    // Column 1: y-axis vector
+    // Column 2: z-axis vector
+    // Column 3: translation vector
+    // [ x0 y0 z0 -dot(x,eye) ]
+    // [ x1 y1 z1 -dot(y,eye) ]
+    // [ x2 y2 z2 -dot(z,eye) ]
     // [  0  0  0      1      ]
+    // Column 0: x-axis
     this._data[0] = x.data[0]!;
     this._data[1] = x.data[1]!;
     this._data[2] = x.data[2]!;
-    this._data[3] = -x.dot(this._eye);
+    this._data[3] = 0;
+    // Column 1: y-axis
     this._data[4] = y.data[0]!;
     this._data[5] = y.data[1]!;
     this._data[6] = y.data[2]!;
-    this._data[7] = -y.dot(this._eye);
+    this._data[7] = 0;
+    // Column 2: z-axis
     this._data[8] = z.data[0]!;
     this._data[9] = z.data[1]!;
     this._data[10] = z.data[2]!;
-    this._data[11] = -z.dot(this._eye);
-    this._data[12] = 0;
-    this._data[13] = 0;
-    this._data[14] = 0;
+    this._data[11] = 0;
+    // Column 3: translation
+    this._data[12] = -x.dot(this._eye);
+    this._data[13] = -y.dot(this._eye);
+    this._data[14] = -z.dot(this._eye);
     this._data[15] = 1;
   }
 }

@@ -1,4 +1,4 @@
-import type { NumberArray } from "@arcanvas/vector";
+import type { NumberArray } from "../vector/types";
 import { Matrix } from "./Matrix";
 
 /**

@@ -1,4 +1,4 @@
-import { Vector3 } from "@arcanvas/vector";
+import { Vector3 } from "@arcanvas/math";
 import type { IArcanvasContext } from "../infrastructure/interfaces/IArcanvasContext";
 import { EventKey } from "../utils";
 import { ProjectionMatrix } from "../utils/ProjectionMatrix";
@@ -6,7 +6,7 @@ import { ProjectionMode } from "../utils/ProjectionMode";
 import { Subscribable } from "../utils/Subscribable";
 import { TransformationMatrix } from "../utils/TransformationMatrix";
 import { ViewMatrix } from "../utils/ViewMatrix";
-import { WorldVec3, createWorldVec3, cloneWorldVec3, copyWorldVec3 } from "../utils/world/WorldVec3";
+import { WorldVec3, cloneWorldVec3, copyWorldVec3, createWorldVec3 } from "../utils/world/WorldVec3";
 import { CameraEventKey } from "./CameraEvents";
 
 /**

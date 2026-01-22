@@ -1,4 +1,4 @@
-import { Vector3 } from "@arcanvas/vector";
+import { Vector3 } from "@arcanvas/math";
 
 /**
  * WorldVec3 represents a position in world-space using double-precision numbers.

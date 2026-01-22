@@ -1,4 +1,4 @@
-import { Matrix4, MatrixOrientation } from "@arcanvas/math";
+import { Matrix4 } from "@arcanvas/math";
 
 /**
  * Converts a 3x3 matrix from row-major to column-major order.
@@ -59,9 +59,10 @@ export function toColumnMajor4x4(rowMajor: Float32Array): Float32Array {
  */
 export class TransformationMatrix extends Matrix4 {
   translate(x: number = 0, y: number = 0, z: number = 0): this {
-    this._data[3] = this._data[3]! + x;
-    this._data[7] = this._data[7]! + y;
-    this._data[11] = this._data[11]! + z;
+    // Column-major: translation is in column 3 at indices [12, 13, 14, 15]
+    this._data[12] = this._data[12]! + x;
+    this._data[13] = this._data[13]! + y;
+    this._data[14] = this._data[14]! + z;
     return this;
   }
   translateX(x: number): this {
@@ -98,12 +99,12 @@ export class TransformationMatrix extends Matrix4 {
     // [0   c   -s   0]
     // [0   s    c   0]
     // [0   0    0   1]
-    // Row-major indices: row 1 at [4,5,6,7], row 2 at [8,9,10,11]
+    // Column-major: column 1 at [4,5,6,7], column 2 at [8,9,10,11]
     this._data[5] = c;
-    this._data[6] = -s;
-    this._data[9] = s;
+    this._data[6] = s;
+    this._data[9] = -s;
     this._data[10] = c;
-    // Preserve translation Y at [7] and translation Z at [11]
+    // Preserve translation Y at [13] and translation Z at [14]
     return this;
   }
   rotateY(rad: number): this {
@@ -114,12 +115,12 @@ export class TransformationMatrix extends Matrix4 {
     // [0   1   0   0]
     // [-s  0   c   0]
     // [0   0   0   1]
-    // Row-major indices: row 0 at [0,1,2,3], row 2 at [8,9,10,11]
+    // Column-major: column 0 at [0,1,2,3], column 2 at [8,9,10,11]
     this._data[0] = c;
-    this._data[2] = s;
-    this._data[8] = -s;
+    this._data[2] = -s;
+    this._data[8] = s;
     this._data[10] = c;
-    // Preserve translation X at [3] and translation Z at [11]
+    // Preserve translation X at [12] and translation Z at [14]
     return this;
   }
   rotateZ(rad: number): this {
@@ -130,12 +131,12 @@ export class TransformationMatrix extends Matrix4 {
     // [s   c   0   0]
     // [0   0   1   0]
     // [0   0   0   1]
-    // Row-major indices: row 0 at [0,1,2,3], row 1 at [4,5,6,7]
+    // Column-major: column 0 at [0,1,2,3], column 1 at [4,5,6,7]
     this._data[0] = c;
-    this._data[1] = -s;
-    this._data[4] = s;
+    this._data[1] = s;
+    this._data[4] = -s;
     this._data[5] = c;
-    // Preserve translation X at [3] and translation Y at [7]
+    // Preserve translation X at [12] and translation Y at [13]
     return this;
   }
 
@@ -187,6 +188,6 @@ export class TransformationMatrix extends Matrix4 {
    * @returns A Float32Array in column-major order.
    */
   toColumnMajorArray(): Float32Array {
-    return this.toFloat32Array(MatrixOrientation.ColumnMajor);
+    return this.toFloat32Array();
   }
 }

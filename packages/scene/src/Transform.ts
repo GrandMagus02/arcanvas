@@ -23,7 +23,7 @@ export class Transform {
 
   /**
    * Returns the model matrix in column-major order (for WebGL).
-   * Matrix is now stored internally in column-major order, so we can return it directly.
+   * Matrix is stored internally in column-major order, so we can return it directly.
    */
   get modelMatrix(): Float32Array {
     return this._matrix.toFloat32Array(); // Already in column-major order for WebGL

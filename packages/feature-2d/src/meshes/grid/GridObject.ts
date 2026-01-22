@@ -1,4 +1,5 @@
-import { Mesh, RenderObject, type VertexLayout } from "@arcanvas/graphics";
+import { Mesh, type VertexLayout, type BaseMaterial } from "@arcanvas/graphics";
+import { Entity, Transform } from "@arcanvas/scene";
 import { GridMaterial, type GridMaterialOptions } from "./GridMaterial";
 
 /**
@@ -28,15 +29,20 @@ const FULLSCREEN_INDICES = new Uint16Array([0, 1, 2]);
  * Engine-level grid object for the new rendering pipeline.
  * Uses a procedural shader to render an infinite grid.
  */
-export class GridObject extends RenderObject {
+export class GridObject extends Entity {
+  mesh: Mesh;
+  material: BaseMaterial;
+  transform: Transform;
   private _gridMaterial: GridMaterial;
 
   constructor(options: GridMaterialOptions = {}) {
+    super("Grid");
     const mesh = new Mesh(FULLSCREEN_VERTICES, FULLSCREEN_INDICES, GRID_VERTEX_LAYOUT, "triangles");
     const material = new GridMaterial(options);
-    super(mesh, material);
+    this.mesh = mesh;
+    this.material = material;
+    this.transform = new Transform();
     this._gridMaterial = material;
-    this.name = "Grid";
   }
 
   get gridMaterial(): GridMaterial {

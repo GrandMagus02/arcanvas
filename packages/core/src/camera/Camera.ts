@@ -1,4 +1,4 @@
-import { Vector3 } from "@arcanvas/vector";
+import { Vector3 } from "@arcanvas/math";
 import type { IArcanvasContext } from "../infrastructure/interfaces/IArcanvasContext";
 import { EventKey } from "../utils";
 import { ProjectionMatrix } from "../utils/ProjectionMatrix";

@@ -219,33 +219,40 @@ export class ProjectionMatrix<T extends ProjectionMode = ProjectionMode.Perspect
     const { fovY, aspect, near, far } = options;
 
     const factor = 1.0 / Math.tan(fovY / 2);
-    // IMPORTANT: Matrices in @arcanvas/matrix are stored row-major.
+    // IMPORTANT: Matrices in @arcanvas/math are stored column-major.
+    // Column-major layout: column 0 at [0,1,2,3], column 1 at [4,5,6,7], etc.
     // This builds the standard OpenGL-style perspective projection (NDC z in [-1, 1]).
+    // Column 0: [factor/aspect, 0, 0, 0]
     this._data[0] = factor / aspect;
     this._data[1] = 0;
     this._data[2] = 0;
     this._data[3] = 0;
+    // Column 1: [0, factor, 0, 0]
     this._data[4] = 0;
     this._data[5] = factor;
     this._data[6] = 0;
     this._data[7] = 0;
+    // Column 2: [0, 0, (far+near)/(near-far), -1]
     this._data[8] = 0;
     this._data[9] = 0;
-    this._data[10] = 0;
-    this._data[11] = 0;
-    this._data[12] = 0;
-    this._data[13] = 0;
-    this._data[14] = -1;
-    this._data[15] = 0;
-
     if (far !== undefined && far !== null && far !== Infinity) {
       const nf = 1 / (near - far);
       this._data[10] = (far + near) * nf;
-      this._data[11] = 2 * far * near * nf;
+      this._data[11] = -1;
     } else {
       this._data[10] = -1;
-      this._data[11] = -2 * near;
+      this._data[11] = -1;
     }
+    // Column 3: [0, 0, 2*far*near/(near-far), 0]
+    this._data[12] = 0;
+    this._data[13] = 0;
+    if (far !== undefined && far !== null && far !== Infinity) {
+      const nf = 1 / (near - far);
+      this._data[14] = 2 * far * near * nf;
+    } else {
+      this._data[14] = -2 * near;
+    }
+    this._data[15] = 0;
   }
 
   private updateOrthographic(options: ProjectionMatrixOptions<ProjectionMode.Orthographic>): void {
@@ -255,26 +262,30 @@ export class ProjectionMatrix<T extends ProjectionMode = ProjectionMode.Perspect
     const bt = 1 / (bottom - top);
     const nf = 1 / (near - far);
 
-    // Row-major orthographic projection (NDC z in [-1, 1])
-    // [ 2/(r-l)     0         0      -(r+l)/(r-l) ]
-    // [   0      2/(t-b)      0      -(t+b)/(t-b) ]
-    // [   0         0     -2/(f-n)   -(f+n)/(f-n) ]
-    // [   0         0         0             1      ]
+    // Column-major orthographic projection (NDC z in [-1, 1])
+    // Column 0: [2/(r-l), 0, 0, 0]
+    // Column 1: [0, 2/(t-b), 0, 0]
+    // Column 2: [0, 0, -2/(f-n), 0]
+    // Column 3: [-(r+l)/(r-l), -(t+b)/(t-b), -(f+n)/(f-n), 1]
+    // Column 0
     this._data[0] = -2 * lr;
     this._data[1] = 0;
     this._data[2] = 0;
-    this._data[3] = (left + right) * lr;
+    this._data[3] = 0;
+    // Column 1
     this._data[4] = 0;
     this._data[5] = -2 * bt;
     this._data[6] = 0;
-    this._data[7] = (top + bottom) * bt;
+    this._data[7] = 0;
+    // Column 2
     this._data[8] = 0;
     this._data[9] = 0;
     this._data[10] = 2 * nf;
-    this._data[11] = (far + near) * nf;
-    this._data[12] = 0;
-    this._data[13] = 0;
-    this._data[14] = 0;
+    this._data[11] = 0;
+    // Column 3
+    this._data[12] = (left + right) * lr;
+    this._data[13] = (top + bottom) * bt;
+    this._data[14] = (far + near) * nf;
     this._data[15] = 1;
   }
 }

@@ -1,6 +1,6 @@
 import { Matrix4 } from "@arcanvas/math";
 import { Transform } from "./Transform";
-import { WorldVec3, createWorldVec3, copyWorldVec3, cloneWorldVec3 } from "./utils/WorldVec3";
+import { WorldVec3, cloneWorldVec3, copyWorldVec3, createWorldVec3 } from "./utils/WorldVec3";
 
 /**
  * WorldTransform extends Transform to support double-precision world coordinates.
@@ -131,21 +131,26 @@ export class WorldTransform extends Transform {
     const r22 = cx * cy;
 
     const data = this._matrix.data;
+    // Column-major layout: column 0 at [0,1,2,3], column 1 at [4,5,6,7], etc.
+    // Column 0: [r00*sx, r10*sx, r20*sx, 0]
     data[0] = r00 * sx;
-    data[1] = r01 * sy;
-    data[2] = r02 * sz;
-    data[3] = this._localPosition[0]!;
-    data[4] = r10 * sx;
+    data[1] = r10 * sx;
+    data[2] = r20 * sx;
+    data[3] = 0;
+    // Column 1: [r01*sy, r11*sy, r21*sy, 0]
+    data[4] = r01 * sy;
     data[5] = r11 * sy;
-    data[6] = r12 * sz;
-    data[7] = this._localPosition[1]!;
-    data[8] = r20 * sx;
-    data[9] = r21 * sy;
+    data[6] = r21 * sy;
+    data[7] = 0;
+    // Column 2: [r02*sz, r12*sz, r22*sz, 0]
+    data[8] = r02 * sz;
+    data[9] = r12 * sz;
     data[10] = r22 * sz;
-    data[11] = this._localPosition[2]!;
-    data[12] = 0;
-    data[13] = 0;
-    data[14] = 0;
+    data[11] = 0;
+    // Column 3: [tx, ty, tz, 1]
+    data[12] = this._localPosition[0]!;
+    data[13] = this._localPosition[1]!;
+    data[14] = this._localPosition[2]!;
     data[15] = 1;
 
     this._localDirty = false;
