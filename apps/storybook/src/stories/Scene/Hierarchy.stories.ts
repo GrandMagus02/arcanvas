@@ -1,5 +1,5 @@
 import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem, TransformationMatrix } from "@arcanvas/core";
-import { createPositionNormalUVLayout, Mesh, RenderObject, UnlitColorMaterial } from "@arcanvas/graphics";
+import { createPositionNormalUVLayout, Mesh, UnlitColorMaterial, type BaseMaterial } from "@arcanvas/graphics";
 import { Entity, Scene, Transform } from "@arcanvas/scene";
 import type { Meta, StoryObj } from "@storybook/html";
 
@@ -75,18 +75,22 @@ function createQuadMesh(size: number): Mesh {
 }
 
 /**
- * Creates a render object with the specified position and color.
+ * Creates a render entity with the specified position and color.
+ * Entity-based render objects can be added to the scene graph.
  */
-function createRenderObject(x: number, y: number, color: [number, number, number, number], name: string): RenderObject {
+function createRenderEntity(x: number, y: number, color: [number, number, number, number], name: string): Entity & { mesh: Mesh; material: BaseMaterial; transform: Transform } {
   const mesh = createQuadMesh(50);
   const material = new UnlitColorMaterial({ baseColor: color });
   const matrix = new TransformationMatrix();
   matrix.translate(x, y, 0);
   const transform = new Transform(matrix);
 
-  const obj = new RenderObject(mesh, material, transform);
-  obj.name = name;
-  return obj;
+  const entity = new Entity(name);
+  // Add render properties to the entity
+  (entity as Entity & { mesh: Mesh; material: BaseMaterial; transform: Transform }).mesh = mesh;
+  (entity as Entity & { mesh: Mesh; material: BaseMaterial; transform: Transform }).material = material;
+  (entity as Entity & { mesh: Mesh; material: BaseMaterial; transform: Transform }).transform = transform;
+  return entity as Entity & { mesh: Mesh; material: BaseMaterial; transform: Transform };
 }
 
 /**
@@ -123,9 +127,9 @@ function render(args: HierarchyArgs, id: string): HTMLElement {
   const group1 = new Entity("Group1");
   const group2 = new Entity("Group2");
 
-  const obj1 = createRenderObject(100, 100, [1, 0, 0, 1], "Object1");
-  const obj2 = createRenderObject(200, 100, [0, 1, 0, 1], "Object2");
-  const obj3 = createRenderObject(150, 200, [0, 0, 1, 1], "Object3");
+  const obj1 = createRenderEntity(100, 100, [1, 0, 0, 1], "Object1");
+  const obj2 = createRenderEntity(200, 100, [0, 1, 0, 1], "Object2");
+  const obj3 = createRenderEntity(150, 200, [0, 0, 1, 1], "Object3");
 
   // Build hierarchy
   group1.add(obj1);
