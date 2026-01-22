@@ -1,5 +1,4 @@
-import { Matrix, Matrix2, Matrix3, Matrix4 } from "@arcanvas/matrix";
-import { Vector2 } from "@arcanvas/vector";
+import { Matrix, Matrix2, Matrix3, Matrix4, Vector2, Vector4 } from "@arcanvas/math";
 import { describe, expect, it } from "bun:test";
 
 describe("Matrix2", () => {
@@ -28,12 +27,14 @@ describe("Matrix2", () => {
   it("initializes properly from vector", () => {
     // Matrix2.fromVector creates a 2x1 matrix, which is not a Matrix2 (2x2)
     // So we use Matrix2.fromVector for column vectors
-    const m = Matrix2.fromVector(Vector2.of(1, 2));
+    const m = Matrix2.fromVector(Vector4.of(1, 2, 3, 4));
     expect(m.rows).toBe(2);
-    expect(m.columns).toBe(1);
-    expect(m.size).toBe(2);
+    expect(m.columns).toBe(2);
+    expect(m.size).toBe(4);
     expect(m.get(0, 0)).toBe(1);
-    expect(m.get(1, 0)).toBe(2);
+    expect(m.get(0, 1)).toBe(2);
+    expect(m.get(1, 0)).toBe(3);
+    expect(m.get(1, 1)).toBe(4);
   });
 
   it("initializes properly from matrix", () => {
@@ -119,13 +120,12 @@ describe("Matrix2", () => {
   it("calculates multiplication by vector properly", () => {
     const m = Matrix2.of(1, 2, 3, 4);
     const n = Vector2.of(5, 6);
-    // [1, 2]   [5]   [1 * 5 + 2 * 6]
-    // [3, 4] * [6] = [3 * 5 + 4 * 6]
+    // [1, 3]   [5]   [1 * 5 + 3 * 6]
+    // [2, 4] * [6] = [2 * 5 + 4 * 6]
     const result = m.mult(n);
-    expect(result.rows).toBe(2);
-    expect(Number(result.columns)).toBe(1);
-    expect(result.get(0, 0)).toBe(1 * 5 + 2 * 6);
-    expect(result.get(1, 0)).toBe(3 * 5 + 4 * 6);
+    expect(result.size).toBe(2);
+    expect(result.get(0)).toBe(1 * 5 + 3 * 6);
+    expect(result.get(1)).toBe(2 * 5 + 4 * 6);
   });
 
   it("checks equality properly", () => {

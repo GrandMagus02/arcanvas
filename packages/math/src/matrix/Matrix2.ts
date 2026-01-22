@@ -51,11 +51,8 @@ export class Matrix2<T extends NumberArray = Float32Array> extends Matrix<T, 2> 
    * @param vector - The vector (must have size 2).
    * @returns A new Matrix instance (2x1 matrix).
    */
-  static fromVector(vector: Vector<Float32Array, 2>): Matrix<Float32Array, 2, 1> {
-    const data = new Float32Array(2);
-    data.set(vector.data);
-    // @ts-expect-error - Abstract class instantiation for column vector
-    return new Matrix(data, 2, 1) as Matrix<Float32Array, 2, 1>;
+  static fromVector(vector: Vector<Float32Array, 4>): Matrix2<Float32Array> {
+    return new Matrix2(vector.data);
   }
 
   /**
@@ -77,7 +74,6 @@ export class Matrix2<T extends NumberArray = Float32Array> extends Matrix<T, 2> 
   protected vectorToMatrix<TVecSize extends number>(vector: Vector<NumberArray, TVecSize>): Matrix<NumberArray, 2, 1> {
     const data = new Float32Array(2);
     data.set(vector.data);
-    // @ts-expect-error - Abstract class instantiation for column vector
-    return new Matrix(data, 2, 1) as Matrix<NumberArray, 2, 1>;
+    return new Matrix(data, 2, 1);
   }
 }

@@ -98,8 +98,9 @@ export class WorldRenderer {
 
     // Get view and projection matrices
     // For camera-relative rendering, view is identity or rotation-only
-    const view = toColumnMajor4x4(camera.view.data);
-    const proj = toColumnMajor4x4(camera.projection.data);
+    // Matrices are now stored in column-major order internally, so use directly
+    const view = camera.view.toFloat32Array();
+    const proj = camera.projection.toFloat32Array();
 
     // Camera position for shaders (in local/relative coords, always near origin)
     // For camera-relative rendering, camera is always at (0,0,0) in local space

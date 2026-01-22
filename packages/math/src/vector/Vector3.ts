@@ -37,7 +37,6 @@ export class Vector3<T extends NumberArray = Float32Array> extends Vector<T, 3> 
    * @returns This vector after computing the cross product (mutates this).
    */
   cross(other: this): this {
-    this.ensureSameSize(other);
     const ax = this._data[0] as number;
     const ay = this._data[1] as number;
     const az = this._data[2] as number;

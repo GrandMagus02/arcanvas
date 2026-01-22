@@ -20,7 +20,7 @@ export interface Named {
  * Object that can be cloned.
  */
 export interface Cloneable<T> {
-  clone(deep?: boolean): T;
+  clone(): T;
   deepClone?(): T;
 }
 

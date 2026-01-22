@@ -1,3 +1,4 @@
+import type { Cloneable } from "@arcanvas/core";
 import type { VertexLayout } from "./vertexLayout";
 
 /**
@@ -9,7 +10,7 @@ export type DrawMode = "triangles" | "lines" | "points";
  * API-agnostic mesh container.
  * Holds geometry data and layout information only - no GPU resources.
  */
-export class Mesh {
+export class Mesh implements Cloneable<Mesh> {
   private _vertices: Float32Array;
   private _indices: Uint16Array | Uint32Array;
   private _layout: VertexLayout;

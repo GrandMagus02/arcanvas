@@ -67,8 +67,9 @@ export class Renderer {
     const { width, height } = scene.viewport;
     this.backend.beginFrame(width, height);
 
-    const view = toColumnMajor4x4(camera.view.data);
-    const proj = toColumnMajor4x4(camera.projection.data);
+    // Matrices are now stored in column-major order internally, so use directly
+    const view = camera.view.toFloat32Array();
+    const proj = camera.projection.toFloat32Array();
     const cameraPos = [camera.position.x, camera.position.y, camera.position.z] as [number, number, number];
     const lights: LightInfo[] = scene.lights.map((light) => ({
       type: light.type,

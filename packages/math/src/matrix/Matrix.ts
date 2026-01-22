@@ -1,5 +1,5 @@
-import { type NumberArray, type NumberArrayConstructor, type TypedArray, type TypedArrayConstructor, type Vector } from "@arcanvas/vector";
-import { MatrixOrientation } from "./MatrixOrientation";
+import { Vector } from "../vector/Vector";
+import type { NumberArray, NumberArrayConstructor, TypedArray, TypedArrayConstructor } from "../vector/types";
 
 /**
  * Interface for the static side of Matrix classes, requiring identity method.
@@ -16,40 +16,40 @@ export interface MatrixConstructor<TArr extends NumberArray, TRows extends numbe
 
 /**
  * BaseMatrix is a base class for all matrices.
+ * Data is stored in **column-major** order for WebGL compatibility.
  * @param TArr - The typed array constructor.
- * @param data - The data of the matrix.
+ * @param data - The data of the matrix (column-major).
  * @param rows - The number of rows in the matrix.
  * @param cols - The number of columns in the matrix.
- * @param initiallyRowMajor - Whether the matrix is initially row-major.
  * - Subclasses must implement static method: identity.
  * - Subclasses may implement static methods: of, fromArray, fromVector, fromMatrix.
  */
-export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCols extends number = TRows> {
+export class Matrix<TArr extends NumberArray, TCols extends number, TRows extends number = TCols> {
   /**
-   * The data of the matrix.
+   * The data of the matrix in column-major order.
    */
   protected readonly _data: TArr;
-  /**
-   * The number of rows in the matrix.
-   */
-  protected _rows: TRows;
   /**
    * The number of columns in the matrix.
    */
   protected _cols: TCols;
+  /**
+   * The number of rows in the matrix.
+   */
+  protected _rows: TRows;
 
   /**
    * Creates a new Matrix.
-   * @param data - The data of the matrix.
+   * @param data - The data of the matrix (column-major order).
    * @param rows - The number of rows in the matrix.
    * @param cols - The number of columns in the matrix.
    */
-  constructor(data: TArr, rows: TRows, cols?: TCols) {
-    if (rows <= 0 || (cols !== undefined && cols <= 0)) {
+  constructor(data: TArr, cols: TCols, rows?: TRows) {
+    if (cols <= 0 || (rows !== undefined && rows <= 0)) {
       throw new RangeError("Matrix dimensions must be positive");
     }
-    this._rows = rows;
-    this._cols = cols ?? (rows as unknown as TCols);
+    this._cols = cols;
+    this._rows = rows ?? (cols as unknown as TRows);
     this._data = this.validateData(data);
   }
 
@@ -78,46 +78,51 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
       (newData as unknown as TypedArray).set(data as unknown as TypedArray);
     }
     for (let i = 0; i < this.size; i++) {
-      newData[i] = this.validateValue(data[i]!);
+      newData[i] = data[i]!;
     }
     return newData;
   }
 
   /**
-   * Checks if the given row and column are within the bounds of the matrix.
-   * @param r - The row.
+   * Computes the column-major index for the given row and column.
    * @param c - The column.
+   * @param r - The row.
+   * @returns The index in the data array.
+   */
+  protected index(c: number, r: number): number {
+    return c * this._rows + r;
+  }
+
+  /**
+   * Checks if the given row and column are within the bounds of the matrix.
+   * @param c - The column.
+   * @param r - The row.
    * @throws {RangeError} If the row or column is out of bounds.
    */
-  protected checkBounds(r: number, c: number): void {
-    if (r < 0 || r >= this._rows || c < 0 || c >= this._cols) {
+  protected checkBounds(c: number, r: number): void {
+    if (c < 0 || c >= this._cols || r < 0 || r >= this._rows) {
       throw new RangeError("Matrix index out of bounds");
     }
   }
 
   /**
-   * Returns a copy of the underlying storage as-is (in current major order).
+   * Returns a copy of the underlying storage (in current column-major order)
+   * or transposed to row-major if requested.
    * @param constructor - The typed array constructor.
    * @param orientation - The orientation of the typed array.
    * @returns The typed array.
    */
-  protected toTypedArray(constructor: TypedArrayConstructor, orientation: MatrixOrientation = MatrixOrientation.RowMajor): TypedArray {
-    const out = new constructor(this._data.length) as TypedArray;
-    if (orientation === MatrixOrientation.ColumnMajor) {
-      // Transpose in-place: copy data in column-major order
-      for (let r = 0; r < this._rows; r++) {
-        for (let c = 0; c < this._cols; c++) {
-          out[c * this._rows + r] = this._data[r * this._cols + c]!;
-        }
-      }
-    } else {
-      out.set(this._data);
+  protected toTypedArray(constructor: TypedArrayConstructor): TypedArray {
+    if (this._data.constructor === constructor) {
+      return this._data;
     }
+    const out = new constructor(this._data.length) as TypedArray;
+    out.set(this._data);
     return out;
   }
 
   /**
-   * Returns the data of the matrix.
+   * Returns the data of the matrix (column-major order).
    * @returns The data of the matrix.
    */
   get data(): TArr {
@@ -157,6 +162,21 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
   }
 
   /**
+   * Creates a matrix from a vector.
+   * @param vector - The vector.
+   * @returns The new matrix.
+   */
+  static fromVector<TVecArr extends NumberArray, TVecSize extends number>(vector: Vector<TVecArr, TVecSize>): Matrix<TVecArr, TVecSize, 1> {
+    const data = new (vector.data.constructor as unknown as NumberArrayConstructor)(vector.data.length) as TVecArr;
+    if (Array.isArray(data)) {
+      data.splice(0, data.length, ...vector.data);
+    } else {
+      (data as unknown as TypedArray).set(vector.data as unknown as TypedArray);
+    }
+    return new Matrix<TVecArr, TVecSize, 1>(data, vector.size, 1);
+  }
+
+  /**
    * Check if a value is a Matrix.
    * @param value - The value to check.
    * @returns True if the value is a Matrix.
@@ -166,48 +186,35 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
   }
 
   /**
-   * Converts a vector to a matrix (column vector).
-   * Internal helper method for operations that accept both matrices and vectors.
-   * Must be implemented by subclasses to accept the correct vector type.
-   * @param vector - The vector to convert.
-   * @returns A matrix representation of the vector.
-   */
-  protected abstract vectorToMatrix<TVecSize extends number>(vector: Vector<NumberArray, TVecSize>): Matrix<NumberArray, TRows, 1>;
-
-  /**
    * Returns the value of the matrix at the given row and column.
    * @param r - The row.
    * @param c - The column.
    * @returns The value.
    */
-  get(r: number, c: number): number {
-    this.checkBounds(r, c);
-    const idx = r * this._cols + c;
-    return this._data[idx]!;
+  get(c: number, r: number = 0, defaultValue: number = 0): number {
+    return this._data[c * this._rows + r] ?? defaultValue;
   }
 
   /**
    * Sets the value of the matrix at the given row and column.
-   * @param r - The row.
    * @param c - The column.
+   * @param r - The row.
    * @param value - The value to set.
    * @returns The matrix.
    */
-  set(r: number, c: number, value: number): this {
-    this.checkBounds(r, c);
-    const idx = r * this._cols + c;
-    this._data[idx] = this.validateValue(value);
+  set(c: number, r: number, value: number): this {
+    this._data[c * this._rows + r] = value;
     return this;
   }
 
   /**
-   * Iterates over the matrix.
+   * Iterates over the matrix (logically row by row).
    * @param callback - The callback function.
    */
-  forEach(callback: (value: number, r: number, c: number) => void): void {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        callback(this.get(r, c), r, c);
+  forEach(callback: (value: number, c: number, r: number) => void): void {
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        callback(this._data[c * this._rows + r]!, c, r);
       }
     }
   }
@@ -217,12 +224,14 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param callback - The callback function.
    * @returns The mapped matrix.
    */
-  map(callback: (value: number, r: number, c: number) => number): Matrix<TArr, TRows, TCols> {
-    const ctor = this._data.constructor as unknown as NumberArrayConstructor;
-    const newData = new ctor(this._rows * this._cols) as TArr;
-    const result = new (this.constructor as new (data: TArr, rows: TRows, cols: TCols) => Matrix<TArr, TRows, TCols>)(newData, this._rows, this._cols);
-    this.forEach((value, r, c) => result.set(r, c, callback(value, r, c)));
-    return result;
+  map(callback: (value: number, c: number, r: number) => number): this {
+    const snapshot = this._data.slice();
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        this._data[c * this._rows + r] = callback(snapshot[c * this._rows + r]!, c, r);
+      }
+    }
+    return this;
   }
 
   /**
@@ -231,9 +240,9 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param initialValue - The initial value.
    * @returns The reduced value.
    */
-  reduce(callback: (accumulator: number, value: number, r: number, c: number) => number, initialValue: number): number {
+  reduce(callback: (accumulator: number, value: number, c: number, r: number) => number, initialValue: number): number {
     let accumulator = initialValue;
-    this.forEach((value, r, c) => (accumulator = callback(accumulator, value, r, c)));
+    this.forEach((value, c, r) => (accumulator = callback(accumulator, value, c, r)));
     return accumulator;
   }
 
@@ -242,10 +251,10 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param callback - The callback function.
    * @returns True if all elements satisfy the callback function.
    */
-  every(callback: (value: number, r: number, c: number) => boolean): boolean {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        if (!callback(this.get(r, c), r, c)) {
+  every(callback: (value: number, c: number, r: number) => boolean): boolean {
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        if (!callback(this._data[c * this._rows + r]!, c, r)) {
           return false;
         }
       }
@@ -258,10 +267,10 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param callback - The callback function.
    * @returns True if at least one element satisfies the callback function.
    */
-  some(callback: (value: number, r: number, c: number) => boolean): boolean {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        if (callback(this.get(r, c), r, c)) {
+  some(callback: (value: number, c: number, r: number) => boolean): boolean {
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        if (callback(this._data[c * this._rows + r]!, c, r)) {
           return true;
         }
       }
@@ -274,11 +283,12 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param callback - The callback function.
    * @returns The first element that satisfies the callback function.
    */
-  find(callback: (value: number, r: number, c: number) => boolean): number | undefined {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        if (callback(this.get(r, c), r, c)) {
-          return this.get(r, c);
+  find(callback: (value: number, c: number, r: number) => boolean): number | undefined {
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        const idx = c * this._rows + r;
+        if (callback(this._data[idx]!, c, r)) {
+          return this._data[idx]!;
         }
       }
     }
@@ -290,11 +300,11 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param callback - The callback function.
    * @returns The index of the first element that satisfies the callback function.
    */
-  findIndex(callback: (value: number, r: number, c: number) => boolean): [number, number] | undefined {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        if (callback(this.get(r, c), r, c)) {
-          return [r, c];
+  findIndex(callback: (value: number, c: number, r: number) => boolean): [number, number] | undefined {
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        if (callback(this._data[c * this._rows + r]!, c, r)) {
+          return [c, r];
         }
       }
     }
@@ -315,31 +325,37 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
   }
 
   /**
+   * Returns a copy of the matrix multiplied by the vector.
+   * The vector size must match the matrix column count. Result is a vector of size equal to the matrix row count.
+   * @param other - The vector to multiply.
+   * @returns The resulting vector.
+   */
+  mult(other: Vector<NumberArray, TCols>): Vector<TArr, TRows>;
+  /**
    * Returns a copy of the matrix multiplied by the other matrix.
-   * @param other - The other matrix or vector.
+   * @param other - The other matrix (its row count must match this matrix's column count).
    * @returns The multiplied matrix.
    */
-  mult<TOtherRows extends number, TOtherCols extends number>(other: Matrix<NumberArray, TOtherRows, TOtherCols> | Vector<NumberArray, TOtherCols>): Matrix<TArr, TRows, TOtherCols> {
-    // Convert vector to matrix if needed
-    const otherMat = other instanceof Matrix ? other : this.vectorToMatrix(other);
-    const thisCols = this._cols as number;
-    const otherRows = otherMat.rows as number;
-    if (thisCols !== otherRows) {
-      throw new Error(`Matrix dimensions do not match: ${this._rows}x${this._cols} * ${otherMat.rows}x${otherMat.columns}`);
+  mult<TOtherCols extends number>(other: Matrix<NumberArray, TOtherCols, TCols>): Matrix<TArr, TOtherCols, TRows>;
+  mult<TOtherCols extends number>(other: Matrix<NumberArray, TOtherCols, TCols> | Vector<NumberArray, TCols>): Matrix<TArr, TOtherCols, TRows> | Vector<TArr, TRows> {
+    // Vector extends Matrix but is stored as row vector (1×n); convert to column vector (n×1) for multiply
+    const otherMat: Matrix<NumberArray, number, number> = other instanceof Vector ? Matrix.fromVector(other).transpose() : other;
+    if (this._cols !== otherMat.rows) {
+      throw new Error("Matrix dimensions do not match");
     }
-    const resultCols = otherMat.columns as number as TOtherCols;
-    const data: TArr = new (this._data.constructor as unknown as NumberArrayConstructor)(this._rows * resultCols) as TArr;
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < resultCols; c++) {
+    const outCols = otherMat.columns;
+    const data: TArr = new (this._data.constructor as unknown as NumberArrayConstructor)(this._rows * outCols) as TArr;
+    // C[i][j] = sum_k A[i][k] * B[k][j]; column-major: C[i][j] at index j*rows+i
+    for (let i = 0; i < this._rows; i++) {
+      for (let j = 0; j < outCols; j++) {
         let sum = 0;
-        for (let k = 0; k < thisCols; k++) {
-          sum += this.get(r, k) * otherMat.get(k, c);
+        for (let k = 0; k < this._cols; k++) {
+          sum += this._data[k * this._rows + i]! * otherMat.get(j, k);
         }
-        data[r * resultCols + c] = sum;
+        data[j * this._rows + i] = sum as TArr[number];
       }
     }
-    // @ts-expect-error - Abstract class instantiation for backward compatibility
-    return new Matrix<TArr, TRows, TOtherCols>(data, this._rows, resultCols) as Matrix<TArr, TRows, TOtherCols>;
+    return other instanceof Vector ? new Vector(data, this._rows) : new Matrix<TArr, TOtherCols, TRows>(data, outCols as TOtherCols, this._rows);
   }
 
   /**
@@ -348,8 +364,8 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param other - The other matrix.
    * @returns A new matrix with the result of addition.
    */
-  add(other: Matrix<NumberArray, TRows, TCols>): Matrix<TArr, TRows, TCols> {
-    return this.map((value, r, c) => value + other.get(r, c));
+  add(other: Matrix<NumberArray, TRows, TCols> | Vector<NumberArray, TCols>) {
+    return this.map((value, c, r) => value + other.get(c, r));
   }
 
   /**
@@ -358,8 +374,8 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param other - The other matrix.
    * @returns A new matrix with the result of subtraction.
    */
-  sub(other: Matrix<NumberArray, TRows, TCols>): Matrix<TArr, TRows, TCols> {
-    return this.map((value, r, c) => value - other.get(r, c));
+  sub(other: Matrix<NumberArray, TRows, TCols>) {
+    return this.map((value, c, r) => value - other.get(c, r));
   }
 
   /**
@@ -368,8 +384,8 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @param other - The other matrix.
    * @returns A new matrix with the result of division.
    */
-  div(other: Matrix<NumberArray, TRows, TCols>): Matrix<TArr, TRows, TCols> {
-    return this.map((value, r, c) => value / other.get(r, c));
+  div(other: Matrix<NumberArray, TRows, TCols>) {
+    return this.map((value, c, r) => value / other.get(c, r));
   }
 
   /**
@@ -379,10 +395,10 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @returns This matrix after addition (for chaining).
    */
   addSelf(other: Matrix<NumberArray, TRows, TCols>): this {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        const idx = r * this._cols + c;
-        this._data[idx] = (this._data[idx] as number) + other.get(r, c);
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        const idx = c * this._rows + r;
+        this._data[idx] = (this._data[idx] as number) + other.get(c, r);
       }
     }
     return this;
@@ -395,10 +411,10 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @returns This matrix after subtraction (for chaining).
    */
   subSelf(other: Matrix<NumberArray, TRows, TCols>): this {
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        const idx = r * this._cols + c;
-        this._data[idx] = (this._data[idx] as number) - other.get(r, c);
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        const idx = c * this._rows + r;
+        this._data[idx] = (this._data[idx] as number) - other.get(c, r);
       }
     }
     return this;
@@ -423,8 +439,7 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @returns The dot product.
    */
   dot(other: Matrix<NumberArray, TRows, TCols> | Vector<NumberArray, TCols>): number {
-    const otherMat = other instanceof Matrix ? other : this.vectorToMatrix(other).transpose();
-    return this.reduce((accumulator, value, r, c) => accumulator + value * otherMat.get(r, c), 0);
+    return this.reduce((accumulator, value, c, r) => accumulator + value * other.get(c, r), 0);
   }
 
   /**
@@ -433,8 +448,7 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * @returns True if the matrix is equal to the other matrix.
    */
   equals(other: Matrix<NumberArray, TRows, TCols> | Vector<NumberArray, TCols>): boolean {
-    const otherMat = other instanceof Matrix ? other : this.vectorToMatrix(other).transpose();
-    return this.every((value, r, c) => value === otherMat.get(r, c));
+    return this.every((value, c, r) => value === other.get(c, r));
   }
 
   /**
@@ -458,107 +472,106 @@ export abstract class Matrix<TArr extends NumberArray, TRows extends number, TCo
    * Creates a new matrix instance without modifying this one.
    * @returns A new transposed matrix.
    */
-  transpose(): Matrix<TArr, TCols, TRows> {
+  transpose(): Matrix<TArr, TRows, TCols> {
     const out = new (this._data.constructor as unknown as NumberArrayConstructor)(this._rows * this._cols) as TArr;
-    for (let r = 0; r < this._rows; r++) {
-      for (let c = 0; c < this._cols; c++) {
-        out[c * this._rows + r] = this._data[r * this._cols + c]! as TArr[number];
+    // Transpose: swap rows and cols, output in column-major
+    for (let c = 0; c < this._cols; c++) {
+      for (let r = 0; r < this._rows; r++) {
+        // Original element at (r, c) goes to (c, r) in transposed matrix
+        // In column-major: new index = r * newRows + c = r * cols + c
+        out[r * this._cols + c] = this._data[c * this._rows + r]! as TArr[number];
       }
     }
-    // @ts-expect-error - Abstract class instantiation for backward compatibility
-    return new Matrix<TArr, TCols, TRows>(out, this._cols, this._rows) as Matrix<TArr, TCols, TRows>;
+    return new Matrix<TArr, TRows, TCols>(out, this._rows, this._cols);
   }
 
   /**
    * Returns a copy of the matrix as an array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The array.
    */
-  toArray(orientation: MatrixOrientation = MatrixOrientation.RowMajor): number[] {
-    if (orientation === MatrixOrientation.ColumnMajor) {
-      return this.transpose().toArray();
-    }
+  toArray(): number[] {
     return Array.from(this._data);
   }
 
   /**
    * Returns a copy of the underlying storage as a float32 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The float32 array.
    */
-  toFloat32Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Float32Array {
-    return this.toTypedArray(Float32Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Float32Array;
+  toFloat32Array(): Float32Array {
+    return this.toTypedArray(Float32Array.prototype.constructor as unknown as TypedArrayConstructor) as Float32Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a float64 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The float64 array.
    */
-  toFloat64Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Float64Array {
-    return this.toTypedArray(Float64Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Float64Array;
+  toFloat64Array(): Float64Array {
+    return this.toTypedArray(Float64Array.prototype.constructor as unknown as TypedArrayConstructor) as Float64Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a int8 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The int8 array.
    */
-  toInt8Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Int8Array {
-    return this.toTypedArray(Int8Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Int8Array;
+  toInt8Array(): Int8Array {
+    return this.toTypedArray(Int8Array.prototype.constructor as unknown as TypedArrayConstructor) as Int8Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a int16 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The int16 array.
    */
-  toInt16Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Int16Array {
-    return this.toTypedArray(Int16Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Int16Array;
+  toInt16Array(): Int16Array {
+    return this.toTypedArray(Int16Array.prototype.constructor as unknown as TypedArrayConstructor) as Int16Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a int32 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The int32 array.
    */
-  toInt32Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Int32Array {
-    return this.toTypedArray(Int32Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Int32Array;
+  toInt32Array(): Int32Array {
+    return this.toTypedArray(Int32Array.prototype.constructor as unknown as TypedArrayConstructor) as Int32Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a uint16 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The uint16 array.
    */
-  toUint16Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Uint16Array {
-    return this.toTypedArray(Uint16Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Uint16Array;
+  toUint16Array(): Uint16Array {
+    return this.toTypedArray(Uint16Array.prototype.constructor as unknown as TypedArrayConstructor) as Uint16Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a uint8 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The uint8 array.
    */
-  toUint8Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Uint8Array {
-    return this.toTypedArray(Uint8Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Uint8Array;
+  toUint8Array(): Uint8Array {
+    return this.toTypedArray(Uint8Array.prototype.constructor as unknown as TypedArrayConstructor) as Uint8Array;
   }
 
   /**
    * Returns a copy of the underlying storage as a uint8 clamped array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The uint8 clamped array.
    */
-  toUint8ClampedArray(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Uint8ClampedArray {
-    return this.toTypedArray(Uint8ClampedArray.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Uint8ClampedArray;
+  toUint8ClampedArray(): Uint8ClampedArray {
+    return this.toTypedArray(Uint8ClampedArray.prototype.constructor as unknown as TypedArrayConstructor) as Uint8ClampedArray;
   }
 
   /**
    * Returns a copy of the underlying storage as a uint32 array.
-   * @param orientation - The orientation of the array.
+   * @param orientation - The orientation of the array (default: ColumnMajor for WebGL).
    * @returns The uint32 array.
    */
-  toUint32Array(orientation: MatrixOrientation = MatrixOrientation.RowMajor): Uint32Array {
-    return this.toTypedArray(Uint32Array.prototype.constructor as unknown as TypedArrayConstructor, orientation) as Uint32Array;
+  toUint32Array(): Uint32Array {
+    return this.toTypedArray(Uint32Array.prototype.constructor as unknown as TypedArrayConstructor) as Uint32Array;
   }
 }

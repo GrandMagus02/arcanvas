@@ -1,29 +1,29 @@
-import { Vector2, Vector3, Vector4 } from "@arcanvas/vector";
+import { Vector2, Vector3, Vector4 } from "@arcanvas/math";
 import { describe, expect, it } from "bun:test";
 
 describe("Vector2", () => {
   it("initializes properly", () => {
-    const v = new Vector2(new Float32Array([1, 2]));
-    expect(v.get(0)).toBe(1);
-    expect(v.get(1)).toBe(2);
+    const v = Vector2.of(1, 2);
+    expect(v.x).toBe(1);
+    expect(v.y).toBe(2);
     expect(v.size).toBe(2);
     expect(v.lengthSquared).toBe(5); // 1^2 + 2^2
     expect(v.length).toBe(Math.sqrt(5)); // sqrt(1^2 + 2^2)
-    expect(v.dot(new Vector2(new Float32Array([3, 4])))).toBe(11);
-    expect(v.equals(new Vector2(new Float32Array([1, 2])))).toBe(true);
-    expect(v.equals(new Vector2(new Float32Array([3, 4])))).toBe(false);
+    expect(v.dot(Vector2.of(3, 4))).toBe(11);
+    expect(v.equals(Vector2.of(1, 2))).toBe(true);
+    expect(v.equals(Vector2.of(3, 4))).toBe(false);
   });
 
   it("initializes properly with implicit size", () => {
-    const v = new Vector2(new Float32Array([1, 2]));
+    const v = Vector2.of(1, 2);
     expect(v.get(0)).toBe(1);
     expect(v.get(1)).toBe(2);
     expect(v.size).toBe(2);
     expect(v.lengthSquared).toBe(5); // 1^2 + 2^2
     expect(v.length).toBe(Math.sqrt(5)); // sqrt(1^2 + 2^2)
-    expect(v.dot(new Vector2(new Float32Array([3, 4])))).toBe(11);
-    expect(v.equals(new Vector2(new Float32Array([1, 2])))).toBe(true);
-    expect(v.equals(new Vector2(new Float32Array([3, 4])))).toBe(false);
+    expect(v.dot(Vector2.of(3, 4))).toBe(11);
+    expect(v.equals(Vector2.of(1, 2))).toBe(true);
+    expect(v.equals(Vector2.of(3, 4))).toBe(false);
   });
 
   it("initializes properly from array", () => {
@@ -34,7 +34,7 @@ describe("Vector2", () => {
   });
 
   it("converts to array properly", () => {
-    const v = new Vector2(new Float32Array([1, 2]));
+    const v = Vector2.of(1, 2);
     const result = v.toArray();
     expect(result).toEqual([1, 2]);
   });
@@ -102,8 +102,8 @@ describe("Vector2", () => {
   });
 
   it("tests mutating operations return this", () => {
-    const v = new Vector2(new Float32Array([1, 2]));
-    const result = v.add(new Vector2(new Float32Array([1, 1])));
+    const v = Vector2.of(1, 2);
+    const result = v.add(Vector2.of(1, 1));
     expect(result).toBe(v);
     expect(v.get(0)).toBe(2);
     expect(v.get(1)).toBe(3);
@@ -177,7 +177,7 @@ describe("Vector3", () => {
     expect(v.equals(w)).toBe(true);
     const x = new Vector3(new Float32Array([1, 2, 4]));
     expect(v.equals(x)).toBe(false);
-    const y = new Vector2(new Float32Array([1, 2]));
+    const y = new Vector3(new Float32Array([1, 2]));
     expect(v.equals(y)).toBe(false);
   });
 

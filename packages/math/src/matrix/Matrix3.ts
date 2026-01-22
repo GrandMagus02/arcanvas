@@ -1,4 +1,4 @@
-import type { NumberArray, Vector } from "@arcanvas/vector";
+import type { NumberArray } from "@arcanvas/vector";
 import { Matrix } from "./Matrix";
 
 /**
@@ -51,19 +51,6 @@ export class Matrix3<T extends NumberArray = Float32Array> extends Matrix<T, 3> 
   }
 
   /**
-   * Creates a Matrix from a vector (column vector, 3x1 matrix).
-   * Note: Matrix3 is always 3x3, so this returns a base Matrix instance.
-   * @param vector - The vector (must have size 3).
-   * @returns A new Matrix instance (3x1 matrix).
-   */
-  static fromVector(vector: Vector<Float32Array, 3>): Matrix<Float32Array, 3, 1> {
-    const data = new Float32Array(3);
-    data.set(vector.data);
-    // @ts-expect-error - Abstract class instantiation for column vector
-    return new Matrix(data, 3, 1) as Matrix<Float32Array, 3, 1>;
-  }
-
-  /**
    * Creates a Matrix3 from another matrix.
    * @param matrix - The matrix to copy.
    * @returns A new Matrix3 instance.
@@ -72,17 +59,5 @@ export class Matrix3<T extends NumberArray = Float32Array> extends Matrix<T, 3> 
     const data = new Float32Array(9);
     data.set(matrix.data);
     return new Matrix3(data);
-  }
-
-  /**
-   * Converts a Vector3 to a matrix (column vector, 3x1 matrix).
-   * @param vector - The vector to convert (must be Vector3).
-   * @returns A matrix representation of the vector.
-   */
-  protected vectorToMatrix<TVecSize extends number>(vector: Vector<NumberArray, TVecSize>): Matrix<NumberArray, 3, 1> {
-    const data = new Float32Array(3);
-    data.set(vector.data);
-    // @ts-expect-error - Abstract class instantiation for column vector
-    return new Matrix(data, 3, 1) as Matrix<NumberArray, 3, 1>;
   }
 }
