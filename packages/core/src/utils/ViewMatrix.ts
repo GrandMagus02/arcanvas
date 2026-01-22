@@ -1,5 +1,4 @@
-import { Matrix4 } from "@arcanvas/matrix";
-import { Vector3 } from "@arcanvas/vector";
+import { Matrix4, Vector3 } from "@arcanvas/math";
 
 /**
  * ViewMatrix is a 4x4 matrix that represents a view in 3D space.

@@ -1,4 +1,4 @@
-import { Matrix4 } from "@arcanvas/matrix";
+import { Matrix4 } from "@arcanvas/math";
 import { ProjectionMode } from "./ProjectionMode";
 
 /**

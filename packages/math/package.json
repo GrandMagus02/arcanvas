@@ -11,8 +11,5 @@
       "import": "./index.ts"
     }
   },
-  "dependencies": {
-    "@arcanvas/vector": "workspace:*",
-    "@arcanvas/matrix": "workspace:*"
-  }
+  "dependencies": {}
 }

@@ -1,6 +1,6 @@
 import type { StorybookConfig } from "@storybook/html-vite";
-import { mergeConfig } from "vite";
 import { resolve } from "path";
+import { mergeConfig } from "vite";
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(ts|js)"],
@@ -14,9 +14,7 @@ const config: StorybookConfig = {
       resolve: {
         alias: {
           "@arcanvas/core": resolve(__dirname, "../../../packages/core/index.ts"),
-          "@arcanvas/matrix": resolve(__dirname, "../../../packages/matrix/index.ts"),
-          "@arcanvas/vector": resolve(__dirname, "../../../packages/vector/index.ts"),
-          "@arcanvas/document": resolve(__dirname, "../../../packages/document/index.ts"),
+          "@arcanvas/math": resolve(__dirname, "../../../packages/math/index.ts"),
           "@arcanvas/feature-2d": resolve(__dirname, "../../../packages/feature-2d/index.ts"),
           "@arcanvas/feature-document-2d": resolve(__dirname, "../../../packages/feature-document-2d/index.ts"),
           "@arcanvas/graphics": resolve(__dirname, "../../../packages/graphics/index.ts"),
@@ -28,17 +26,7 @@ const config: StorybookConfig = {
         },
       },
       optimizeDeps: {
-        exclude: [
-          "@arcanvas/core",
-          "@arcanvas/matrix",
-          "@arcanvas/vector",
-          "@arcanvas/document",
-          "@arcanvas/feature-2d",
-          "@arcanvas/feature-document-2d",
-          "@arcanvas/graphics",
-          "@arcanvas/interaction",
-          "@arcanvas/scene",
-        ],
+        exclude: ["@arcanvas/core", "@arcanvas/math", "@arcanvas/document", "@arcanvas/feature-2d", "@arcanvas/feature-document-2d", "@arcanvas/graphics", "@arcanvas/interaction", "@arcanvas/scene"],
         esbuildOptions: {
           target: "es2020",
         },

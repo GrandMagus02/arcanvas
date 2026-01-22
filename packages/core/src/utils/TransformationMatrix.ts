@@ -1,5 +1,4 @@
-import { Matrix4, MatrixOrientation } from "@arcanvas/matrix";
-import { Vector } from "@arcanvas/vector";
+import { Matrix4, Vector } from "@arcanvas/math";
 
 /**
  * TransformationMatrix is a 4x4 matrix that represents a transformation in 3D space.
@@ -154,6 +153,6 @@ export class TransformationMatrix extends Matrix4 {
    * @returns A Float32Array in column-major order.
    */
   toColumnMajorArray(): Float32Array {
-    return this.toFloat32Array(MatrixOrientation.ColumnMajor);
+    return this.toFloat32Array();
   }
 }
