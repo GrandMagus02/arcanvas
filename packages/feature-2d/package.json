@@ -17,6 +17,8 @@
     "@arcanvas/math": "workspace:*",
     "@arcanvas/scene": "workspace:*",
     "@arcanvas/graphics": "workspace:*",
-    "@arcanvas/backend-webgl": "workspace:*"
+    "@arcanvas/backend-webgl": "workspace:*",
+    "@arcanvas/selection": "workspace:*",
+    "@arcanvas/core": "workspace:*"
   }
 }

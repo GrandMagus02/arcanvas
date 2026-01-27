@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from "@storybook/html";
 import { Arcanvas, AutoResizePlugin, Camera, Camera2DController, EngineRenderSystem } from "@arcanvas/core";
 import { GridObject } from "@arcanvas/feature-2d";
 import { Scene } from "@arcanvas/scene";
+import type { Meta, StoryObj } from "@storybook/html";
 
-interface GridArgs {
+interface Grid2DArgs {
   cellSize: number;
   majorDivisions: number;
   adaptiveSpacing: boolean;
@@ -14,17 +14,8 @@ interface GridArgs {
 
 const cleanupMap = new Map<string, () => void>();
 
-const meta: Meta<GridArgs> = {
-  title: "2D/Grid/Basic",
-  tags: ["autodocs"],
-  parameters: {
-    docs: {
-      source: {
-        type: "code",
-        language: "typescript",
-      },
-    },
-  },
+const meta: Meta<Grid2DArgs> = {
+  title: "2D/Grid2D",
   argTypes: {
     cellSize: {
       control: { type: "range", min: 0.1, max: 5, step: 0.1 },
@@ -60,12 +51,12 @@ const meta: Meta<GridArgs> = {
 };
 
 export default meta;
-type Story = StoryObj<GridArgs>;
+type Story = StoryObj<Grid2DArgs>;
 
 /**
  * Renders the grid story.
  */
-function render(args: GridArgs, id: string): HTMLElement {
+function render(args: Grid2DArgs, id: string): HTMLElement {
   const existingCleanup = cleanupMap.get(id);
   if (existingCleanup) {
     existingCleanup();
@@ -164,30 +155,6 @@ export const Default: Story = {
   render: (args) => render(args, "default"),
   args: {
     cellSize: 1,
-    majorDivisions: 4,
-    adaptiveSpacing: true,
-    fixedPixelSize: true,
-    minCellPixelSize: 20,
-    cameraZoom: 0.1,
-  },
-};
-
-export const SmallCells: Story = {
-  render: (args) => render(args, "small-cells"),
-  args: {
-    cellSize: 0.5,
-    majorDivisions: 4,
-    adaptiveSpacing: true,
-    fixedPixelSize: true,
-    minCellPixelSize: 20,
-    cameraZoom: 0.1,
-  },
-};
-
-export const LargeCells: Story = {
-  render: (args) => render(args, "large-cells"),
-  args: {
-    cellSize: 2,
     majorDivisions: 4,
     adaptiveSpacing: true,
     fixedPixelSize: true,

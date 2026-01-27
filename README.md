@@ -74,7 +74,7 @@ All packages are optimized for tree-shaking:
 |                 | Materials/Shaders    |   🟨   | Basic materials, need ShaderGraph.     |
 |                 | Dirty Rects          |   🟥   | Partial rendering optimization.        |
 |                 | WebGPU Backend       |   🟥   | Planned for future.                    |
-|                 | Raymarching          |   🟥   | SDF rendering support.                 |
+|                 | Raymarching          |   🟨   | SDF package + RaymarchPass; use RenderGraph path. |
 | **Tools**       | Interaction          |   🟥   | Raycasting/Hit-testing.                |
 |                 | Editor Tools         |   🟥   | Select, Brush, Transform tools.        |
 |                 | History/Undo         |   🟥   | Command pattern implementation.        |

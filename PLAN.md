@@ -80,10 +80,27 @@ Concrete implementations that can be swapped out.
   - 2D specific Nodes (Layers, Sprites).
   - 2D Transform implementation.
   - Raster manipulation and compositing logic.
+  - **2D Utilities**:
+    - `BoundingBox2D`: 2D bounding box calculation.
+    - `HitTest2D`: 2D point-in-shape hit-testing.
+    - `HandleRenderer2D`: Renders 2D selection handles.
+    - `HandleStyles2D`: Concrete implementations:
+      - `PhotoshopHandleStyle2D`: 8 corner/edge handles, no rotation.
+      - `KonvaHandleStyle2D`: 8 corner/edge handles + rotation handle at top.
+      - `FigmaHandleStyle2D`: Customizable handle set.
 - **`@arcanvas/feature-3d`**:
   - 3D specific Nodes (Mesh, Camera3D, Light).
   - 3D Transform implementation.
   - Geometry definitions (Box, Sphere, loaded models).
+  - **3D Utilities**:
+    - `BoundingBox3D`: 3D bounding box calculation.
+    - `Raycast3D`: 3D raycasting for hit-testing.
+    - `HandleRenderer3D`: Renders 3D gizmos (translate, rotate, scale).
+    - `HandleStyles3D`: Concrete implementations:
+      - `TranslateGizmo3D`: Arrow handles for X/Y/Z translation.
+      - `RotateGizmo3D`: Ring handles for rotation.
+      - `ScaleGizmo3D`: Box handles for scaling.
+      - `UniversalGizmo3D`: Combined translate/rotate/scale.
 - **`@arcanvas/feature-raymarch`**:
   - **Integration**: Implemented as one or more `IRenderPass`es (e.g., `RaymarchBackgroundPass`, `RaymarchFogPass`).
   - **Compositing**: Uses the same Camera/Light APIs. Reads Depth/Normal buffers from `GeometryPass` to composite volumes correctly.
@@ -101,6 +118,17 @@ Concrete implementations that can be swapped out.
 - **`@arcanvas/interaction`**:
   - Hit-testing / Raycasting logic.
   - Gesture recognition.
+- **`@arcanvas/selection`**:
+  - **Unified Selection System** (dimension-agnostic):
+    - `ISelectable`: Interface for objects that can be selected.
+    - `SelectionManager`: Manages selection state (single/multi-select, selection events).
+    - `IHandleRenderer`: Interface for rendering selection handles/outlines (dimension-specific implementations).
+    - `IHandleStyle`: Interface for different handle visual styles (Photoshop-style, Konva-style, etc.).
+  - **Handle System**:
+    - `Handle` base class: Represents a single interactive handle (corner, edge, rotation, etc.).
+    - `HandleSet`: Collection of handles for a selected object.
+    - `HandleInteraction`: Handles drag interactions on handles (resize, rotate, skew).
+  - **Note**: Bounding box calculation and hit-testing are in dimension-specific feature packages.
 
 ## Architectural Layers
 
@@ -157,6 +185,70 @@ Features connect to the core via the Plugin System.
 1.  Implement the `Tool` interface.
 2.  Register with `ToolManager`.
 3.  Tools operate via Commands to ensure Undo/Redo support.
+
+### Adding Selection & Handles
+
+Selection uses a unified module with dimension-specific utilities:
+
+1. **Core Selection Package** (`@arcanvas/selection`):
+   - Define `ISelectable` interface that objects implement.
+   - Create `SelectionManager` for managing selection state (works for any dimension).
+   - Define `IHandleRenderer` and `IHandleStyle` interfaces.
+   - Implement `Handle`, `HandleSet`, and `HandleInteraction` classes.
+
+2. **Dimension-Specific Utilities** (in `@arcanvas/feature-2d` or `@arcanvas/feature-3d`):
+   - **2D**: `BoundingBox2D`, `HitTest2D`, `HandleRenderer2D`, `HandleStyles2D`.
+   - **3D**: `BoundingBox3D`, `Raycast3D`, `HandleRenderer3D`, `HandleStyles3D`.
+   - These utilities are used by the selection system but live with their dimension-specific features.
+
+3. **Custom Handle Style**:
+   - Implement `IHandleStyle` interface in the appropriate feature package.
+   - Define handle positions and visual appearance.
+   - Register with the dimension-specific `HandleRenderer`.
+
+4. **Selection Tool**:
+   - Create a `SelectionTool` in `@arcanvas/tools` that:
+     - Uses `SelectionManager` to manage selection state.
+     - Uses dimension-specific hit-testing (from feature packages).
+     - Delegates handle rendering to dimension-specific `IHandleRenderer`.
+   - Register as a plugin.
+
+**Example Structure**:
+```
+@arcanvas/selection/
+  ├── interfaces/
+  │   ├── ISelectable.ts
+  │   ├── IHandleRenderer.ts
+  │   └── IHandleStyle.ts
+  ├── core/
+  │   ├── SelectionManager.ts
+  │   ├── Handle.ts
+  │   ├── HandleSet.ts
+  │   └── HandleInteraction.ts
+  └── index.ts
+
+@arcanvas/feature-2d/
+  ├── utils/
+  │   ├── BoundingBox2D.ts
+  │   ├── HitTest2D.ts
+  │   ├── HandleRenderer2D.ts
+  │   └── styles/
+  │       ├── PhotoshopHandleStyle2D.ts
+  │       ├── KonvaHandleStyle2D.ts
+  │       └── FigmaHandleStyle2D.ts
+  └── ...
+
+@arcanvas/feature-3d/
+  ├── utils/
+  │   ├── BoundingBox3D.ts
+  │   ├── Raycast3D.ts
+  │   ├── HandleRenderer3D.ts
+  │   └── styles/
+  │       ├── TranslateGizmo3D.ts
+  │       ├── RotateGizmo3D.ts
+  │       └── UniversalGizmo3D.ts
+  └── ...
+```
 
 ## Future Proofing
 

@@ -47,10 +47,14 @@
       "dependencies": {
         "@arcanvas/core": "workspace:*",
         "@arcanvas/document": "workspace:*",
+        "@arcanvas/feature-2d": "workspace:*",
         "@arcanvas/feature-document-2d": "workspace:*",
+        "@arcanvas/feature-raymarch": "workspace:*",
         "@arcanvas/graphics": "workspace:*",
         "@arcanvas/interaction": "workspace:*",
         "@arcanvas/scene": "workspace:*",
+        "@arcanvas/selection": "workspace:*",
+        "@arcanvas/tools": "workspace:*",
       },
       "devDependencies": {
         "@storybook/addon-essentials": "^8.6.14",
@@ -117,9 +121,11 @@
       "version": "0.0.0",
       "dependencies": {
         "@arcanvas/backend-webgl": "workspace:*",
+        "@arcanvas/core": "workspace:*",
         "@arcanvas/graphics": "workspace:*",
         "@arcanvas/math": "workspace:*",
         "@arcanvas/scene": "workspace:*",
+        "@arcanvas/selection": "workspace:*",
       },
     },
     "packages/feature-document-2d": {
@@ -130,6 +136,15 @@
         "@arcanvas/core": "workspace:*",
         "@arcanvas/document": "workspace:*",
         "@arcanvas/graphics": "workspace:*",
+      },
+    },
+    "packages/feature-raymarch": {
+      "name": "@arcanvas/feature-raymarch",
+      "version": "0.0.0",
+      "dependencies": {
+        "@arcanvas/core": "workspace:*",
+        "@arcanvas/math": "workspace:*",
+        "@arcanvas/scene": "workspace:*",
       },
     },
     "packages/graphics": {
@@ -155,6 +170,24 @@
       "version": "0.1.0",
       "dependencies": {
         "@arcanvas/math": "workspace:*",
+      },
+    },
+    "packages/selection": {
+      "name": "@arcanvas/selection",
+      "version": "0.0.0",
+      "dependencies": {
+        "@arcanvas/math": "workspace:*",
+        "@arcanvas/scene": "workspace:*",
+      },
+    },
+    "packages/tools": {
+      "name": "@arcanvas/tools",
+      "version": "0.0.0",
+      "dependencies": {
+        "@arcanvas/core": "workspace:*",
+        "@arcanvas/feature-2d": "workspace:*",
+        "@arcanvas/interaction": "workspace:*",
+        "@arcanvas/selection": "workspace:*",
       },
     },
   },
@@ -211,6 +244,8 @@
 
     "@arcanvas/feature-document-2d": ["@arcanvas/feature-document-2d@workspace:packages/feature-document-2d"],
 
+    "@arcanvas/feature-raymarch": ["@arcanvas/feature-raymarch@workspace:packages/feature-raymarch"],
+
     "@arcanvas/graphics": ["@arcanvas/graphics@workspace:packages/graphics"],
 
     "@arcanvas/interaction": ["@arcanvas/interaction@workspace:packages/interaction"],
@@ -221,7 +256,11 @@
 
     "@arcanvas/scene": ["@arcanvas/scene@workspace:packages/scene"],
 
+    "@arcanvas/selection": ["@arcanvas/selection@workspace:packages/selection"],
+
     "@arcanvas/storybook": ["@arcanvas/storybook@workspace:apps/storybook"],
+
+    "@arcanvas/tools": ["@arcanvas/tools@workspace:packages/tools"],
 
     "@babel/helper-string-parser": ["@babel/helper-string-parser@7.27.1", "", {}, "sha512-qMlSxKbpRlAridDExk92nSobyDdpPijUq2DW6oDnUqd0iOGxmQjyqhMIihI9+zv4LPyZdRje2cavWPbCbWm3eA=="],
 
