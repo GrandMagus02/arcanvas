@@ -16,6 +16,10 @@ export interface CustomDrawConfig {
   positionComponents: 2 | 3;
   /** Whether to disable depth write during rendering */
   disableDepthWrite?: boolean;
+  /** Whether to disable depth test during rendering (useful for overlapping transparent geometry) */
+  disableDepthTest?: boolean;
+  /** Unique key for shader caching (to differentiate materials with same shadingModel but different shaders) */
+  shaderKey?: string;
   /** Custom uniform setter function */
   setUniforms?: (gl: WebGLRenderingContext, program: WebGLProgram, material: BaseMaterial, context: UniformContext) => void;
 }

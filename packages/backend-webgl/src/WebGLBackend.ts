@@ -200,7 +200,8 @@ export class WebGLBackend implements IRenderBackend {
     const shaderSource = material.getShaderSource();
     const drawConfig = material.getDrawConfig();
 
-    const programKey = `custom:${material.shadingModel}`;
+    // Use shaderKey if provided, otherwise fall back to shadingModel
+    const programKey = drawConfig.shaderKey ? `custom:${drawConfig.shaderKey}` : `custom:${material.shadingModel}`;
     let programInfo = this.customProgramCache.get(programKey);
 
     if (!programInfo) {
@@ -260,6 +261,9 @@ export class WebGLBackend implements IRenderBackend {
       drawConfig.setUniforms(this.gl, programInfo.program, material, uniformContext);
     }
 
+    if (drawConfig.disableDepthTest) {
+      this.gl.disable(this.gl.DEPTH_TEST);
+    }
     if (drawConfig.disableDepthWrite) {
       this.gl.depthMask(false);
     }
@@ -272,6 +276,9 @@ export class WebGLBackend implements IRenderBackend {
 
     if (drawConfig.disableDepthWrite) {
       this.gl.depthMask(true);
+    }
+    if (drawConfig.disableDepthTest) {
+      this.gl.enable(this.gl.DEPTH_TEST);
     }
   }
 
