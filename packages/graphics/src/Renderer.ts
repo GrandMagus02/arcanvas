@@ -1,3 +1,5 @@
+import type { DebugMode, DebugOptions } from "./DebugMode";
+import { DEFAULT_DEBUG_OPTIONS } from "./DebugMode";
 import type { IRenderBackend, LightInfo } from "./IRenderBackend";
 import type { Mesh } from "./Mesh";
 import type { BaseMaterial } from "./materials";
@@ -31,37 +33,44 @@ export interface RenderableCamera {
 }
 
 /**
- * Converts a row-major 4x4 matrix to column-major for WebGL.
- */
-function toColumnMajor4x4(rowMajor: Float32Array): Float32Array {
-  if (rowMajor.length !== 16) {
-    throw new Error("Matrix must have exactly 16 elements");
-  }
-  return new Float32Array([
-    rowMajor[0]!,
-    rowMajor[4]!,
-    rowMajor[8]!,
-    rowMajor[12]!,
-    rowMajor[1]!,
-    rowMajor[5]!,
-    rowMajor[9]!,
-    rowMajor[13]!,
-    rowMajor[2]!,
-    rowMajor[6]!,
-    rowMajor[10]!,
-    rowMajor[14]!,
-    rowMajor[3]!,
-    rowMajor[7]!,
-    rowMajor[11]!,
-    rowMajor[15]!,
-  ]);
-}
-
-/**
  * Standard renderer for Scene and Camera.
  */
 export class Renderer {
   constructor(private backend: IRenderBackend) {}
+
+  /**
+   * Sets the debug visualization mode.
+   * @param mode - The debug mode to enable, or "none" to disable.
+   * @param options - Additional debug options.
+   */
+  setDebugMode(mode: DebugMode, options?: Partial<Omit<DebugOptions, "mode">>): void {
+    if (this.backend.setDebugMode) {
+      this.backend.setDebugMode({
+        ...DEFAULT_DEBUG_OPTIONS,
+        ...options,
+        mode,
+      });
+    }
+  }
+
+  /**
+   * Gets the current debug options.
+   */
+  getDebugMode(): DebugOptions {
+    if (this.backend.getDebugMode) {
+      return this.backend.getDebugMode();
+    }
+    return { ...DEFAULT_DEBUG_OPTIONS };
+  }
+
+  /**
+   * Convenience method to toggle debug triangles mode.
+   * @param enabled - Whether to enable or disable debug triangles.
+   * @param colorSeed - Optional seed for consistent colors.
+   */
+  setDebugTriangles(enabled: boolean, colorSeed?: number): void {
+    this.setDebugMode(enabled ? "triangles" : "none", { colorSeed });
+  }
 
   render(scene: RenderableScene, camera: RenderableCamera): void {
     const { width, height } = scene.viewport;

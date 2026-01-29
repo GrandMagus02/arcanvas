@@ -1,4 +1,5 @@
-import type { BaseMaterial, DrawArgs, IRenderBackend, Mesh, VertexAttributeDesc } from "@arcanvas/graphics";
+import type { BaseMaterial, DebugOptions, DrawArgs, IRenderBackend, Mesh, VertexAttributeDesc } from "@arcanvas/graphics";
+import { DEFAULT_DEBUG_OPTIONS, generateTriangleColor } from "@arcanvas/graphics";
 import { ProgramCache } from "./ProgramCache";
 import { isShaderProvider, type UniformContext } from "./ShaderProvider";
 import { ShaderRegistry } from "./ShaderRegistry";
@@ -7,6 +8,12 @@ interface MeshCacheEntry {
   vertexBuffer: WebGLBuffer;
   indexBuffer: WebGLBuffer | null;
   indexType: number | null;
+  version: number;
+}
+
+interface DebugMeshCacheEntry {
+  vertexBuffer: WebGLBuffer;
+  vertexCount: number;
   version: number;
 }
 
@@ -27,14 +34,26 @@ interface CustomProgramInfo {
   uvLocation?: number;
 }
 
+interface DebugProgramInfo {
+  program: WebGLProgram;
+  positionLocation: number;
+  colorLocation: number;
+  modelLocation: WebGLUniformLocation | null;
+  viewLocation: WebGLUniformLocation | null;
+  projLocation: WebGLUniformLocation | null;
+}
+
 /**
  * WebGL implementation of the render backend.
  */
 export class WebGLBackend implements IRenderBackend {
   private readonly programCache = new ProgramCache();
   private readonly meshCache = new WeakMap<Mesh, MeshCacheEntry>();
+  private readonly debugMeshCache = new WeakMap<Mesh, DebugMeshCacheEntry>();
   private readonly programInfoCache = new Map<string, ProgramInfo>();
   private readonly customProgramCache = new Map<string, CustomProgramInfo>();
+  private debugProgramInfo: DebugProgramInfo | null = null;
+  private debugOptions: DebugOptions = { ...DEFAULT_DEBUG_OPTIONS };
   private viewportWidth = 1;
   private viewportHeight = 1;
 
@@ -46,6 +65,20 @@ export class WebGLBackend implements IRenderBackend {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(0.1, 0.1, 0.1, 1.0);
+  }
+
+  /**
+   * Sets the debug visualization mode.
+   */
+  setDebugMode(options: DebugOptions): void {
+    this.debugOptions = { ...DEFAULT_DEBUG_OPTIONS, ...options };
+  }
+
+  /**
+   * Gets the current debug options.
+   */
+  getDebugMode(): DebugOptions {
+    return { ...this.debugOptions };
   }
 
   beginFrame(viewportWidth: number, viewportHeight: number): void {
@@ -138,6 +171,12 @@ export class WebGLBackend implements IRenderBackend {
   }
 
   drawMesh(args: DrawArgs): void {
+    // Check for debug mode first
+    if (this.debugOptions.mode !== "none") {
+      this.drawWithDebugMode(args);
+      return;
+    }
+
     const { material } = args;
 
     if (isShaderProvider(material)) {
@@ -344,9 +383,266 @@ export class WebGLBackend implements IRenderBackend {
     }
   }
 
+  /**
+   * Draws a mesh with debug visualization.
+   */
+  private drawWithDebugMode(args: DrawArgs): void {
+    switch (this.debugOptions.mode) {
+      case "triangles":
+        this.drawWithTriangleColors(args);
+        break;
+      case "wireframe":
+        this.drawWithWireframe(args);
+        break;
+      case "normals":
+        this.drawWithNormalColors(args);
+        break;
+      case "uv":
+        this.drawWithUVColors(args);
+        break;
+      case "depth":
+        this.drawWithDepthVisualization(args);
+        break;
+      default:
+        // Fall back to normal rendering
+        this.drawWithDefaultShader(args);
+    }
+
+    // Draw wireframe overlay if requested
+    if (this.debugOptions.wireframeOverlay && this.debugOptions.mode !== "wireframe") {
+      this.drawWithWireframe(args);
+    }
+  }
+
+  /**
+   * Creates or retrieves the debug shader program for triangle colors.
+   */
+  private getDebugProgram(): DebugProgramInfo {
+    if (this.debugProgramInfo) return this.debugProgramInfo;
+
+    const program = this.programCache.getOrCreate(this.gl, "debug:triangles", DEBUG_VERTEX_SOURCE, DEBUG_FRAGMENT_SOURCE);
+    if (!program) throw new Error("Failed to create debug program");
+
+    this.debugProgramInfo = {
+      program,
+      positionLocation: this.gl.getAttribLocation(program, "a_position"),
+      colorLocation: this.gl.getAttribLocation(program, "a_color"),
+      modelLocation: this.gl.getUniformLocation(program, "u_model"),
+      viewLocation: this.gl.getUniformLocation(program, "u_view"),
+      projLocation: this.gl.getUniformLocation(program, "u_proj"),
+    };
+
+    return this.debugProgramInfo;
+  }
+
+  /**
+   * Creates a debug mesh with per-triangle colors.
+   * Converts indexed geometry to non-indexed with vertex colors.
+   */
+  private getOrCreateDebugMesh(mesh: Mesh): DebugMeshCacheEntry {
+    const cached = this.debugMeshCache.get(mesh);
+    if (cached && cached.version === mesh.version) return cached;
+
+    const vertices = mesh.vertices;
+    const indices = mesh.indices;
+    const layout = mesh.layout;
+
+    // Find position attribute
+    const posAttr = layout.attributes.find((a) => a.semantic === "position");
+    if (!posAttr) throw new Error("Mesh has no position attribute");
+
+    const posComponents = posAttr.components;
+    const stride = layout.stride / 4; // Convert bytes to floats
+    const posOffset = posAttr.offset / 4;
+
+    // Calculate number of triangles
+    const numTriangles = indices.length > 0 ? indices.length / 3 : Math.floor(vertices.length / stride / 3);
+
+    // Create new vertex data: 3 vertices per triangle, each with position (3) + color (4)
+    const debugStride = 7; // 3 position + 4 color
+    const debugVertices = new Float32Array(numTriangles * 3 * debugStride);
+
+    const seed = this.debugOptions.colorSeed;
+
+    for (let t = 0; t < numTriangles; t++) {
+      const color = generateTriangleColor(t, seed);
+
+      for (let v = 0; v < 3; v++) {
+        let srcIndex: number;
+        if (indices.length > 0) {
+          srcIndex = indices[t * 3 + v]!;
+        } else {
+          srcIndex = t * 3 + v;
+        }
+
+        const srcBase = srcIndex * stride + posOffset;
+        const dstBase = (t * 3 + v) * debugStride;
+
+        // Copy position
+        debugVertices[dstBase] = vertices[srcBase]!;
+        debugVertices[dstBase + 1] = vertices[srcBase + 1]!;
+        debugVertices[dstBase + 2] = posComponents >= 3 ? vertices[srcBase + 2]! : 0;
+
+        // Set color
+        debugVertices[dstBase + 3] = color[0];
+        debugVertices[dstBase + 4] = color[1];
+        debugVertices[dstBase + 5] = color[2];
+        debugVertices[dstBase + 6] = color[3];
+      }
+    }
+
+    // Create or update buffer
+    const vertexBuffer = cached?.vertexBuffer ?? this.gl.createBuffer();
+    if (!vertexBuffer) throw new Error("Failed to create debug vertex buffer");
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, debugVertices, this.gl.DYNAMIC_DRAW);
+
+    const entry: DebugMeshCacheEntry = {
+      vertexBuffer,
+      vertexCount: numTriangles * 3,
+      version: mesh.version,
+    };
+
+    this.debugMeshCache.set(mesh, entry);
+    return entry;
+  }
+
+  /**
+   * Draws mesh with unique colors per triangle.
+   */
+  private drawWithTriangleColors(args: DrawArgs): void {
+    const { mesh, modelMatrix, viewMatrix, projMatrix } = args;
+
+    const programInfo = this.getDebugProgram();
+    const debugMesh = this.getOrCreateDebugMesh(mesh);
+
+    this.gl.useProgram(programInfo.program);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, debugMesh.vertexBuffer);
+
+    // Position attribute
+    if (programInfo.positionLocation >= 0) {
+      this.gl.enableVertexAttribArray(programInfo.positionLocation);
+      this.gl.vertexAttribPointer(programInfo.positionLocation, 3, this.gl.FLOAT, false, 7 * 4, 0);
+    }
+
+    // Color attribute
+    if (programInfo.colorLocation >= 0) {
+      this.gl.enableVertexAttribArray(programInfo.colorLocation);
+      this.gl.vertexAttribPointer(programInfo.colorLocation, 4, this.gl.FLOAT, false, 7 * 4, 3 * 4);
+    }
+
+    // Set uniforms
+    if (programInfo.modelLocation) {
+      this.gl.uniformMatrix4fv(programInfo.modelLocation, false, modelMatrix);
+    }
+    if (programInfo.viewLocation) {
+      this.gl.uniformMatrix4fv(programInfo.viewLocation, false, viewMatrix);
+    }
+    if (programInfo.projLocation) {
+      this.gl.uniformMatrix4fv(programInfo.projLocation, false, projMatrix);
+    }
+
+    // Draw triangles (non-indexed)
+    this.gl.drawArrays(this.gl.TRIANGLES, 0, debugMesh.vertexCount);
+  }
+
+  /**
+   * Draws mesh as wireframe.
+   */
+  private drawWithWireframe(args: DrawArgs): void {
+    const { mesh, modelMatrix, viewMatrix, projMatrix, material } = args;
+
+    // Prepare the mesh normally
+    this.prepareMesh(mesh);
+    const entry = this.meshCache.get(mesh);
+    if (!entry) return;
+
+    const programInfo = this.getProgramInfo(material, mesh);
+    this.gl.useProgram(programInfo.program);
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, entry.vertexBuffer);
+    if (entry.indexBuffer) {
+      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, entry.indexBuffer);
+    }
+
+    this.bindAttributes(mesh.layout.attributes, mesh.layout.stride, programInfo.attribLocations);
+
+    // Use white color for wireframe
+    if (programInfo.uniformLocations.model) {
+      this.gl.uniformMatrix4fv(programInfo.uniformLocations.model, false, modelMatrix);
+    }
+    if (programInfo.uniformLocations.view) {
+      this.gl.uniformMatrix4fv(programInfo.uniformLocations.view, false, viewMatrix);
+    }
+    if (programInfo.uniformLocations.proj) {
+      this.gl.uniformMatrix4fv(programInfo.uniformLocations.proj, false, projMatrix);
+    }
+    if (programInfo.uniformLocations.baseColor) {
+      this.gl.uniform4f(programInfo.uniformLocations.baseColor, 1, 1, 1, 1);
+    }
+
+    // Draw as lines
+    if (mesh.indices.length > 0 && entry.indexType !== null) {
+      this.gl.drawElements(this.gl.LINES, mesh.indices.length, entry.indexType, 0);
+    } else {
+      this.gl.drawArrays(this.gl.LINES, 0, mesh.vertexCount);
+    }
+  }
+
+  /**
+   * Draws mesh with normals visualized as colors.
+   */
+  private drawWithNormalColors(args: DrawArgs): void {
+    // For now, fall back to triangle colors
+    // TODO: Implement proper normal visualization
+    this.drawWithTriangleColors(args);
+  }
+
+  /**
+   * Draws mesh with UV coordinates visualized as colors.
+   */
+  private drawWithUVColors(args: DrawArgs): void {
+    // For now, fall back to triangle colors
+    // TODO: Implement proper UV visualization
+    this.drawWithTriangleColors(args);
+  }
+
+  /**
+   * Draws mesh with depth visualization.
+   */
+  private drawWithDepthVisualization(args: DrawArgs): void {
+    // For now, fall back to triangle colors
+    // TODO: Implement proper depth visualization
+    this.drawWithTriangleColors(args);
+  }
+
   dispose(): void {
     this.programCache.dispose(this.gl);
     this.programInfoCache.clear();
     this.customProgramCache.clear();
+    this.debugProgramInfo = null;
   }
 }
+
+// Debug shader for triangle coloring
+const DEBUG_VERTEX_SOURCE = `
+  attribute vec3 a_position;
+  attribute vec4 a_color;
+  uniform mat4 u_model;
+  uniform mat4 u_view;
+  uniform mat4 u_proj;
+  varying vec4 v_color;
+  void main() {
+    gl_Position = u_proj * u_view * u_model * vec4(a_position, 1.0);
+    v_color = a_color;
+  }
+`;
+
+const DEBUG_FRAGMENT_SOURCE = `
+  precision mediump float;
+  varying vec4 v_color;
+  void main() {
+    gl_FragColor = v_color;
+  }
+`;

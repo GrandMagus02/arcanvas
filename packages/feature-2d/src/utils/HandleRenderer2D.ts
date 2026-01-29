@@ -1,8 +1,5 @@
-import type { IHandleRenderer, RenderContext } from "@arcanvas/selection";
-import type { Handle } from "@arcanvas/selection";
-import type { HandleSet } from "@arcanvas/selection";
+import type { Handle, HandleSet, IHandleRenderer, RenderContext } from "@arcanvas/selection";
 import { BoundingBox2D } from "./BoundingBox2D";
-import type { BoundingBox } from "@arcanvas/selection";
 
 /**
  * 2D handle renderer implementation.
@@ -45,20 +42,32 @@ export class HandleRenderer2D implements IHandleRenderer {
       return;
     }
 
+    // Calculate pixel ratio (DPR)
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const displayWidth = canvas.clientWidth || canvasWidth;
+    const displayHeight = canvas.clientHeight || canvasHeight;
+    const dprX = displayWidth > 0 ? canvasWidth / displayWidth : 1;
+    const dprY = displayHeight > 0 ? canvasHeight / displayHeight : 1;
+
     // Convert world to screen coordinates using helper method
     const screen = this.worldToScreen(handle.position, context);
-    const screenSize = this.handleSize;
+
+    // Convert screen (CSS) to canvas (physical) coordinates
+    const canvasX = screen.x * dprX;
+    const canvasY = screen.y * dprY;
+    const canvasSize = this.handleSize * dprX; // Assume square pixels for size
 
     // Save context state
     ctx.save();
     ctx.fillStyle = `rgba(${Math.round(this.handleColor[0] * 255)}, ${Math.round(this.handleColor[1] * 255)}, ${Math.round(this.handleColor[2] * 255)}, ${this.handleColor[3]})`;
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 * dprX;
 
     // Draw handle as a square
-    const halfSize = screenSize / 2;
-    ctx.fillRect(screen.x - halfSize, screen.y - halfSize, screenSize, screenSize);
-    ctx.strokeRect(screen.x - halfSize, screen.y - halfSize, screenSize, screenSize);
+    const halfSize = canvasSize / 2;
+    ctx.fillRect(canvasX - halfSize, canvasY - halfSize, canvasSize, canvasSize);
+    ctx.strokeRect(canvasX - halfSize, canvasY - halfSize, canvasSize, canvasSize);
 
     // Restore context state
     ctx.restore();
@@ -98,19 +107,26 @@ export class HandleRenderer2D implements IHandleRenderer {
 
     const ctx = this.canvasContext;
     const corners = bounds.getCorners();
-    
+
     // Convert world coordinates to screen coordinates
     const camera = context.camera as { pixelsPerUnit?: number; position?: { x: number; y: number }; arcanvas?: { canvas: HTMLCanvasElement } };
-    const pixelsPerUnit = camera?.pixelsPerUnit ?? 1;
     const canvas = camera?.arcanvas?.canvas;
     if (!canvas) {
       return;
     }
 
+    // Calculate pixel ratio (DPR)
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const displayWidth = canvas.clientWidth || canvasWidth;
+    const displayHeight = canvas.clientHeight || canvasHeight;
+    const dprX = displayWidth > 0 ? canvasWidth / displayWidth : 1;
+    const dprY = displayHeight > 0 ? canvasHeight / displayHeight : 1;
+
     // Save context state
     ctx.save();
     ctx.strokeStyle = `rgba(${Math.round(this.outlineColor[0] * 255)}, ${Math.round(this.outlineColor[1] * 255)}, ${Math.round(this.outlineColor[2] * 255)}, ${this.outlineColor[3]})`;
-    ctx.lineWidth = this.outlineWidth;
+    ctx.lineWidth = this.outlineWidth * dprX;
     ctx.setLineDash([]);
 
     // Draw bounding box outline
@@ -119,11 +135,13 @@ export class HandleRenderer2D implements IHandleRenderer {
       const corner = corners[i]!;
       // Convert world to screen using helper method
       const screen = this.worldToScreen(corner, context);
-      
+      const canvasX = screen.x * dprX;
+      const canvasY = screen.y * dprY;
+
       if (i === 0) {
-        ctx.moveTo(screen.x, screen.y);
+        ctx.moveTo(canvasX, canvasY);
       } else {
-        ctx.lineTo(screen.x, screen.y);
+        ctx.lineTo(canvasX, canvasY);
       }
     }
     ctx.closePath();
@@ -153,13 +171,13 @@ export class HandleRenderer2D implements IHandleRenderer {
       arcanvas?: { canvas: HTMLCanvasElement };
     };
     const viewport = context.viewport;
-    
+
     // Get canvas to account for CSS scaling
     const canvas = camera.arcanvas?.canvas;
     if (!canvas) {
       return { x: 0, y: 0 };
     }
-    
+
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     const displayWidth = canvas.clientWidth || canvasWidth;
@@ -167,7 +185,7 @@ export class HandleRenderer2D implements IHandleRenderer {
     // Avoid division by zero
     const scaleX = canvasWidth > 0 ? displayWidth / canvasWidth : 1;
     const scaleY = canvasHeight > 0 ? displayHeight / canvasHeight : 1;
-    
+
     // Try using getViewProjectionMatrix first (most reliable)
     if (camera.getViewProjectionMatrix) {
       try {
@@ -181,17 +199,17 @@ export class HandleRenderer2D implements IHandleRenderer {
         } else {
           vpData = new Float32Array(vpMatrix.data);
         }
-        
+
         if (vpData.length !== 16) {
           throw new Error(`Invalid matrix size: ${vpData.length}, expected 16`);
         }
-        
+
         // Transform world point to clip space: [x', y', z', w'] = VP * [x, y, 0, 1]
         const x = worldPoint.x;
         const y = worldPoint.y;
         const z = 0;
         const w = 1;
-        
+
         // Matrix is column-major: [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33]
         const m00 = vpData[0]!;
         const m10 = vpData[1]!;
@@ -209,43 +227,43 @@ export class HandleRenderer2D implements IHandleRenderer {
         const m13 = vpData[13]!;
         const m23 = vpData[14]!;
         const m33 = vpData[15]!;
-        
+
         const clipX = m00 * x + m01 * y + m02 * z + m03 * w;
         const clipY = m10 * x + m11 * y + m12 * z + m13 * w;
         const clipZ = m20 * x + m21 * y + m22 * z + m23 * w;
         const clipW = m30 * x + m31 * y + m32 * z + m33 * w;
-        
+
         // Perspective divide to get NDC coordinates
         if (Math.abs(clipW) > 1e-6) {
           const ndcX = clipX / clipW;
           const ndcY = clipY / clipW;
-          
+
           // Convert NDC [-1, 1] to screen coordinates [0, canvasWidth/Height]
           const pixelX = ((ndcX + 1) / 2) * canvasWidth;
           const pixelY = ((1 - ndcY) / 2) * canvasHeight; // Flip Y
-          
+
           // Convert to display coordinates (CSS pixels) accounting for scaling
           const screenX = pixelX * scaleX;
           const screenY = pixelY * scaleY;
-          
+
           return { x: screenX, y: screenY };
         }
       } catch (e) {
         console.warn("[HandleRenderer2D] Failed to use getViewProjectionMatrix, trying manual multiplication:", e);
       }
     }
-    
+
     // Fallback: manual multiplication using separate matrices
     if (camera.view?.toFloat32Array && camera.projection?.toFloat32Array) {
       try {
         // Get matrices exactly as the renderer does
         const view = camera.view.toFloat32Array();
         const proj = camera.projection.toFloat32Array();
-        
+
         if (view.length !== 16 || proj.length !== 16) {
           throw new Error(`Invalid matrix size: view=${view.length}, proj=${proj.length}, expected 16`);
         }
-        
+
         // Multiply proj * view manually (column-major format)
         // Following Matrix.mult() implementation exactly:
         // C[i][j] = sum_k A[i][k] * B[k][j]
@@ -264,13 +282,13 @@ export class HandleRenderer2D implements IHandleRenderer {
             vpData[j * 4 + i] = sum;
           }
         }
-        
+
         // Transform world point to clip space: [x', y', z', w'] = VP * [x, y, 0, 1]
         const x = worldPoint.x;
         const y = worldPoint.y;
         const z = 0;
         const w = 1;
-        
+
         // Matrix is column-major: [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33]
         const m00 = vpData[0]!;
         const m10 = vpData[1]!;
@@ -288,32 +306,32 @@ export class HandleRenderer2D implements IHandleRenderer {
         const m13 = vpData[13]!;
         const m23 = vpData[14]!;
         const m33 = vpData[15]!;
-        
+
         const clipX = m00 * x + m01 * y + m02 * z + m03 * w;
         const clipY = m10 * x + m11 * y + m12 * z + m13 * w;
         const clipZ = m20 * x + m21 * y + m22 * z + m23 * w;
         const clipW = m30 * x + m31 * y + m32 * z + m33 * w;
-        
+
         // Perspective divide to get NDC coordinates
         if (Math.abs(clipW) > 1e-6) {
           const ndcX = clipX / clipW;
           const ndcY = clipY / clipW;
-          
+
           // Convert NDC [-1, 1] to screen coordinates [0, canvasWidth/Height]
           const pixelX = ((ndcX + 1) / 2) * canvasWidth;
           const pixelY = ((1 - ndcY) / 2) * canvasHeight; // Flip Y
-          
+
           // Convert to display coordinates (CSS pixels) accounting for scaling
           const screenX = pixelX * scaleX;
           const screenY = pixelY * scaleY;
-          
+
           return { x: screenX, y: screenY };
         }
       } catch (e) {
         console.warn("[HandleRenderer2D] Failed to use view/projection matrices, using fallback:", e);
       }
     }
-    
+
     // Fallback: use projection bounds if view-projection matrix not available
     // Projection bounds are in camera-relative space (centered at camera position)
     const proj = camera.projection;
@@ -321,31 +339,31 @@ export class HandleRenderer2D implements IHandleRenderer {
       const cameraPos = camera.position;
       const cameraX = cameraPos.x;
       const cameraY = cameraPos.y;
-      
+
       // Convert world to camera-relative coordinates
       const cameraRelativeX = worldPoint.x - cameraX;
       const cameraRelativeY = worldPoint.y - cameraY;
-      
+
       const worldWidth = proj.right - proj.left;
       const worldHeight = proj.top - proj.bottom;
-      
+
       // Normalize camera-relative coordinates to [0, 1] range
       // Map from [left, right] to [0, 1] for X
       // Map from [bottom, top] to [0, 1] for Y (then flip for screen space)
       const normalizedX = (cameraRelativeX - proj.left) / worldWidth;
       const normalizedY = (cameraRelativeY - proj.bottom) / worldHeight; // Map from bottom to top
-      
+
       // Convert to canvas internal pixel coordinates
       const pixelX = normalizedX * canvasWidth;
       const pixelY = (1 - normalizedY) * canvasHeight; // Flip Y: normalizedY=1 (top in world) -> pixelY=0 (top in screen)
-      
+
       // Convert to display coordinates (CSS pixels) accounting for scaling
       const screenX = pixelX * scaleX;
       const screenY = pixelY * scaleY;
-      
+
       return { x: screenX, y: screenY };
     }
-    
+
     // Final fallback: use pixelsPerUnit and camera position
     const pixelsPerUnit = camera.pixelsPerUnit ?? 1;
     const centerX = viewport.width / 2;
@@ -353,14 +371,14 @@ export class HandleRenderer2D implements IHandleRenderer {
     const cameraPos = camera.position;
     const cameraX = cameraPos.x;
     const cameraY = cameraPos.y;
-    
+
     const pixelX = centerX + (worldPoint.x - cameraX) * pixelsPerUnit;
     const pixelY = centerY - (worldPoint.y - cameraY) * pixelsPerUnit; // Flip Y axis
-    
+
     // Convert to display coordinates
     const screenX = pixelX * scaleX;
     const screenY = pixelY * scaleY;
-    
+
     return { x: screenX, y: screenY };
   }
 

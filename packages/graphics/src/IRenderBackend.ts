@@ -1,3 +1,4 @@
+import type { DebugOptions } from "./DebugMode";
 import type { Mesh } from "./Mesh";
 import type { BaseMaterial } from "./materials";
 
@@ -56,6 +57,17 @@ export interface IRenderBackend {
    * Draws a mesh with the given arguments.
    */
   drawMesh(args: DrawArgs): void;
+
+  /**
+   * Sets the debug visualization mode.
+   * When enabled, overrides normal rendering with debug visualizations.
+   */
+  setDebugMode?(options: DebugOptions): void;
+
+  /**
+   * Gets the current debug options.
+   */
+  getDebugMode?(): DebugOptions;
 
   /**
    * Disposes of all resources held by this backend.

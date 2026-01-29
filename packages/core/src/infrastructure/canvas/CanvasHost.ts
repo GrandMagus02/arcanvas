@@ -8,6 +8,11 @@ export interface CanvasOptions {
   width: number;
   height: number;
   focusable: boolean;
+  /**
+   * Resolution scale multiplier applied on top of DPR.
+   * 1 = native, <1 = lower res (pixelated), >1 = higher res.
+   */
+  resolutionScale: number;
 }
 
 /**
@@ -17,6 +22,7 @@ export const DEFAULT_CANVAS_OPTIONS: CanvasOptions = Object.freeze({
   width: 100,
   height: 100,
   focusable: true,
+  resolutionScale: 1,
 });
 
 /**
@@ -92,6 +98,17 @@ export class CanvasHost<T extends CanvasHostEvents = CanvasHostEvents> {
     }
   }
 
+  /**
+   * Sets the resolution scale multiplier and applies it.
+   * @param scale - Resolution scale (e.g., 0.5 for pixelated, 2 for supersampling)
+   */
+  setResolutionScale(scale: number): void {
+    const clamped = Number.isFinite(scale) && scale > 0 ? scale : 1;
+    if (this._options.resolutionScale === clamped) return;
+    this._options.resolutionScale = clamped;
+    this.applyDprSizing();
+  }
+
   private applyOptions(): void {
     const { width, height, focusable } = this._options;
 
@@ -120,6 +137,7 @@ export class CanvasHost<T extends CanvasHostEvents = CanvasHostEvents> {
 
   private applyDprSizing(): void {
     const dpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+    const scale = Number.isFinite(this._options.resolutionScale) && this._options.resolutionScale > 0 ? this._options.resolutionScale : 1;
 
     const hasExplicitWidth = typeof this._options.width === "number" && this._options.width > 0;
     const hasExplicitHeight = typeof this._options.height === "number" && this._options.height > 0;
@@ -129,8 +147,8 @@ export class CanvasHost<T extends CanvasHostEvents = CanvasHostEvents> {
       if (parent) {
         const cssWidth = Math.max(0, Math.floor(parent.clientWidth || 0));
         const cssHeight = Math.max(0, Math.floor(parent.clientHeight || 0));
-        const width = Math.max(0, Math.floor(cssWidth * dpr));
-        const height = Math.max(0, Math.floor(cssHeight * dpr));
+        const width = Math.max(0, Math.floor(cssWidth * dpr * scale));
+        const height = Math.max(0, Math.floor(cssHeight * dpr * scale));
 
         if (width || height) {
           this.resize(width || this._canvas.width, height || this._canvas.height);

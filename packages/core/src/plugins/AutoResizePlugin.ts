@@ -18,10 +18,11 @@ export class AutoResizePlugin extends Plugin {
 
       this._observer = new ResizeObserver(() => {
         const dpr = typeof window !== "undefined" && window.devicePixelRatio ? window.devicePixelRatio : 1;
+        const scale = Number.isFinite(this.app.getOptions().resolutionScale) && this.app.getOptions().resolutionScale > 0 ? this.app.getOptions().resolutionScale : 1;
         const cssWidth = Math.max(0, Math.floor(parent.clientWidth || 0));
         const cssHeight = Math.max(0, Math.floor(parent.clientHeight || 0));
-        const width = Math.max(0, Math.floor(cssWidth * dpr));
-        const height = Math.max(0, Math.floor(cssHeight * dpr));
+        const width = Math.max(0, Math.floor(cssWidth * dpr * scale));
+        const height = Math.max(0, Math.floor(cssHeight * dpr * scale));
         if (canvas.width !== width || canvas.height !== height) {
           this.app.resize(width, height);
         }

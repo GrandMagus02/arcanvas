@@ -1,0 +1,25 @@
+{
+  "name": "@arcanvas/typography",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Text rendering engine for Arcanvas with adaptive triangulation and layout engine",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@arcanvas/core": "workspace:*",
+    "@arcanvas/graphics": "workspace:*",
+    "@arcanvas/math": "workspace:*",
+    "earcut": "^3.0.0",
+    "opentype.js": "^1.3.4"
+  },
+  "devDependencies": {
+    "@types/earcut": "^2.1.4",
+    "@types/opentype.js": "^1.3.8"
+  }
+}

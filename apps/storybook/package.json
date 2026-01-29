@@ -11,13 +11,13 @@
     "@arcanvas/core": "workspace:*",
     "@arcanvas/document": "workspace:*",
     "@arcanvas/feature-2d": "workspace:*",
-    "@arcanvas/feature-raymarch": "workspace:*",
     "@arcanvas/feature-document-2d": "workspace:*",
     "@arcanvas/graphics": "workspace:*",
     "@arcanvas/interaction": "workspace:*",
     "@arcanvas/scene": "workspace:*",
     "@arcanvas/selection": "workspace:*",
-    "@arcanvas/tools": "workspace:*"
+    "@arcanvas/tools": "workspace:*",
+    "@arcanvas/typography": "workspace:*"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^8.6.14",

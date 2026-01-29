@@ -197,4 +197,13 @@ export class Arcanvas implements IArcanvasContext, EventEmitter<ArcanvasEvents>,
     this._canvasHost.resize(width, height);
     this._renderSystem.renderOnce();
   }
+
+  /**
+   * Sets the resolution scale multiplier (DPR * scale) for pixelation/debug.
+   * @param scale - Resolution scale (e.g., 0.5 for pixelated, 2 for supersampling)
+   */
+  setResolutionScale(scale: number): void {
+    this._canvasHost.setResolutionScale(scale);
+    this._renderSystem.renderOnce();
+  }
 }

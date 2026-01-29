@@ -23,6 +23,7 @@ const config: StorybookConfig = {
           // Resolve internal src/ imports in core package (using baseUrl from tsconfig)
           "@arcanvas/selection": resolve(__dirname, "../../../packages/selection/index.ts"),
           "@arcanvas/tools": resolve(__dirname, "../../../packages/tools/index.ts"),
+          "@arcanvas/typography": resolve(__dirname, "../../../packages/typography/index.ts"),
           "src/systems": resolve(__dirname, "../../../packages/core/src/systems/index.ts"),
           "src/utils/mixins": resolve(__dirname, "../../../packages/core/src/utils/mixins/index.ts"),
         },
@@ -39,6 +40,7 @@ const config: StorybookConfig = {
           "@arcanvas/scene",
           "@arcanvas/selection",
           "@arcanvas/tools",
+          "@arcanvas/typography",
         ],
         esbuildOptions: {
           target: "es2020",

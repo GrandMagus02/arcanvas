@@ -8,6 +8,7 @@
  * - VertexLayout: Vertex attribute descriptions
  * - Renderer: Standard scene renderer
  * - WorldRenderer: Large-scale world renderer with floating origin
+ * - DebugMode: Debug visualization modes
  */
 
 // Mesh
@@ -23,8 +24,16 @@ export * from "./src/vertexLayout";
 export * from "./src/RenderObject";
 export * from "./src/WorldRenderObject";
 
+// Shapes
+export * from "./src/shapes/Curve";
+export * from "./src/shapes/Line";
+export * from "./src/shapes/Path";
+
 // Backend interface
 export * from "./src/IRenderBackend";
+
+// Debug visualization
+export * from "./src/DebugMode";
 
 // Renderers
 export * from "./src/Renderer";
