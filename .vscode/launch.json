@@ -1,51 +1,42 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Playground dev (Bun)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "bun run dev",
-            "cwd": "${workspaceFolder}/apps/playground"
-        },
-        {
-            "name": "Docs dev (Bun)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "bun run docs:dev",
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "Storybook dev (Bun)",
-            "type": "node-terminal",
-            "request": "launch",
-            "command": "bun run storybook",
-            "cwd": "${workspaceFolder}/apps/storybook"
-        },
-        {
-            "name": "Playground dev (Bun, inspect)",
-            "type": "node",
-            "request": "launch",
-            "cwd": "${workspaceFolder}/apps/playground",
-            "runtimeExecutable": "bun",
-            "runtimeArgs": [
-                "--inspect",
-                "run",
-                "dev"
-            ],
-            "console": "integratedTerminal",
-            "skipFiles": [
-                "<node_internals>/**"
-            ]
-        }
-    ],
-    "compounds": [
-        {
-            "name": "Dev: Playground + Docs",
-            "configurations": [
-                "Playground dev (Bun)",
-                "Docs dev (Bun)"
-            ]
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Playground dev (Bun)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "bun run dev",
+      "cwd": "${workspaceFolder}/apps/playground"
+    },
+    {
+      "name": "Docs dev (Bun)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "bun run docs:dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Storybook dev (Bun)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "bun run storybook",
+      "cwd": "${workspaceFolder}/apps/storybook"
+    },
+    {
+      "name": "Playground dev (Bun, inspect)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/playground",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--inspect", "run", "dev"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Dev: Playground + Docs",
+      "configurations": ["Playground dev (Bun)", "Docs dev (Bun)"]
+    }
+  ]
 }
