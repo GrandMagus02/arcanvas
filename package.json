@@ -21,14 +21,14 @@
     "prettier": "latest",
     "prettier-plugin-glsl": "^0.2.2",
     "tsdoc-markdown": "^1.4.1",
-    "typescript-eslint": "latest"
+    "typescript-eslint": "latest",
+    "vue": "^3.5.27"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "scripts": {
     "play": "bun run apps/playground/server.ts",
-    "story": "bun --cwd apps/storybook run storybook",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier -c .",

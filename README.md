@@ -37,6 +37,7 @@ For end users who want a single import:
 ### Tree-Shaking Support
 
 All packages are optimized for tree-shaking:
+
 - ✅ ESM-only exports (`"type": "module"`)
 - ✅ `sideEffects: false` in package.json (or minimal side-effect lists)
 - ✅ No global side effects on import
@@ -57,27 +58,27 @@ All packages are optimized for tree-shaking:
 
 ### Development Roadmap
 
-| Module          | Feature              | Status | Notes                                  |
-| :-------------- | :------------------- | :----: | :------------------------------------- |
-| **Foundation**  | Vector/Matrix Math   |   🟩   | Core N-dimensional math is ready.      |
-|                 | Color Management     |   🟩   | Basic spaces supported, need profiles. |
-| **Core System** | Event Bus            |   🟩   | Typed, decoupled pub/sub system.       |
-|                 | Service Locator (DI) |   🟩   | Dependency injection system.           |
-|                 | Plugin System        |   🟩   | Lifecycle management working.          |
-|                 | Scheduler/Loop       |   🟩   | Basic RAF loop implemented.            |
-| **Scene Graph** | Node Hierarchy       |   🟩   | Parent/Child, Scene root.              |
-|                 | Transform System     |   🟩   | Matrix-based transforms.               |
-|                 | Camera System        |   🟩   | CameraManager, Controllers.            |
-|                 | Large Worlds         |   🟥   | Floating origin / Double precision.    |
-| **Rendering**   | WebGL2 Backend       |   🟩   | Basic mesh rendering working.          |
-|                 | Render Graph         |   🟨   | Pass system designed, partial impl.    |
-|                 | Materials/Shaders    |   🟨   | Basic materials, need ShaderGraph.     |
-|                 | Dirty Rects          |   🟥   | Partial rendering optimization.        |
-|                 | WebGPU Backend       |   🟥   | Planned for future.                    |
+| Module          | Feature              | Status | Notes                                             |
+| :-------------- | :------------------- | :----: | :------------------------------------------------ |
+| **Foundation**  | Vector/Matrix Math   |   🟩   | Core N-dimensional math is ready.                 |
+|                 | Color Management     |   🟩   | Basic spaces supported, need profiles.            |
+| **Core System** | Event Bus            |   🟩   | Typed, decoupled pub/sub system.                  |
+|                 | Service Locator (DI) |   🟩   | Dependency injection system.                      |
+|                 | Plugin System        |   🟩   | Lifecycle management working.                     |
+|                 | Scheduler/Loop       |   🟩   | Basic RAF loop implemented.                       |
+| **Scene Graph** | Node Hierarchy       |   🟩   | Parent/Child, Scene root.                         |
+|                 | Transform System     |   🟩   | Matrix-based transforms.                          |
+|                 | Camera System        |   🟩   | CameraManager, Controllers.                       |
+|                 | Large Worlds         |   🟥   | Floating origin / Double precision.               |
+| **Rendering**   | WebGL2 Backend       |   🟩   | Basic mesh rendering working.                     |
+|                 | Render Graph         |   🟨   | Pass system designed, partial impl.               |
+|                 | Materials/Shaders    |   🟨   | Basic materials, need ShaderGraph.                |
+|                 | Dirty Rects          |   🟥   | Partial rendering optimization.                   |
+|                 | WebGPU Backend       |   🟥   | Planned for future.                               |
 |                 | Raymarching          |   🟨   | SDF package + RaymarchPass; use RenderGraph path. |
-| **Tools**       | Interaction          |   🟥   | Raycasting/Hit-testing.                |
-|                 | Editor Tools         |   🟥   | Select, Brush, Transform tools.        |
-|                 | History/Undo         |   🟥   | Command pattern implementation.        |
+| **Tools**       | Interaction          |   🟥   | Raycasting/Hit-testing.                           |
+|                 | Editor Tools         |   🟥   | Select, Brush, Transform tools.                   |
+|                 | History/Undo         |   🟥   | Command pattern implementation.                   |
 
 ## Getting Started
 

@@ -14,9 +14,12 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
+      // "@arcanvas/msdf-generator-rs": [
+      //   "packages/msdf-generator-rs/pkg/msdf_generator_rs"
+      // ],
       "@arcanvas/*": [
         "packages/*/index.ts"
-      ],
+      ]
     },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
