@@ -103,4 +103,19 @@ Options for configuring a Camera2DController.
 | `panSensitivity` | `number or undefined` | Pan sensitivity factor (default: 1.0). |
 | `invertYAxis` | `boolean or undefined` | Invert Y axis for panning (default: false). |
 | `invertXAxis` | `boolean or undefined` | Invert X axis for zooming (default: false). |
+| `keysUp` | `string[] or undefined` | Keys that trigger upward movement (default: ["w", "W", "ArrowUp"]). |
+| `keysDown` | `string[] or undefined` | Keys that trigger downward movement (default: ["s", "S", "ArrowDown"]). |
+| `keysLeft` | `string[] or undefined` | Keys that trigger leftward movement (default: ["a", "A", "ArrowLeft"]). |
+| `keysRight` | `string[] or undefined` | Keys that trigger rightward movement (default: ["d", "D", "ArrowRight"]). |
+| `keyboardMoveSpeed` | `number or undefined` | Base movement speed in world units per second (default: 100.0). Movement is frame-rate independent. |
+| `shiftMultiplier` | `number or undefined` | Movement speed multiplier when Shift is held (default: 2.0). |
+| `ctrlMultiplier` | `number or undefined` | Movement speed multiplier when Ctrl is held (default: 0.5). |
+| `captureMouseOnDocument` | `boolean or undefined` | When true, mousemove and mouseup events are captured on the document instead of the canvas, allowing panning to continue when the mouse moves outside the canvas (default: false). |
+| `panMouseButton` | `number or number[] or undefined` | Mouse button(s) required to trigger panning (default: 0 for left button). 0 = left, 1 = middle, 2 = right, or array of buttons. |
+| `panModifierKeys` | `string or string[] or undefined` | Modifier keys that must be pressed for panning to work (default: []). Valid values: "Shift", "Control", "Alt", "Meta", "Space", or array of keys. |
+| `cursorDefault` | `string or undefined` | Cursor style when controller is enabled but not panning (default: "default"). |
+| `cursorPanning` | `string or undefined` | Cursor style when panning is active (default: "grabbing"). |
+| `cursorDisabled` | `string or undefined` | Cursor style when controller is disabled (default: "default"). |
+| `cursorReady` | `string or undefined` | Cursor style when panning is available but modifier keys are not pressed (default: "grab"). |
+| `useLastActiveKey` | `boolean or undefined` | When true, if conflicting keys are pressed (e.g., both A and D), the last pressed key takes precedence instead of canceling out (default: false). |
 

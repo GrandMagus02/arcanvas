@@ -1,9 +1,11 @@
 import { existsSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
+import { atlasGeneratePlugin } from "./atlasGeneratePlugin";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, "../..");
 
 /**
  * Format a camelCase/PascalCase name for display.
@@ -139,10 +141,36 @@ export default defineConfig({
     logo: undefined,
     nav: [
       { text: "Overview", link: "/core/overview" },
+      { text: "Examples", link: "/examples/" },
       { text: "API", link: getFirstApiLink("core") },
     ],
     sidebar: {
       "/api/": buildApiSidebar(),
+      "/examples/": [
+        {
+          text: "Examples",
+          items: [
+            { text: "Overview", link: "/examples/" },
+            { text: "Getting Started", link: "/examples/getting-started" },
+            {
+              text: "2D Graphics",
+              items: [
+                { text: "Basic Shapes", link: "/examples/basic-shapes" },
+                { text: "Grid", link: "/examples/grid" },
+                { text: "Selection", link: "/examples/selection" },
+                { text: "Selection on Grid", link: "/examples/selection-grid" },
+              ],
+            },
+            {
+              text: "Typography",
+              items: [
+                { text: "Text Rendering", link: "/examples/typography" },
+                { text: "MSDF Generator", link: "/examples/msdf-generator" },
+              ],
+            },
+          ],
+        },
+      ],
       "/": [
         {
           text: "Core",
@@ -202,4 +230,30 @@ export default defineConfig({
       `,
     ],
   ],
+  vite: {
+    plugins: [atlasGeneratePlugin()],
+    resolve: {
+      alias: {
+        "@arcanvas/backend-webgl": resolve(ROOT, "packages/backend-webgl/index.ts"),
+        "@arcanvas/core": resolve(ROOT, "packages/core/index.ts"),
+        "@arcanvas/feature-2d": resolve(ROOT, "packages/feature-2d/index.ts"),
+        "@arcanvas/graphics": resolve(ROOT, "packages/graphics/index.ts"),
+        "@arcanvas/math": resolve(ROOT, "packages/math/index.ts"),
+        "@arcanvas/scene": resolve(ROOT, "packages/scene/index.ts"),
+        "@arcanvas/selection": resolve(ROOT, "packages/selection/index.ts"),
+        "@arcanvas/typography": resolve(ROOT, "packages/typography/index.ts"),
+        "@arcanvas/tools": resolve(ROOT, "packages/tools/index.ts"),
+        "@arcanvas/interaction": resolve(ROOT, "packages/interaction/index.ts"),
+        "@arcanvas/color": resolve(ROOT, "packages/color/index.ts"),
+        // WASM package - requires building first: cd packages/msdf-generator-rs && bun run build
+        "@arcanvas/msdf-generator-rs": resolve(ROOT, "packages/msdf-generator-rs/pkg/msdf_generator_rs.js"),
+      },
+    },
+    // Required to properly load assets from packages
+    server: {
+      fs: {
+        allow: [ROOT],
+      },
+    },
+  },
 });

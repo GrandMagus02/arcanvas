@@ -18,6 +18,7 @@ allowing the same mesh code to work with different rendering backends.
 
 - [BufferHandle](#bufferhandle)
 - [ProgramHandle](#programhandle)
+- [TextureHandle](#texturehandle)
 
 ## BufferHandle
 
@@ -36,4 +37,13 @@ The actual type depends on the implementation (WebGLProgram, GPUShaderModule, et
 | Type | Type |
 | ---------- | ---------- |
 | `ProgramHandle` |  |
+
+## TextureHandle
+
+Handle for a texture resource managed by the render context.
+The actual type depends on the implementation (WebGLTexture, GPUTexture, etc.).
+
+| Type | Type |
+| ---------- | ---------- |
+| `TextureHandle` | `object or null` |
 

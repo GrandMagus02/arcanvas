@@ -1,11 +1,22 @@
 {
-    "extends": "../tsconfig.json",
-    "compilerOptions": {
-        "types": [
-            "vitepress/client"
-        ]
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      // "@arcanvas/msdf-generator-rs": [
+      //   "../packages/msdf-generator-rs/pkg/msdf_generator_rs"
+      // ],
+      "@arcanvas/*": [
+        "../packages/*/index.ts"
+      ]
     },
-    "include": [
-        ".vitepress/**/*.ts"
+    "types": [
+      "vitepress/client",
+      "vue"
     ]
+  },
+  "include": [
+    ".vitepress/**/*.ts",
+    ".vitepress/**/*.vue"
+  ]
 }

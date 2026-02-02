@@ -27,6 +27,10 @@ WebGL implementation of {@link IRenderContext}.
 - [getProgram](#getprogram)
 - [getProgramCache](#getprogramcache)
 - [getShaderLibrary](#getshaderlibrary)
+- [createTexture](#createtexture)
+- [updateTexture](#updatetexture)
+- [bindTexture](#bindtexture)
+- [deleteTexture](#deletetexture)
 
 ### createVertexBuffer
 
@@ -216,3 +220,35 @@ Gets the shader library for storing shader source code.
 | Method | Type |
 | ---------- | ---------- |
 | `getShaderLibrary` | `() => ShaderLibrary` |
+
+### createTexture
+
+Creates a texture from image data.
+
+| Method | Type |
+| ---------- | ---------- |
+| `createTexture` | `(data: ImageBitmap or HTMLImageElement or Uint8Array<ArrayBufferLike>, width: number, height: number, format?: "rgba8" or "rgb8" or "rg8" or undefined, pixelated?: boolean or undefined) => TextureHandle` |
+
+### updateTexture
+
+Updates an existing texture with new image data.
+
+| Method | Type |
+| ---------- | ---------- |
+| `updateTexture` | `(handle: TextureHandle, data: ImageBitmap or HTMLImageElement or Uint8Array<ArrayBufferLike>) => void` |
+
+### bindTexture
+
+Binds a texture to a texture unit for rendering.
+
+| Method | Type |
+| ---------- | ---------- |
+| `bindTexture` | `(handle: TextureHandle, unit: number) => void` |
+
+### deleteTexture
+
+Deletes a texture and frees its resources.
+
+| Method | Type |
+| ---------- | ---------- |
+| `deleteTexture` | `(handle: TextureHandle) => void` |

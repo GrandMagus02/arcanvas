@@ -89,6 +89,7 @@ An array of all Entities with the given name.
 
 - [id](#id)
 - [name](#name)
+- [visible](#visible)
 
 ### id
 
@@ -106,6 +107,12 @@ Optional name for the object.
 | ---------- | ---------- |
 | `name` | `string or null` |
 
+### visible
+
+| Property | Type |
+| ---------- | ---------- |
+| `visible` | `boolean` |
+
 # Interfaces
 
 - [EntityJSON](#entityjson)
@@ -121,6 +128,7 @@ JSON representation of a Entity.
 | `name` | `string or undefined` |  |
 | `parent` | `string or undefined` |  |
 | `children` | `EntityJSON[] or undefined` |  |
+| `visible` | `boolean or undefined` |  |
 
 
 ## EntityLike

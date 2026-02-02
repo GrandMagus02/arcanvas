@@ -19,6 +19,7 @@ Manages DOM canvas element, dimensions, DPR, and focus state.
 
 - [updateOptions](#updateoptions)
 - [resize](#resize)
+- [setResolutionScale](#setresolutionscale)
 
 ### updateOptions
 
@@ -31,6 +32,19 @@ Manages DOM canvas element, dimensions, DPR, and focus state.
 | Method | Type |
 | ---------- | ---------- |
 | `resize` | `(width: number, height: number) => void` |
+
+### setResolutionScale
+
+Sets the resolution scale multiplier and applies it.
+
+| Method | Type |
+| ---------- | ---------- |
+| `setResolutionScale` | `(scale: number) => void` |
+
+Parameters:
+
+* `scale`: - Resolution scale (e.g., 0.5 for pixelated, 2 for supersampling)
+
 
 # Interfaces
 
@@ -46,6 +60,7 @@ Options for configuring a canvas host.
 | `width` | `number` |  |
 | `height` | `number` |  |
 | `focusable` | `boolean` |  |
+| `resolutionScale` | `number` | Resolution scale multiplier applied on top of DPR. 1 = native, <1 = lower res (pixelated), >1 = higher res. |
 
 
 ## CanvasHostEvents

@@ -28,6 +28,7 @@ Implements multiple interfaces for event handling, configuration, lifecycle mana
 - [destroy](#destroy)
 - [isFocused](#isfocused)
 - [resize](#resize)
+- [setResolutionScale](#setresolutionscale)
 
 ### setCamera
 
@@ -169,6 +170,19 @@ Parameters:
 
 * `width`: - The width of the canvas in device pixels.
 * `height`: - The height of the canvas in device pixels.
+
+
+### setResolutionScale
+
+Sets the resolution scale multiplier (DPR * scale) for pixelation/debug.
+
+| Method | Type |
+| ---------- | ---------- |
+| `setResolutionScale` | `(scale: number) => void` |
+
+Parameters:
+
+* `scale`: - Resolution scale (e.g., 0.5 for pixelated, 2 for supersampling)
 
 
 # Interfaces
