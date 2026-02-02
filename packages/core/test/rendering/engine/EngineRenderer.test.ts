@@ -1,12 +1,8 @@
+import type { DrawArgs, IRenderBackend } from "@arcanvas/graphics";
+import { createPositionLayout, Mesh, Renderer, RenderObject, UnlitColorMaterial } from "@arcanvas/graphics";
+import { Scene } from "@arcanvas/scene";
 import { describe, expect, it } from "bun:test";
-import { Camera } from "src/camera/Camera";
-import type { DrawArgs, IRenderBackend } from "src/rendering/engine/IRenderBackend";
-import { Mesh } from "src/rendering/engine/Mesh";
-import { Renderer } from "src/rendering/engine/Renderer";
-import { UnlitColorMaterial } from "src/rendering/engine/materials";
-import { createPositionLayout } from "src/rendering/engine/vertexLayout";
-import { RenderObject } from "src/scene/RenderObject";
-import { Scene } from "src/scene/Scene";
+import { Camera } from "../../src/camera/Camera";
 
 /**
  *
@@ -36,7 +32,7 @@ class MockBackend implements IRenderBackend {
   }
 }
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 describe("Engine Renderer", () => {
   it("tracks mesh version changes", () => {
     const layout = createPositionLayout(3);
@@ -78,4 +74,4 @@ describe("Engine Renderer", () => {
   // TODO: add tests for multiple lights and material variants per shading model.
   // TODO: add integration tests for WebGLBackend and Canvas2DBackend output.
 });
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */

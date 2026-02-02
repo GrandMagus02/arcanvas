@@ -7,6 +7,7 @@ export interface UnlitColorMaterialOptions {
   baseColor?: [number, number, number, number];
   doubleSided?: boolean;
   wireframe?: boolean;
+  depthTest?: boolean;
   outline?: BaseMaterial["outline"];
 }
 
@@ -18,12 +19,14 @@ export class UnlitColorMaterial implements BaseMaterial {
   baseColor: [number, number, number, number];
   doubleSided?: boolean;
   wireframe?: boolean;
+  depthTest?: boolean;
   outline?: BaseMaterial["outline"];
 
   constructor(options: UnlitColorMaterialOptions = {}) {
     this.baseColor = options.baseColor ?? [1, 1, 1, 1];
     this.doubleSided = options.doubleSided;
     this.wireframe = options.wireframe;
+    this.depthTest = options.depthTest ?? true;
     this.outline = options.outline;
   }
 }

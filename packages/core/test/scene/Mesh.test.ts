@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { BufferHandle, IRenderContext } from "src/rendering/context";
-import { Mesh } from "src/scene/Mesh";
+import type { BufferHandle, IRenderContext } from "../../src/rendering/context";
+import { Mesh } from "../../src/scene/Mesh";
 
 // Concrete Mesh implementation for testing
 /**

@@ -11,6 +11,9 @@
       "import": "./index.ts"
     }
   },
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "@arcanvas/graphics": "workspace:*"
   }

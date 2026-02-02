@@ -68,33 +68,30 @@ export class Handle {
   cornerPosition?: CornerPosition;
 
   /**
-   * Optional identifier for this handle.
+   * Identifier for this handle. Required for adorner-driven selection: ISelectionAdorner.dragHandle
+   * routes by handleId, so adorners must set id on every handle (e.g. "corner-tl", "edge-top", "rotation").
    */
   id?: string;
 
-  constructor(
-    type: HandleType,
-    position: Vector2,
-    size: number = 8,
-    cursor: string = "default"
-  ) {
+  constructor(type: HandleType, position: Vector2, size: number = 8, cursor: string = "default", id?: string) {
     this.type = type;
     this.position = position;
     this.size = size;
     this.cursor = cursor;
+    this.id = id;
   }
 
   /**
    * Checks if a point (in world coordinates) is inside this handle.
    * @param point - Point to test in world coordinates
-   * @param pixelSize - Size of a pixel in world units (for accurate hit-testing)
+   * @param worldUnitsPerPixel - Size of a pixel in world units (for accurate hit-testing)
    * @returns True if the point is inside the handle
    */
-  contains(point: Vector2, pixelSize: number = 1): boolean {
+  contains(point: Vector2, worldUnitsPerPixel: number = 1): boolean {
     const dx = point.x - this.position.x;
     const dy = point.y - this.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const handleRadius = (this.size * pixelSize) / 2;
+    const handleRadius = (this.size * worldUnitsPerPixel) / 2;
     return distance <= handleRadius;
   }
 

@@ -1,6 +1,9 @@
 import type { BaseMaterial } from "../materials";
 import { Path, type PathCommand } from "./Path";
 
+/**
+ *
+ */
 export class Curve extends Path {
   constructor(points: number[], material: BaseMaterial, closed: boolean = false) {
     // Treat as a sequence of lines or a spline

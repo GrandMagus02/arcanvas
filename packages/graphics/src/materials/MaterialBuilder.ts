@@ -32,6 +32,7 @@ export interface MaterialBuilderOptions {
   // Common properties
   doubleSided?: boolean;
   wireframe?: boolean;
+  depthTest?: boolean;
   receiveShadows?: boolean;
   castShadows?: boolean;
 }
@@ -261,6 +262,14 @@ export class MaterialBuilder implements Builder<BaseMaterial> {
   }
 
   /**
+   * Set whether depth testing is enabled.
+   */
+  depthTest(enabled: boolean = true): this {
+    this.options.depthTest = enabled;
+    return this;
+  }
+
+  /**
    * Enable shadow receiving.
    */
   receiveShadows(enabled: boolean = true): this {
@@ -302,6 +311,7 @@ export class MaterialBuilder implements Builder<BaseMaterial> {
         normalTexture: opts.normalTexture ?? opts.normals ?? null,
         doubleSided: opts.doubleSided,
         wireframe: opts.wireframe,
+        depthTest: opts.depthTest,
         outline: opts.outline,
       };
       return new PBRMaterial(pbrOptions);
@@ -310,6 +320,7 @@ export class MaterialBuilder implements Builder<BaseMaterial> {
         baseColor: opts.baseColor ?? opts.solid ?? [1, 1, 1, 1],
         doubleSided: opts.doubleSided,
         wireframe: opts.wireframe,
+        depthTest: opts.depthTest,
         outline: opts.outline,
       };
       return new UnlitColorMaterial(unlitOptions);

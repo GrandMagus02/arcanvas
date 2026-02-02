@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { TreeNode, TreeNodeCycleError, TreeNodeError, TreeNodeSelfAttachmentError } from "src/scene/graph/TreeNode";
+import { TreeNode, TreeNodeCycleError, TreeNodeError, TreeNodeSelfAttachmentError } from "../../src/scene/graph/TreeNode";
 
 /**
  * Concrete test implementation of TreeNode for testing purposes.

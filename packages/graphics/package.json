@@ -5,6 +5,9 @@
   "description": "Graphics primitives for Arcanvas - Mesh, Material, RenderObject",
   "module": "./index.ts",
   "sideEffects": false,
+  "scripts": {
+    "build": "tsc"
+  },
   "exports": {
     ".": {
       "types": "./index.ts",

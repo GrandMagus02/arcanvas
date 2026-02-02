@@ -1,9 +1,10 @@
 import type { Camera } from "@arcanvas/core";
-import { HandleRenderer2D, HitTest2D, PhotoshopHandleStyle2D, Polygon2DObject } from "@arcanvas/feature-2d";
-import type { InputState, NormalizedInputEvent } from "@arcanvas/interaction";
+import { buildAdornerFor, getWorldUnitsPerPixel, HitTest2D, Polygon2DObject, type IElementWithBoundsAndTransform } from "@arcanvas/feature-2d";
+import type { RenderObject } from "@arcanvas/graphics";
+import { ModifierKey, type InputState, type NormalizedInputEvent } from "@arcanvas/interaction";
 import { Vector2 } from "@arcanvas/math";
 import type { ISelectable } from "@arcanvas/selection";
-import { HandleInteraction, InteractionType, SelectionManager } from "@arcanvas/selection";
+import { HandleInteraction, SelectionManager, type DragInfo } from "@arcanvas/selection";
 import { Tool } from "./Tool";
 
 /**
@@ -19,176 +20,201 @@ export interface SelectionToolOptions {
    * Selection manager to use.
    */
   selectionManager?: SelectionManager;
-
-  /**
-   * Handle renderer to use.
-   */
-  handleRenderer?: HandleRenderer2D;
-
-  /**
-   * Handle style to use.
-   */
-  handleStyle?: "photoshop" | "konva";
 }
 
 /**
  * Selection tool for selecting and manipulating 2D objects.
+ * Uses ISelectionAdorner (Strategy + Decorator): handles and mesh visuals come from
+ * buildAdornerFor(selection). Render by submitting getAdornerMeshes() to the WebGL pipeline.
+ */
+/**
+ * Pixels the pointer must move from pointerdown before starting a drag.
+ * Lower threshold for more responsive dragging.
+ */
+const DRAG_THRESHOLD_PX = 4;
+
+/**
+ *
  */
 export class SelectionTool extends Tool {
   readonly name = "select";
 
   private _camera: Camera | null = null;
   private _selectionManager: SelectionManager;
-  private _handleRenderer: HandleRenderer2D;
-  private _handleStyle: PhotoshopHandleStyle2D;
   private _handleInteraction: HandleInteraction;
   private _isDragging: boolean = false;
   private _dragStartPosition: { x: number; y: number } | null = null;
   private _selectables: Map<string, ISelectable> = new Map();
+  private _activeSelection: IElementWithBoundsAndTransform | IElementWithBoundsAndTransform[] | null = null;
+  /** Optional hit id set by host on pointerdown when it has already hit-tested (e.g. same event). Used when tool's _hitTestObjects fails. */
+  private _pointerDownHitId: string | null = null;
 
   constructor(options: SelectionToolOptions = {}) {
     super();
     this._camera = options.camera ?? null;
     this._selectionManager = options.selectionManager ?? new SelectionManager();
-    this._handleRenderer = options.handleRenderer ?? new HandleRenderer2D();
-    this._handleStyle = new PhotoshopHandleStyle2D();
     this._handleInteraction = new HandleInteraction();
 
-    // Set up handle interaction callback
     this._handleInteraction.setInteractionCallback((data) => {
       this._onHandleInteraction(data);
     });
 
-    // Set up selection change callback
-    this._selectionManager.setSelectionChangeCallback((event) => {
-      this._onSelectionChange(event);
+    this._selectionManager.setSelectionChangeCallback(() => {
+      this._activeSelection = null;
     });
   }
 
-  /**
-   * Sets the camera for coordinate conversion.
-   */
   setCamera(camera: Camera | null): void {
     this._camera = camera;
   }
 
   /**
-   * Registers a selectable object.
+   * Sets an optional hit id for the current pointerdown.
+   * If the host has already performed a hit test (e.g. for hover), it can pass the hit id here
+   * so selection works even when the tool's internal hit test would miss (e.g. coordinate/timing).
+   * Cleared after use or on next pointerdown.
    */
+  setPointerDownHit(id: string | null): void {
+    this._pointerDownHitId = id;
+  }
+
   registerSelectable(selectable: ISelectable): void {
     this._selectables.set(selectable.id, selectable);
     this._selectionManager.register(selectable);
   }
 
-  /**
-   * Unregisters a selectable object.
-   */
   unregisterSelectable(id: string): void {
     this._selectables.delete(id);
     this._selectionManager.unregister(id);
   }
 
-  activate(): void {
-    // Tool activated
-  }
+  activate(): void {}
 
   deactivate(): void {
-    // Cancel any ongoing interactions
     if (this._handleInteraction.isActive) {
       this._handleInteraction.cancel();
     }
     this._isDragging = false;
     this._dragStartPosition = null;
+    this._activeSelection = null;
   }
 
   handleInput(event: NormalizedInputEvent, state: InputState): void {
-    if (!this._camera) {
-      return;
-    }
+    if (!this._camera) return;
 
-    // Use x/y from normalized event which are calculated as clientX/Y - rect.left/top
-    // This gives coordinates relative to the canvas element's bounding box in CSS pixels
-    const screenPoint = {
-      x: event.position.x,
-      y: event.position.y,
-    };
+    const screenPoint = { x: event.position.x, y: event.position.y };
+    // Check if any mouse button is currently pressed (from event or tracked pointers)
+    const isButtonPressed = event.buttons.length > 0;
 
-    // Handle mouse down
     if (event.type === "mousedown" || event.type === "pointerdown" || event.type === "touchstart") {
-      if (event.buttons.length === 0) {
+      if (event.buttons.length === 0) return;
+
+      // Ignore duplicate mousedown if we already handled pointerdown
+      if (event.type === "mousedown" && this._dragStartPosition) {
         return;
       }
 
       const worldPoint = HitTest2D.screenToWorld(screenPoint, this._camera);
+      const selected = this._getSelectedAsElements();
 
-      // Check if clicking on a handle
-      const selected = this._selectionManager.getSelected();
-      for (const selectable of selected) {
-        const bounds = selectable.getBounds();
-        if (bounds) {
-          const handleSet = this._handleStyle.createHandles(bounds);
-          const handle = handleSet.getHandleAt(worldPoint);
-          if (handle) {
-            // Start handle interaction
-            this._handleInteraction.start(handle, worldPoint as Vector2);
-            this._dragStartPosition = screenPoint;
-            // Stop event propagation to prevent camera controller from handling it
-            if (event.originalEvent) {
-              event.originalEvent.stopPropagation();
-              event.originalEvent.preventDefault();
+      // Use host-provided hit id if set (e.g. from same pointerdown hit test in Vue)
+      const hostHitId = this._pointerDownHitId;
+      this._pointerDownHitId = null;
+
+      // Check handles first if we have a selection
+      if (selected.length > 0) {
+        const adorner = buildAdornerFor(selected);
+        if (adorner) {
+          const selectionArg = selected.length > 1 ? selected : selected[0]!;
+          const handles = adorner.getHandles(selectionArg);
+          const worldUnitsPerPixel = getWorldUnitsPerPixel(this._camera);
+          for (let i = handles.length - 1; i >= 0; i--) {
+            const handle = handles[i]!;
+            if (handle.contains(worldPoint as Vector2, worldUnitsPerPixel)) {
+              this._activeSelection = selectionArg;
+              this._handleInteraction.start(handle, worldPoint as Vector2);
+              this._dragStartPosition = screenPoint;
+              if (event.originalEvent) {
+                event.originalEvent.stopPropagation();
+                event.originalEvent.preventDefault();
+              }
+              return;
             }
-            return;
           }
         }
       }
 
-      // Check if clicking on a selectable object
-      const hitObject = this._hitTestObjects(screenPoint);
-      if (hitObject) {
-        const addToSelection = state.modifiers.includes("Shift") || state.modifiers.includes("Meta");
-        this._selectionManager.select(hitObject.id, addToSelection);
-        this._isDragging = true;
+      if (hostHitId !== null && this._selectionManager.getSelectable(hostHitId)) {
+        const addToSelection = state.modifiers.includes(ModifierKey.Shift) || state.modifiers.includes(ModifierKey.Meta);
+        this._selectionManager.select(hostHitId, addToSelection);
         this._dragStartPosition = screenPoint;
-        // Stop event propagation to prevent camera controller from handling it
-        // Only when we actually select something
         if (event.originalEvent) {
           event.originalEvent.stopPropagation();
           event.originalEvent.preventDefault();
         }
-        return; // Exit early to prevent camera from handling
-      } else {
-        // Clicked on empty space - deselect all (unless holding modifier)
-        // Don't stop propagation here - let camera handle it for panning
-        if (!state.modifiers.includes("Shift") && !state.modifiers.includes("Meta")) {
-          this._selectionManager.clear();
+        return;
+      }
+
+      const hitObject = this._hitTestObjects(screenPoint);
+      if (hitObject) {
+        const addToSelection = state.modifiers.includes(ModifierKey.Shift) || state.modifiers.includes(ModifierKey.Meta);
+        this._selectionManager.select(hitObject.id, addToSelection);
+        this._dragStartPosition = screenPoint;
+        if (event.originalEvent) {
+          event.originalEvent.stopPropagation();
+          event.originalEvent.preventDefault();
+        }
+        return;
+      }
+
+      if (!state.modifiers.includes(ModifierKey.Shift) && !state.modifiers.includes(ModifierKey.Meta)) {
+        this._selectionManager.clear();
+      }
+    }
+
+    if (event.type === "mousemove" || event.type === "pointermove" || event.type === "touchmove") {
+      // Only process drag if a button is actually pressed
+      if (!isButtonPressed) {
+        // Reset drag state if mouse was released outside canvas or event was missed
+        if (this._dragStartPosition || this._isDragging) {
+          this._isDragging = false;
+          this._dragStartPosition = null;
+          if (this._handleInteraction.isActive) {
+            this._handleInteraction.end();
+            this._activeSelection = null;
+          }
+        }
+        return;
+      }
+
+      if (this._handleInteraction.isActive) {
+        const worldPoint = HitTest2D.screenToWorld(screenPoint, this._camera);
+        this._handleInteraction.update(worldPoint as Vector2);
+      } else if (this._dragStartPosition) {
+        const selected = this._getSelectedAsElements();
+        const dist = Math.hypot(screenPoint.x - this._dragStartPosition.x, screenPoint.y - this._dragStartPosition.y);
+        if (!this._isDragging && dist > DRAG_THRESHOLD_PX && selected.length > 0) {
+          this._isDragging = true;
+        }
+        if (this._isDragging && selected.length > 0) {
+          const worldStart = HitTest2D.screenToWorld(this._dragStartPosition, this._camera);
+          const worldEnd = HitTest2D.screenToWorld(screenPoint, this._camera);
+          const dx = worldEnd.x - worldStart.x;
+          const dy = worldEnd.y - worldStart.y;
+          for (const el of selected) {
+            if ("transform" in el && el.transform) {
+              el.transform.matrix.translate(dx, dy, 0);
+            }
+          }
+          this._dragStartPosition = screenPoint;
         }
       }
     }
 
-    // Handle mouse move
-    if (event.type === "mousemove" || event.type === "pointermove" || event.type === "touchmove") {
-      if (this._handleInteraction.isActive) {
-        // Update handle interaction
-        const worldPoint = HitTest2D.screenToWorld(screenPoint, this._camera);
-        this._handleInteraction.update(worldPoint as Vector2);
-      } else if (this._isDragging && this._dragStartPosition) {
-        // Move selected objects
-        // Convert screen delta to world delta
-        const worldStart = HitTest2D.screenToWorld(this._dragStartPosition, this._camera);
-        const worldEnd = HitTest2D.screenToWorld(screenPoint, this._camera);
-        const worldDeltaX = worldEnd.x - worldStart.x;
-        const worldDeltaY = worldEnd.y - worldStart.y;
-
-        // Move all selected objects
-        // This would need to be implemented based on how objects are moved
-        // For now, this is a placeholder
-      }
-    }
-
-    // Handle mouse up
     if (event.type === "mouseup" || event.type === "pointerup" || event.type === "touchend") {
       if (this._handleInteraction.isActive) {
         this._handleInteraction.end();
+        this._activeSelection = null;
       }
       this._isDragging = false;
       this._dragStartPosition = null;
@@ -196,75 +222,71 @@ export class SelectionTool extends Tool {
   }
 
   /**
-   * Performs hit-testing against all registered selectable objects.
+   * Returns current selection as elements with bounds and transform (for adorner).
    */
+  private _getSelectedAsElements(): IElementWithBoundsAndTransform[] {
+    const selected = this._selectionManager.getSelected();
+    return selected.filter((s): s is IElementWithBoundsAndTransform => {
+      if (!s) return false;
+      const hasTransform = "transform" in s && !!(s as unknown as { transform: unknown }).transform;
+      const b = s.getBounds();
+      return hasTransform && !!b;
+    });
+  }
+
   private _hitTestObjects(screenPoint: { x: number; y: number }): ISelectable | null {
-    if (!this._camera) {
-      return null;
-    }
-
-    // Convert screen to world coordinates
+    if (!this._camera) return null;
     const worldPoint = HitTest2D.screenToWorld(screenPoint, this._camera);
-
-    // Test objects in reverse order (top-most first)
     const selectables = Array.from(this._selectables.values()).reverse();
 
     for (const selectable of selectables) {
-      if (!selectable.isVisible()) {
-        continue;
-      }
-
-      // Check if it's a Polygon2DObject and do proper polygon hit-testing
+      if (!selectable.isVisible()) continue;
       if (selectable instanceof Polygon2DObject) {
-        // Use polygon hit-testing for accurate results
         const hit = HitTest2D.hitTestPolygon(screenPoint, selectable, selectable.transform, this._camera);
-        if (hit) {
-          return selectable;
-        }
+        if (hit) return selectable;
       } else {
-        // Fallback to bounds check for other selectable types
         const bounds = selectable.getBounds();
-        if (bounds && bounds.contains(worldPoint)) {
-          return selectable;
-        }
+        if (bounds && bounds.contains(worldPoint)) return selectable;
       }
     }
-
     return null;
   }
 
-  /**
-   * Called when a handle interaction occurs.
-   */
-  private _onHandleInteraction(data: { handle: unknown; type: InteractionType; delta: { x: number; y: number } }): void {
-    // Handle resize/rotate based on interaction type
-    // This would need to be implemented based on how objects are transformed
-    // For now, this is a placeholder
+  private _onHandleInteraction(data: {
+    handle: { id?: string };
+    startPosition: { x: number; y: number };
+    currentPosition: { x: number; y: number };
+    delta: { x: number; y: number };
+    incrementalDelta: { x: number; y: number };
+  }): void {
+    const selection = this._activeSelection;
+    if (!selection) return;
+    const selected = this._getSelectedAsElements();
+    if (selected.length === 0) return;
+    const adorner = buildAdornerFor(selected);
+    if (!adorner) return;
+    const handleId = data.handle.id ?? "";
+    const drag: DragInfo = {
+      startPosition: data.startPosition,
+      currentPosition: data.currentPosition,
+      delta: data.delta,
+      incrementalDelta: data.incrementalDelta,
+    };
+    const selectionArg = selected.length > 1 ? selected : selected[0]!;
+    adorner.dragHandle(selectionArg, handleId, drag);
   }
 
   /**
-   * Called when selection changes.
+   * Returns adorner meshes for the current selection to submit to the WebGL pipeline.
+   * Call this from the render loop and draw the returned RenderObjects like any other scene objects.
    */
-  private _onSelectionChange(event: { selectedIds: string[] }): void {
-    // Update handle rendering, etc.
-    // This would trigger a re-render of handles
-  }
-
-  /**
-   * Renders selection handles (called by renderer).
-   */
-  renderHandles(context: { camera: Camera; viewport: { width: number; height: number } }): void {
-    const selected = this._selectionManager.getSelected();
-    for (const selectable of selected) {
-      const bounds = selectable.getBounds();
-      if (bounds) {
-        // Render outline
-        this._handleRenderer.renderOutline(bounds, context);
-
-        // Render handles
-        const handleSet = this._handleStyle.createHandles(bounds);
-        this._handleRenderer.renderHandleSet(handleSet, context);
-      }
-    }
+  getAdornerMeshes(): RenderObject[] {
+    const selected = this._getSelectedAsElements();
+    if (selected.length === 0) return [];
+    const adorner = buildAdornerFor(selected);
+    if (!adorner || !adorner.getMeshes) return [];
+    const selectionArg = selected.length > 1 ? selected : selected[0]!;
+    const context = this._camera ? { camera: this._camera } : undefined;
+    return (adorner.getMeshes(selectionArg, context) ?? []) as RenderObject[];
   }
 }

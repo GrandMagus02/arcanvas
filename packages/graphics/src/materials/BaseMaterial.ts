@@ -14,6 +14,7 @@ export interface BaseMaterial {
   normalTexture?: TextureRef | null;
   doubleSided?: boolean;
   wireframe?: boolean;
+  depthTest?: boolean;
   receiveShadows?: boolean;
   castShadows?: boolean;
   outline?: {

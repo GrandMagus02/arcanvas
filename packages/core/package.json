@@ -11,6 +11,9 @@
       "import": "./index.ts"
     }
   },
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "@arcanvas/math": "workspace:*",
     "@arcanvas/scene": "workspace:*",

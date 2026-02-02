@@ -1,5 +1,5 @@
 import { Matrix4 } from "@arcanvas/math";
-import { Transform } from "./Transform";
+import { Transform3D } from "./Transform";
 import { WorldVec3, cloneWorldVec3, copyWorldVec3, createWorldVec3 } from "./utils/WorldVec3";
 
 /**
@@ -10,7 +10,7 @@ import { WorldVec3, cloneWorldVec3, copyWorldVec3, createWorldVec3 } from "./uti
  * - `localPosition` stores the position relative to the world origin (Float32)
  * - `_matrix` is computed from localPosition for GPU rendering
  */
-export class WorldTransform extends Transform {
+export class WorldTransform extends Transform3D {
   private _worldPosition: WorldVec3;
   private _localPosition: Float32Array;
   private _rotation: Float32Array;

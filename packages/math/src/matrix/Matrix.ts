@@ -1,5 +1,6 @@
 import { Vector } from "../vector/Vector";
 import type { NumberArray, NumberArrayConstructor, TypedArray, TypedArrayConstructor } from "../vector/types";
+import type { IMatrix } from "./IMatrix";
 
 /**
  * Interface for the static side of Matrix classes, requiring identity method.
@@ -24,7 +25,7 @@ export interface MatrixConstructor<TArr extends NumberArray, TRows extends numbe
  * - Subclasses must implement static method: identity.
  * - Subclasses may implement static methods: of, fromArray, fromVector, fromMatrix.
  */
-export class Matrix<TArr extends NumberArray, TCols extends number, TRows extends number = TCols> {
+export class Matrix<TArr extends NumberArray, TCols extends number, TRows extends number = TCols> implements IMatrix {
   /**
    * The data of the matrix in column-major order.
    */

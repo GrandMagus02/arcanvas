@@ -1,4 +1,4 @@
-import { Entity, Transform } from "@arcanvas/scene";
+import { Entity, Transform3D } from "@arcanvas/scene";
 import type { Mesh } from "./Mesh";
 import type { BaseMaterial } from "./materials";
 
@@ -9,9 +9,9 @@ import type { BaseMaterial } from "./materials";
 export class RenderObject extends Entity {
   mesh: Mesh;
   material: BaseMaterial;
-  transform: Transform;
+  transform: Transform3D;
 
-  constructor(mesh: Mesh, material: BaseMaterial, transform: Transform = new Transform()) {
+  constructor(mesh: Mesh, material: BaseMaterial, transform: Transform3D = new Transform3D()) {
     super();
     this.mesh = mesh;
     this.material = material;

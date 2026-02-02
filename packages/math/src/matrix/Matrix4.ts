@@ -1,11 +1,12 @@
 import type { NumberArray } from "../vector/types";
 import { Vector } from "../vector/Vector";
+import type { IMatrix } from "./IMatrix";
 import { Matrix } from "./Matrix";
 
 /**
  * Matrix4 is a 4x4 matrix of 32-bit floating point numbers.
  */
-export class Matrix4<T extends NumberArray = Float32Array> extends Matrix<T, 4> {
+export class Matrix4<T extends NumberArray = Float32Array> extends Matrix<T, 4> implements IMatrix {
   constructor(data?: T) {
     super(data ?? (new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]) as T), 4, 4);
   }
@@ -76,16 +77,13 @@ export class Matrix4<T extends NumberArray = Float32Array> extends Matrix<T, 4> 
   }
 
   /**
-   * Creates a Matrix from a vector (column vector, 4x1 matrix).
-   * Note: Matrix4 is always 4x4, so this returns a base Matrix instance.
-   * @param vector - The vector (must have size 4).
-   * @returns A new Matrix instance (4x1 matrix).
+   * Creates a Matrix from a vector (column vector, Nx1 matrix).
+   * Signature must match base class; returns a base Matrix instance.
+   * @param vector - The vector.
+   * @returns A new Matrix instance (vector.size x 1).
    */
-  static fromVector(vector: Vector<Float32Array, 4>): Matrix<Float32Array, 4, 1> {
-    const data = new Float32Array(4);
-    data.set(vector.data);
-    // @ts-expect-error - Abstract class instantiation for column vector
-    return new Matrix(data, 4, 1) as Matrix<Float32Array, 4, 1>;
+  static override fromVector<TVecArr extends NumberArray, TVecSize extends number>(vector: Vector<TVecArr, TVecSize>): Matrix<TVecArr, TVecSize, 1> {
+    return Matrix.fromVector(vector);
   }
 
   /**
@@ -100,6 +98,146 @@ export class Matrix4<T extends NumberArray = Float32Array> extends Matrix<T, 4> 
   }
 
   /**
+   * Translates the matrix by the given vector (in-place mutation).
+   * @param x - The x component of the translation vector.
+   * @param y - The y component of the translation vector.
+   * @param z - The z component of the translation vector.
+   * @returns This matrix after translation (for chaining).
+   */
+  translate(x: number, y: number, z: number): this {
+    // Translation is stored in the last column (indices 12, 13, 14, 15)
+    // Since this is column-major:
+    // m[12] += x
+    // m[13] += y
+    // m[14] += z
+    // Note: This applies translation in world space (post-multiplication if vector on right)
+    this._data[12] = (this._data[12] ?? 0) + x;
+    this._data[13] = (this._data[13] ?? 0) + y;
+    this._data[14] = (this._data[14] ?? 0) + z;
+    return this;
+  }
+
+  /**
+   * Scales the matrix by the given vector (in-place mutation).
+   * @param x - The x component of the scale vector.
+   * @param y - The y component of the scale vector.
+   * @param z - The z component of the scale vector.
+   * @returns This matrix after scaling (for chaining).
+   */
+  scale(x: number, y: number, z: number): this {
+    // Scale affects the basis vectors (first 3 columns)
+    // Column 0 (X axis)
+    this._data[0]! *= x;
+    this._data[1]! *= x;
+    this._data[2]! *= x;
+    this._data[3]! *= x;
+
+    // Column 1 (Y axis)
+    this._data[4]! *= y;
+    this._data[5]! *= y;
+    this._data[6]! *= y;
+    this._data[7]! *= y;
+
+    // Column 2 (Z axis)
+    this._data[8]! *= z;
+    this._data[9]! *= z;
+    this._data[10]! *= z;
+    this._data[11]! *= z;
+
+    return this;
+  }
+
+  /**
+   * Rotates the matrix around the X axis (in-place mutation).
+   * @param rad - The angle in radians.
+   * @returns This matrix after rotation (for chaining).
+   */
+  rotateX(rad: number): this {
+    const s = Math.sin(rad);
+    const c = Math.cos(rad);
+    const a10 = this._data[4]!;
+    const a11 = this._data[5]!;
+    const a12 = this._data[6]!;
+    const a13 = this._data[7]!;
+    const a20 = this._data[8]!;
+    const a21 = this._data[9]!;
+    const a22 = this._data[10]!;
+    const a23 = this._data[11]!;
+
+    this._data[4] = a10 * c + a20 * s;
+    this._data[5] = a11 * c + a21 * s;
+    this._data[6] = a12 * c + a22 * s;
+    this._data[7] = a13 * c + a23 * s;
+
+    this._data[8] = a20 * c - a10 * s;
+    this._data[9] = a21 * c - a11 * s;
+    this._data[10] = a22 * c - a12 * s;
+    this._data[11] = a23 * c - a13 * s;
+
+    return this;
+  }
+
+  /**
+   * Rotates the matrix around the Y axis (in-place mutation).
+   * @param rad - The angle in radians.
+   * @returns This matrix after rotation (for chaining).
+   */
+  rotateY(rad: number): this {
+    const s = Math.sin(rad);
+    const c = Math.cos(rad);
+    const a00 = this._data[0]!;
+    const a01 = this._data[1]!;
+    const a02 = this._data[2]!;
+    const a03 = this._data[3]!;
+    const a20 = this._data[8]!;
+    const a21 = this._data[9]!;
+    const a22 = this._data[10]!;
+    const a23 = this._data[11]!;
+
+    this._data[0] = a00 * c - a20 * s;
+    this._data[1] = a01 * c - a21 * s;
+    this._data[2] = a02 * c - a22 * s;
+    this._data[3] = a03 * c - a23 * s;
+
+    this._data[8] = a00 * s + a20 * c;
+    this._data[9] = a01 * s + a21 * c;
+    this._data[10] = a02 * s + a22 * c;
+    this._data[11] = a03 * s + a23 * c;
+
+    return this;
+  }
+
+  /**
+   * Rotates the matrix around the Z axis (in-place mutation).
+   * @param rad - The angle in radians.
+   * @returns This matrix after rotation (for chaining).
+   */
+  rotateZ(rad: number): this {
+    const s = Math.sin(rad);
+    const c = Math.cos(rad);
+    const a00 = this._data[0]!;
+    const a01 = this._data[1]!;
+    const a02 = this._data[2]!;
+    const a03 = this._data[3]!;
+    const a10 = this._data[4]!;
+    const a11 = this._data[5]!;
+    const a12 = this._data[6]!;
+    const a13 = this._data[7]!;
+
+    this._data[0] = a00 * c + a10 * s;
+    this._data[1] = a01 * c + a11 * s;
+    this._data[2] = a02 * c + a12 * s;
+    this._data[3] = a03 * c + a13 * s;
+
+    this._data[4] = a10 * c - a00 * s;
+    this._data[5] = a11 * c - a01 * s;
+    this._data[6] = a12 * c - a02 * s;
+    this._data[7] = a13 * c - a03 * s;
+
+    return this;
+  }
+
+  /**
    * Converts a Vector4 to a matrix (column vector, 4x1 matrix).
    * @param vector - The vector to convert (must be Vector4).
    * @returns A matrix representation of the vector.
@@ -107,7 +245,6 @@ export class Matrix4<T extends NumberArray = Float32Array> extends Matrix<T, 4> 
   protected vectorToMatrix<TVecSize extends number>(vector: Vector<NumberArray, TVecSize>): Matrix<NumberArray, 4, 1> {
     const data = new Float32Array(4);
     data.set(vector.data);
-    // @ts-expect-error - Abstract class instantiation for column vector
     return new Matrix(data, 4, 1) as Matrix<NumberArray, 4, 1>;
   }
 }

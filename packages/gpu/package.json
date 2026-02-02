@@ -1,0 +1,21 @@
+{
+  "name": "@arcanvas/gpu",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Convenience facade for creating an Arcanvas RHI GPU context",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@arcanvas/rhi": "workspace:*",
+    "@arcanvas/backend": "workspace:*"
+  }
+}

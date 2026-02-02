@@ -1,7 +1,7 @@
 import type { BaseMaterial, DebugOptions, DrawArgs, IRenderBackend, Mesh, VertexAttributeDesc } from "@arcanvas/graphics";
 import { DEFAULT_DEBUG_OPTIONS, generateTriangleColor } from "@arcanvas/graphics";
 import { ProgramCache } from "./ProgramCache";
-import { isShaderProvider, type UniformContext } from "./ShaderProvider";
+import { isShaderProvider, type CustomBlendMode, type UniformContext } from "./ShaderProvider";
 import { ShaderRegistry } from "./ShaderRegistry";
 
 interface MeshCacheEntry {
@@ -135,6 +135,38 @@ export class WebGLBackend implements IRenderBackend {
     }
   }
 
+  /**
+   * Applies a custom blend mode and returns the previous state for restoration.
+   */
+  private applyCustomBlendMode(blendMode: CustomBlendMode): boolean {
+    switch (blendMode) {
+      case "premultiplied":
+        // Premultiplied alpha: src.rgb already multiplied by src.a
+        // Final = src.rgb + dst.rgb * (1 - src.a)
+        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
+        break;
+      case "additive":
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE);
+        break;
+      case "none":
+        this.gl.disable(this.gl.BLEND);
+        break;
+      case "normal":
+      default:
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    }
+    return true;
+  }
+
+  /**
+   * Restores the default blend mode after custom rendering.
+   */
+  private restoreBlendMode(): void {
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+  }
+
   private setBlendMode(blendMode: string): void {
     // WebGL blend equations and functions
     // For Normal mode, use standard alpha blending
@@ -184,7 +216,18 @@ export class WebGLBackend implements IRenderBackend {
       return;
     }
 
+    // Handle depth test override for default shaders
+    const depthTest = (material as { depthTest?: boolean }).depthTest ?? true;
+    if (!depthTest) {
+      this.gl.disable(this.gl.DEPTH_TEST);
+    }
+
     this.drawWithDefaultShader(args);
+
+    // Restore depth test
+    if (!depthTest) {
+      this.gl.enable(this.gl.DEPTH_TEST);
+    }
   }
 
   private drawWithCustomShader(args: DrawArgs): void {
@@ -268,10 +311,18 @@ export class WebGLBackend implements IRenderBackend {
       this.gl.depthMask(false);
     }
 
+    // Apply custom blend mode
+    const prevBlendMode = drawConfig.blendMode ? this.applyCustomBlendMode(drawConfig.blendMode) : null;
+
     if (mesh.indices.length > 0 && entry.indexType !== null) {
       this.gl.drawElements(this.gl.TRIANGLES, mesh.indices.length, entry.indexType, 0);
     } else {
       this.gl.drawArrays(this.gl.TRIANGLES, 0, mesh.vertexCount);
+    }
+
+    // Restore blend mode
+    if (prevBlendMode !== null) {
+      this.restoreBlendMode();
     }
 
     if (drawConfig.disableDepthWrite) {

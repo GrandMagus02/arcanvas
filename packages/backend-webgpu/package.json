@@ -1,0 +1,21 @@
+{
+  "name": "@arcanvas/backend-webgpu",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebGPU backend plugin for Arcanvas RHI",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@arcanvas/rhi": "workspace:*",
+    "@arcanvas/backend": "workspace:*"
+  }
+}

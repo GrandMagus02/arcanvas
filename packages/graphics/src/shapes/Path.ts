@@ -4,6 +4,9 @@ import { RenderObject } from "../RenderObject";
 import { earcut } from "../utils/earcut";
 import { createPositionLayout } from "../vertexLayout";
 
+/**
+ *
+ */
 export interface PathOptions {
   fill?: boolean;
   stroke?: boolean;
@@ -20,6 +23,9 @@ export interface PathOptions {
   resolution?: number;
 }
 
+/**
+ *
+ */
 export class Path extends RenderObject {
   private _points: number[] = [];
   private _holes: number[] = [];
@@ -59,6 +65,9 @@ export class Path extends RenderObject {
   }
 }
 
+/**
+ *
+ */
 export type PathCommand =
   | { type: "M"; x: number; y: number } // Move to
   | { type: "L"; x: number; y: number } // Line to
@@ -66,6 +75,9 @@ export type PathCommand =
   | { type: "Q"; x1: number; y1: number; x: number; y: number } // Quadratic bezier
   | { type: "Z" }; // Close path
 
+/**
+ *
+ */
 export function parseSVGPath(d: string): PathCommand[] {
   const commands: PathCommand[] = [];
   const commandRegex = /([a-zA-Z])([^a-zA-Z]*)/g;
@@ -174,6 +186,9 @@ export function parseSVGPath(d: string): PathCommand[] {
   return commands;
 }
 
+/**
+ *
+ */
 function tessellatePath(commands: PathCommand[], tolerance: number): { points: number[]; holes: number[] } {
   const points: number[] = [];
   const holes: number[] = [];
@@ -222,6 +237,9 @@ function tessellatePath(commands: PathCommand[], tolerance: number): { points: n
 }
 
 // Distance from point P to line segment AB
+/**
+ *
+ */
 function distToSegmentSquared(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
   const l2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
   if (l2 === 0) return (px - ax) * (px - ax) + (py - ay) * (py - ay);
@@ -232,6 +250,9 @@ function distToSegmentSquared(px: number, py: number, ax: number, ay: number, bx
   return dx * dx + dy * dy;
 }
 
+/**
+ *
+ */
 function flattenQuadraticBezier(x1: number, y1: number, cx: number, cy: number, x2: number, y2: number, tolerance: number, points: number[], depth: number = 0) {
   // If control point is close enough to the line segment, the curve is flat
   // Also stop if we've recursed too deep (prevent stack overflow)
@@ -252,6 +273,9 @@ function flattenQuadraticBezier(x1: number, y1: number, cx: number, cy: number, 
   flattenQuadraticBezier(x123, y123, x23, y23, x2, y2, tolerance, points, depth + 1);
 }
 
+/**
+ *
+ */
 function flattenCubicBezier(x1: number, y1: number, c1x: number, c1y: number, c2x: number, c2y: number, x2: number, y2: number, tolerance: number, points: number[], depth: number = 0) {
   // If both control points are close enough to the line segment, the curve is flat
   const toleranceSq = tolerance * tolerance;

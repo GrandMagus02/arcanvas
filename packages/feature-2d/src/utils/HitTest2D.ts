@@ -1,9 +1,8 @@
-import { Vector2 } from "@arcanvas/math";
 import type { Camera } from "@arcanvas/core";
-import type { Polygon2DObject } from "../meshes/polygon/Polygon2DObject";
-import type { Transform } from "@arcanvas/scene";
-import { BoundingBox2D } from "./BoundingBox2D";
 import { Matrix4 } from "@arcanvas/math";
+import type { Transform3D } from "@arcanvas/scene";
+import type { Polygon2DObject } from "../meshes/polygon/Polygon2DObject";
+import { BoundingBox2D } from "./BoundingBox2D";
 
 /**
  * 2D hit-testing utilities for point-in-shape detection.
@@ -33,8 +32,7 @@ export class HitTest2D {
       const yj = vertices[j]!.y;
 
       // Check if ray crosses this edge
-      const intersect =
-        yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
       if (intersect) {
         inside = !inside;
       }
@@ -62,12 +60,7 @@ export class HitTest2D {
    * @param camera - Camera for coordinate conversion
    * @returns True if the screen point hits the polygon
    */
-  static hitTestPolygon(
-    screenPoint: { x: number; y: number },
-    polygon: Polygon2DObject,
-    transform: Transform,
-    camera: Camera
-  ): boolean {
+  static hitTestPolygon(screenPoint: { x: number; y: number }, polygon: Polygon2DObject, transform: Transform3D, camera: Camera): boolean {
     // Convert screen to world coordinates
     const worldPoint = this.screenToWorld(screenPoint, camera);
 
@@ -102,16 +95,16 @@ export class HitTest2D {
     // Get canvas internal pixel dimensions (actual rendering size)
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    
+
     // Get canvas display dimensions (CSS size, may be different due to CSS scaling)
     const displayWidth = canvas.clientWidth || canvasWidth;
     const displayHeight = canvas.clientHeight || canvasHeight;
-    
+
     // Calculate scale factor if canvas is scaled via CSS
     // Avoid division by zero
     const scaleX = displayWidth > 0 ? canvasWidth / displayWidth : 1;
     const scaleY = displayHeight > 0 ? canvasHeight / displayHeight : 1;
-    
+
     // Convert screen coordinates (which are in CSS pixels relative to canvas element)
     // to canvas internal pixel coordinates
     const pixelX = screenPoint.x * scaleX;
@@ -122,21 +115,21 @@ export class HitTest2D {
     if (proj.left !== undefined && proj.right !== undefined && proj.top !== undefined && proj.bottom !== undefined) {
       const worldWidth = proj.right - proj.left;
       const worldHeight = proj.top - proj.bottom;
-      
+
       // Normalize pixel coordinates to [0, 1] using canvas internal dimensions
       const normalizedX = pixelX / canvasWidth;
       const normalizedY = pixelY / canvasHeight;
-      
+
       // Map to world coordinates using projection bounds
       // Projection bounds are in camera-relative space (centered at camera)
       const cameraRelativeX = proj.left + normalizedX * worldWidth;
       const cameraRelativeY = proj.top - normalizedY * worldHeight; // Flip Y (screen Y increases downward, world Y increases upward)
-      
+
       // Get camera position and add it to get world coordinates
       const cameraPos = camera.position;
       const cameraX = cameraPos.x;
       const cameraY = cameraPos.y;
-      
+
       // Convert camera-relative to world coordinates
       return {
         x: cameraX + cameraRelativeX,
@@ -164,10 +157,7 @@ export class HitTest2D {
   /**
    * Transforms a point by a 4x4 matrix (for NDC to world conversion).
    */
-  private static transformPointNDC(
-    point: { x: number; y: number },
-    matrix: Float32Array
-  ): { x: number; y: number } {
+  private static transformPointNDC(point: { x: number; y: number }, matrix: Float32Array): { x: number; y: number } {
     // Matrix is in column-major order
     const m00 = matrix[0]!;
     const m10 = matrix[1]!;
@@ -231,43 +221,38 @@ export class HitTest2D {
     // This is a placeholder - proper matrix inversion would be more complex
     // For 2D transforms (translate, rotate, scale), we can compute inverse directly
     const data = matrix.data;
-    
+
     // Extract translation
     const tx = data[12]!;
     const ty = data[13]!;
-    
+
     // Extract scale and rotation from upper-left 2x2
     const m00 = data[0]!;
     const m01 = data[4]!;
     const m10 = data[1]!;
     const m11 = data[5]!;
-    
+
     // Determinant of 2x2 rotation/scale matrix
     const det = m00 * m11 - m01 * m10;
-    
+
     if (Math.abs(det) < 1e-6) {
       // Singular matrix, return identity
       return Matrix4.identity();
     }
-    
+
     // Inverse of 2x2: [a b; c d]^-1 = (1/det) * [d -b; -c a]
     const invDet = 1 / det;
     const inv00 = invDet * m11;
     const inv01 = invDet * -m01;
     const inv10 = invDet * -m10;
     const inv11 = invDet * m00;
-    
+
     // Inverse translation: -R^-1 * T
     const invTx = -(inv00 * tx + inv01 * ty);
     const invTy = -(inv10 * tx + inv11 * ty);
-    
+
     // Build inverse matrix (column-major)
-    return Matrix4.fromValues(
-      inv00, inv10, 0, 0,
-      inv01, inv11, 0, 0,
-      0, 0, 1, 0,
-      invTx, invTy, 0, 1
-    );
+    return Matrix4.fromValues(inv00, inv10, 0, 0, inv01, inv11, 0, 0, 0, 0, 1, 0, invTx, invTy, 0, 1);
   }
 
   /**
@@ -281,13 +266,13 @@ export class HitTest2D {
     const m01 = matrix[4]!;
     const m10 = matrix[1]!;
     const m11 = matrix[5]!;
-    
+
     const det = m00 * m11 - m01 * m10;
-    
+
     if (Math.abs(det) < 1e-6) {
       return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     }
-    
+
     const invDet = 1 / det;
     const inv00 = invDet * m11;
     const inv01 = invDet * -m01;
@@ -295,12 +280,7 @@ export class HitTest2D {
     const inv11 = invDet * m00;
     const invTx = -(inv00 * tx + inv01 * ty);
     const invTy = -(inv10 * tx + inv11 * ty);
-    
-    return new Float32Array([
-      inv00, inv10, 0, 0,
-      inv01, inv11, 0, 0,
-      0, 0, 1, 0,
-      invTx, invTy, 0, 1,
-    ]);
+
+    return new Float32Array([inv00, inv10, 0, 0, inv01, inv11, 0, 0, 0, 0, 1, 0, invTx, invTy, 0, 1]);
   }
 }

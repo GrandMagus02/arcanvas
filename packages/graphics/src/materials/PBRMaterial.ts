@@ -12,6 +12,7 @@ export interface PBRMaterialOptions {
   normalTexture?: TextureRef | null;
   doubleSided?: boolean;
   wireframe?: boolean;
+  depthTest?: boolean;
   outline?: BaseMaterial["outline"];
 }
 
@@ -27,6 +28,7 @@ export class PBRMaterial implements BaseMaterial {
   normalTexture?: TextureRef | null;
   doubleSided?: boolean;
   wireframe?: boolean;
+  depthTest?: boolean;
   outline?: BaseMaterial["outline"];
 
   constructor(options: PBRMaterialOptions = {}) {
@@ -37,6 +39,7 @@ export class PBRMaterial implements BaseMaterial {
     this.normalTexture = options.normalTexture ?? null;
     this.doubleSided = options.doubleSided;
     this.wireframe = options.wireframe;
+    this.depthTest = options.depthTest ?? true;
     this.outline = options.outline;
   }
 }

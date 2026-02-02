@@ -38,6 +38,11 @@ export interface HandleInteractionData {
    * Delta from start position.
    */
   delta: Vector2;
+
+  /**
+   * Incremental delta from last update.
+   */
+  incrementalDelta: Vector2;
 }
 
 /**
@@ -53,6 +58,7 @@ export class HandleInteraction {
   private _activeHandle: Handle | null = null;
   private _startPosition: Vector2 | null = null;
   private _currentPosition: Vector2 | null = null;
+  private _lastPosition: Vector2 | null = null;
   private _onInteraction: HandleInteractionCallback | null = null;
 
   /**
@@ -89,10 +95,14 @@ export class HandleInteraction {
       y: currentPosition.y - this._startPosition.y,
     } as Vector2;
 
-    const interactionType =
-      this._activeHandle.type === "rotation"
-        ? InteractionType.Rotate
-        : InteractionType.Resize;
+    const incrementalDelta: Vector2 = {
+      x: currentPosition.x - (this._lastPosition?.x ?? this._startPosition.x),
+      y: currentPosition.y - (this._lastPosition?.y ?? this._startPosition.y),
+    } as Vector2;
+
+    this._lastPosition = { x: currentPosition.x, y: currentPosition.y } as Vector2;
+
+    const interactionType = this._activeHandle.type === "rotation" ? InteractionType.Rotate : InteractionType.Resize;
 
     if (this._onInteraction) {
       this._onInteraction({
@@ -101,6 +111,7 @@ export class HandleInteraction {
         startPosition: this._startPosition,
         currentPosition,
         delta,
+        incrementalDelta,
       });
     }
   }
@@ -112,6 +123,7 @@ export class HandleInteraction {
     this._activeHandle = null;
     this._startPosition = null;
     this._currentPosition = null;
+    this._lastPosition = null;
   }
 
   /**

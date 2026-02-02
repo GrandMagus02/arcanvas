@@ -1,6 +1,9 @@
 import type { BaseMaterial } from "../materials";
 import { Path, type PathCommand } from "./Path";
 
+/**
+ *
+ */
 export class Line extends Path {
   constructor(x1: number, y1: number, x2: number, y2: number, material: BaseMaterial, width: number = 1) {
     // A line is just a thin rectangle for now, as we triangulate everything

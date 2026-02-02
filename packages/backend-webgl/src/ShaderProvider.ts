@@ -9,6 +9,11 @@ export interface ShaderSource {
 }
 
 /**
+ * Blend mode for custom materials.
+ */
+export type CustomBlendMode = "normal" | "premultiplied" | "additive" | "none";
+
+/**
  * Draw configuration for custom materials.
  */
 export interface CustomDrawConfig {
@@ -20,6 +25,8 @@ export interface CustomDrawConfig {
   disableDepthTest?: boolean;
   /** Unique key for shader caching (to differentiate materials with same shadingModel but different shaders) */
   shaderKey?: string;
+  /** Blend mode for transparency. Use 'premultiplied' for correct alpha compositing with overlapping quads. */
+  blendMode?: CustomBlendMode;
   /** Custom uniform setter function */
   setUniforms?: (gl: WebGLRenderingContext, program: WebGLProgram, material: BaseMaterial, context: UniformContext) => void;
 }

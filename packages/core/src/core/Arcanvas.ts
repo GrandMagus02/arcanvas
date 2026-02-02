@@ -1,7 +1,7 @@
-import { EventBus } from "src/systems";
 import type { Camera } from "../camera/Camera";
 import { CanvasHost, type CanvasOptions, DEFAULT_CANVAS_OPTIONS } from "../infrastructure/canvas/CanvasHost";
 import type { ArcanvasEvents } from "../infrastructure/events/ArcanvasEvents";
+import { EventBus } from "../infrastructure/events/EventBus";
 import type { Configurable, EventEmitter, Focusable, IArcanvasContext, Lifecycle, PluginHost } from "../infrastructure/interfaces";
 import type { PluginLike } from "../plugins/Plugin";
 import type { Backend } from "../rendering/backend/createRenderer";

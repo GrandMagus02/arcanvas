@@ -1,16 +1,14 @@
 import { Matrix4 } from "@arcanvas/math";
 
-const IDENTITY_4X4 = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-
 /**
  * Minimal transform wrapper for render objects.
  * Provides a 4x4 transformation matrix for positioning objects in 3D space.
  */
-export class Transform {
+export class Transform3D {
   protected _matrix: Matrix4;
 
   constructor(matrix?: Matrix4) {
-    this._matrix = matrix ?? new Matrix4(new Float32Array(IDENTITY_4X4));
+    this._matrix = matrix ?? Matrix4.identity();
   }
 
   get matrix(): Matrix4 {

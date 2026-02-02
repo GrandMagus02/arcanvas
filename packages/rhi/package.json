@@ -1,0 +1,18 @@
+{
+  "name": "@arcanvas/rhi",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Backend-agnostic Rendering Hardware Interface (RHI) contracts for Arcanvas",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {}
+}

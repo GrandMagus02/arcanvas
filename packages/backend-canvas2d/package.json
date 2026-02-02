@@ -1,0 +1,21 @@
+{
+  "name": "@arcanvas/backend-canvas2d",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Canvas2D preview backend (subset) for Arcanvas RHI",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@arcanvas/rhi": "workspace:*",
+    "@arcanvas/backend": "workspace:*"
+  }
+}

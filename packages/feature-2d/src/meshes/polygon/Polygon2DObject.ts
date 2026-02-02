@@ -33,7 +33,7 @@ export class Polygon2DObject extends RenderObject implements ISelectable {
     super(mesh, material);
     this.id = options.id ?? uuid();
     this._visible = options.visible ?? true;
-    
+
     // Store original points for bounding box calculation
     // Convert PointsArray to {x,y}[] format
     this._originalPoints = [];

@@ -15,6 +15,7 @@
     "@arcanvas/selection": "workspace:*",
     "@arcanvas/interaction": "workspace:*",
     "@arcanvas/feature-2d": "workspace:*",
+    "@arcanvas/graphics": "workspace:*",
     "@arcanvas/core": "workspace:*"
   }
 }

@@ -1,5 +1,5 @@
-import { Mesh, type VertexLayout, type BaseMaterial } from "@arcanvas/graphics";
-import { Entity, Transform } from "@arcanvas/scene";
+import { Mesh, type BaseMaterial, type VertexLayout } from "@arcanvas/graphics";
+import { Entity, Transform3D } from "@arcanvas/scene";
 import { GridMaterial, type GridMaterialOptions } from "./GridMaterial";
 
 /**
@@ -32,7 +32,7 @@ const FULLSCREEN_INDICES = new Uint16Array([0, 1, 2]);
 export class GridObject extends Entity {
   mesh: Mesh;
   material: BaseMaterial;
-  transform: Transform;
+  transform: Transform3D;
   private _gridMaterial: GridMaterial;
 
   constructor(options: GridMaterialOptions = {}) {
@@ -41,7 +41,7 @@ export class GridObject extends Entity {
     const material = new GridMaterial(options);
     this.mesh = mesh;
     this.material = material;
-    this.transform = new Transform();
+    this.transform = new Transform3D();
     this._gridMaterial = material;
   }
 

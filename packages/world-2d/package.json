@@ -1,0 +1,19 @@
+{
+  "name": "@arcanvas/world-2d",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "2D world graph abstractions for Arcanvas - Node, Entity, Transform, Scene",
+  "module": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "dependencies": {
+    "@arcanvas/core": "workspace:*",
+    "@arcanvas/math": "workspace:*",
+    "@arcanvas/world": "workspace:*"
+  }
+}

@@ -1,6 +1,6 @@
-import { Entity, Transform } from "@arcanvas/scene";
 import type { Document } from "@arcanvas/document";
 import { Mesh } from "@arcanvas/graphics";
+import { Entity, Transform3D } from "@arcanvas/scene";
 import { LayerMaterial } from "../materials/LayerMaterial";
 import { createQuadMesh } from "../utils/QuadMesh";
 
@@ -12,14 +12,14 @@ export class LayerNode extends Entity {
   layerId: string;
   mesh: Mesh;
   material: LayerMaterial;
-  transform: Transform;
+  transform: Transform3D;
 
   constructor(layerId: string, document: Document, width: number, height: number) {
     super(`LayerNode-${layerId}`);
     this.layerId = layerId;
     this.mesh = createQuadMesh(width, height);
     this.material = new LayerMaterial({});
-    this.transform = new Transform();
+    this.transform = new Transform3D();
     this.syncFromLayer(document);
   }
 

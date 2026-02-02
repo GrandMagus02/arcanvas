@@ -1,4 +1,4 @@
-import { applyMixins, EventBusMixin } from "src/utils/mixins";
+import { applyMixins, EventBusMixin } from "../../utils/mixins";
 import type { EventEmitter } from "../interfaces";
 
 /**

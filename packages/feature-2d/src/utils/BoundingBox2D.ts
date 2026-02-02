@@ -1,9 +1,7 @@
 import { Matrix4, Vector2 } from "@arcanvas/math";
+import type { Transform3D } from "@arcanvas/scene";
 import type { BoundingBox } from "@arcanvas/selection";
 import type { Polygon2DObject } from "../meshes/polygon/Polygon2DObject";
-import type { Transform } from "@arcanvas/scene";
-import { PointUtils } from "./PointUtils";
-import type { PointsArray } from "./PointUtils";
 
 /**
  * 2D bounding box implementation.
@@ -50,7 +48,7 @@ export class BoundingBox2D implements BoundingBox {
    * Creates a bounding box from a Polygon2DObject.
    * Extracts points from the polygon's mesh vertices.
    */
-  static fromPolygon(polygon: Polygon2DObject, transform?: Transform): BoundingBox2D {
+  static fromPolygon(polygon: Polygon2DObject, transform?: Transform3D): BoundingBox2D {
     // Get vertices from the mesh
     const vertices = polygon.mesh.vertices;
     const pointCount = vertices.length / 3; // Assuming 3 components per vertex (x, y, z)
@@ -73,10 +71,7 @@ export class BoundingBox2D implements BoundingBox {
    * Creates a bounding box from points transformed by a matrix.
    * Transforms each point and then computes the bounding box.
    */
-  static fromTransformedPoints(
-    points: { x: number; y: number }[],
-    matrix: Matrix4
-  ): BoundingBox2D {
+  static fromTransformedPoints(points: { x: number; y: number }[], matrix: Matrix4): BoundingBox2D {
     if (points.length === 0) {
       return new BoundingBox2D(0, 0, 0, 0);
     }
@@ -109,7 +104,7 @@ export class BoundingBox2D implements BoundingBox {
     // For a 4x4 matrix: data = [m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33]
     // Where m00 is at index 0 (column 0, row 0), m01 is at index 4 (column 1, row 0), etc.
     const data = matrix.data;
-    
+
     // Extract matrix elements (column-major)
     const m00 = data[0]!;
     const m10 = data[1]!;
@@ -193,24 +188,14 @@ export class BoundingBox2D implements BoundingBox {
    * Checks if this bounding box intersects with another.
    */
   intersects(other: BoundingBox2D): boolean {
-    return (
-      this.minX <= other.maxX &&
-      this.maxX >= other.minX &&
-      this.minY <= other.maxY &&
-      this.maxY >= other.minY
-    );
+    return this.minX <= other.maxX && this.maxX >= other.minX && this.minY <= other.maxY && this.maxY >= other.minY;
   }
 
   /**
    * Creates a union of this bounding box with another.
    */
   union(other: BoundingBox2D): BoundingBox2D {
-    return new BoundingBox2D(
-      Math.min(this.minX, other.minX),
-      Math.min(this.minY, other.minY),
-      Math.max(this.maxX, other.maxX),
-      Math.max(this.maxY, other.maxY)
-    );
+    return new BoundingBox2D(Math.min(this.minX, other.minX), Math.min(this.minY, other.minY), Math.max(this.maxX, other.maxX), Math.max(this.maxY, other.maxY));
   }
 
   /**

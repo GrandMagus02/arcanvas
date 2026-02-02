@@ -1,3 +1,12 @@
+/**
+ * SDF/MSDF Text Material
+ *
+ * Shader implementations based on three-bmfont-text by Experience Monks
+ * https://github.com/Experience-Monks/three-bmfont-text
+ * Copyright (c) 2015 Matt DesLauriers
+ * MIT License
+ */
+
 import type { BaseMaterial } from "./BaseMaterial";
 
 /**
@@ -21,6 +30,8 @@ export interface SDFTextMaterialOptions {
   atlasSize?: [number, number];
   /** Enable double-sided rendering */
   doubleSided?: boolean;
+  /** Enable depth testing (default: true) */
+  depthTest?: boolean;
 }
 
 /**
@@ -32,6 +43,11 @@ interface ShaderSource {
 }
 
 /**
+ * Blend mode for custom materials.
+ */
+type CustomBlendMode = "normal" | "premultiplied" | "additive" | "none";
+
+/**
  * Draw configuration for custom materials.
  */
 interface CustomDrawConfig {
@@ -40,6 +56,8 @@ interface CustomDrawConfig {
   disableDepthTest?: boolean;
   /** Unique key for shader caching (differentiates MSDF vs SDF) */
   shaderKey?: string;
+  /** Blend mode for transparency */
+  blendMode?: CustomBlendMode;
   setUniforms?: (gl: WebGLRenderingContext, program: WebGLProgram, material: BaseMaterial, context: UniformContext) => void;
 }
 
@@ -77,6 +95,8 @@ export class SDFTextMaterial implements BaseMaterial {
   atlasSize: [number, number];
   /** Double-sided */
   doubleSided?: boolean;
+  /** Depth test */
+  depthTest?: boolean;
 
   constructor(options: SDFTextMaterialOptions) {
     this.atlas = options.atlas;
@@ -84,6 +104,7 @@ export class SDFTextMaterial implements BaseMaterial {
     this.sdfType = options.sdfType ?? "msdf";
     this.distanceRange = options.distanceRange ?? 4;
     this.doubleSided = options.doubleSided;
+    this.depthTest = options.depthTest ?? true;
 
     // Get atlas size from image or use provided value
     if (options.atlasSize) {
@@ -119,8 +140,9 @@ export class SDFTextMaterial implements BaseMaterial {
     return {
       positionComponents: 3,
       disableDepthWrite: true, // Text typically rendered with alpha blending
-      disableDepthTest: true, // Critical: prevents overlapping glyph quads from clipping each other
-      shaderKey: `sdf-text-${this.sdfType}`, // Unique key per SDF type
+      disableDepthTest: this.depthTest === false, // Critical: prevents overlapping glyph quads from clipping each other
+      shaderKey: `sdf-text-${this.sdfType}-v8`, // v8: three-bmfont-text based shaders
+      blendMode: "premultiplied", // Use premultiplied alpha for correct transparency with overlapping quads
       setUniforms: (gl, program, _material, context) => {
         // Upload texture if needed
         if (!this._glTexture && !(this.atlas instanceof WebGLTexture)) {
@@ -139,15 +161,9 @@ export class SDFTextMaterial implements BaseMaterial {
         gl.bindTexture(gl.TEXTURE_2D, this._glTexture || (this.atlas as WebGLTexture));
         gl.uniform1i(texLoc, 0);
 
-        // Set uniforms
+        // Set color uniform
         const colorLoc = gl.getUniformLocation(program, "u_color");
         gl.uniform4fv(colorLoc, this.color);
-
-        const distanceRangeLoc = gl.getUniformLocation(program, "u_distanceRange");
-        gl.uniform1f(distanceRangeLoc, this.distanceRange);
-
-        const atlasSizeLoc = gl.getUniformLocation(program, "u_atlasSize");
-        gl.uniform2fv(atlasSizeLoc, this.atlasSize);
 
         // Matrix uniforms
         const modelLoc = gl.getUniformLocation(program, "u_model");
@@ -190,54 +206,52 @@ void main() {
 `;
 
 // Single-channel SDF fragment shader
+// Based on three-bmfont-text (MIT License)
 const SDF_FRAGMENT_SHADER = `
 #ifdef GL_OES_standard_derivatives
 #extension GL_OES_standard_derivatives : enable
 #endif
 
-precision mediump float;
+precision highp float;
 
 uniform sampler2D u_atlas;
 uniform vec4 u_color;
-uniform float u_distanceRange;
-uniform vec2 u_atlasSize;
 
 varying vec2 v_uv;
 
-void main() {
-  float sd = texture2D(u_atlas, v_uv).a;
-  
-  // Calculate screen-space range for proper AA
+float aastep(float value) {
   #ifdef GL_OES_standard_derivatives
-    vec2 unitRange = vec2(u_distanceRange) / u_atlasSize;
-    vec2 screenTexSize = vec2(1.0) / fwidth(v_uv);
-    float screenPxRange = max(0.5 * dot(unitRange, screenTexSize), 1.0);
+    float afwidth = length(vec2(dFdx(value), dFdy(value))) * 0.70710678118654757;
   #else
-    float screenPxRange = max(u_distanceRange, 1.0);
+    float afwidth = (1.0 / 32.0) * (1.4142135623730951 / (2.0 * gl_FragCoord.w));
   #endif
-  
-  float screenPxDistance = screenPxRange * (sd - 0.5);
-  float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
-  
-  // Discard fully transparent pixels to avoid visible quad backgrounds
-  if (opacity < 0.001) discard;
-  
-  gl_FragColor = vec4(u_color.rgb, u_color.a * opacity);
+  return smoothstep(0.5 - afwidth, 0.5 + afwidth, value);
+}
+
+void main() {
+  vec4 texColor = texture2D(u_atlas, v_uv);
+  float alpha = aastep(texColor.a);
+
+  // Discard fully transparent pixels
+  if (alpha < 0.01) discard;
+
+  // Output premultiplied alpha for correct blending
+  float finalAlpha = u_color.a * alpha;
+  gl_FragColor = vec4(u_color.rgb * finalAlpha, finalAlpha);
 }
 `;
 
 // Multi-channel SDF (MSDF) fragment shader
+// Based on three-bmfont-text (MIT License)
 const MSDF_FRAGMENT_SHADER = `
 #ifdef GL_OES_standard_derivatives
 #extension GL_OES_standard_derivatives : enable
 #endif
 
-precision mediump float;
+precision highp float;
 
 uniform sampler2D u_atlas;
 uniform vec4 u_color;
-uniform float u_distanceRange;
-uniform vec2 u_atlasSize;
 
 varying vec2 v_uv;
 
@@ -246,24 +260,21 @@ float median(float r, float g, float b) {
 }
 
 void main() {
-  vec3 msd = texture2D(u_atlas, v_uv).rgb;
-  float sd = median(msd.r, msd.g, msd.b);
-  
-  // Calculate screen-space range for proper AA
+  // Sample texture and invert (MSDF convention: outside = high, inside = low)
+  vec3 s = 1.0 - texture2D(u_atlas, v_uv).rgb;
+  float sigDist = median(s.r, s.g, s.b) - 0.5;
+
   #ifdef GL_OES_standard_derivatives
-    vec2 unitRange = vec2(u_distanceRange) / u_atlasSize;
-    vec2 screenTexSize = vec2(1.0) / fwidth(v_uv);
-    float screenPxRange = max(0.5 * dot(unitRange, screenTexSize), 1.0);
+    float alpha = clamp(sigDist / fwidth(sigDist) + 0.5, 0.0, 1.0);
   #else
-    float screenPxRange = max(u_distanceRange, 1.0);
+    float alpha = step(0.0, sigDist);
   #endif
-  
-  float screenPxDistance = screenPxRange * (sd - 0.5);
-  float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
-  
-  // Discard fully transparent pixels to avoid visible quad backgrounds
-  if (opacity < 0.001) discard;
-  
-  gl_FragColor = vec4(u_color.rgb, u_color.a * opacity);
+
+  // Discard fully transparent pixels
+  if (alpha < 0.001) discard;
+
+  // Output premultiplied alpha for correct blending
+  float finalAlpha = u_color.a * alpha;
+  gl_FragColor = vec4(u_color.rgb * finalAlpha, finalAlpha);
 }
 `;

@@ -3,11 +3,13 @@
 ## Foundation (Standalone)
 
 ### Math
+
 - N-dimensional Vector and Matrix math (Vec2, Vec3, Vec4, Mat3, Mat4, etc.)
 - Geometric primitives (Ray, Box, Frustum) genericized where possible
 - Noise functions and math helpers
 
 ### Color
+
 - Color space definitions (sRGB, OKLCH, P3)
 - Conversion logic and color manipulation
 - ICC profile handling
@@ -15,6 +17,7 @@
 ## Core (The Glue)
 
 ### Core
+
 - Service Locator (DI): Manages dependencies between modules
 - Event Bus: Typed pub/sub system for decoupled communication
 - Lifecycle: Init, Update, Render, Destroy loops
@@ -24,11 +27,13 @@
 ## Domain Abstractions
 
 ### Scene
+
 - Abstract `Node` and `Scene` classes acting as pure data containers
 - Data/Behavior Separation: `Node` entities hold components
 - Multi-Dimensional Transforms: `Transform` interface abstracts N-dimensional coordinates
 
 ### Graphics
+
 - `Mesh`: Pure data structure (vertices, indices, VertexLayout, drawMode)
 - `Material`: API-agnostic description of appearance
 - `RenderObject`: The distinct unit of rendering (mesh + material + worldTransform)
@@ -36,6 +41,7 @@
 - `IRenderer`: High-level scene traversal
 
 ### Interaction
+
 - Abstract Input Device interfaces (Pointer, Keyboard, Gamepad)
 - Input mappings and normalization
 - Gesture recognition
@@ -46,11 +52,13 @@
 ### Backends
 
 #### Backend WebGL
+
 - WebGL2 implementation of `IRenderBackend`
 
 ### Feature Sets (Dimensions & Techniques)
 
 #### Feature 2D
+
 - 2D specific Nodes (Layers, Sprites)
 - 2D Transform implementation
 - Raster manipulation and compositing logic
@@ -61,6 +69,7 @@
   - `HandleStyles2D`: Photoshop, Konva, Figma styles
 
 #### Feature 3D
+
 - 3D specific Nodes (Mesh, Camera3D, Light)
 - 3D Transform implementation
 - Geometry definitions (Box, Sphere, loaded models)
@@ -73,11 +82,13 @@
 ### Tools & Selection
 
 #### Tools
+
 - `ToolManager` implementation
 - Base `Tool` class
 - Standard tools (Select, Move, Pan, Zoom) implemented as separate plugins
 
 #### Selection
+
 - **Unified Selection System** (dimension-agnostic):
   - `ISelectable`: Interface for objects that can be selected
   - `SelectionManager`: Manages selection state (single/multi-select, selection events)

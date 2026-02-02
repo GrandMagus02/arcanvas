@@ -9,3 +9,6 @@ export * from "./src/meshes";
 
 // Utils
 export * from "./src/utils";
+
+// Selection adorners (Strategy + Decorator)
+export * from "./src/adorner";

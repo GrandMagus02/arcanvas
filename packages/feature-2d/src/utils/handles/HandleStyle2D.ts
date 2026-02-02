@@ -56,24 +56,16 @@ export abstract class HandleStyle2D implements IHandleStyle {
     const corners = bounds.getCorners();
 
     // Top-left
-    handleSet.add(
-      new Handle(HandleType.Corner, Vector2.of(corners[3]!.x, corners[3]!.y), this.handleSize, "nwse-resize")
-    );
+    handleSet.add(new Handle(HandleType.Corner, Vector2.of(corners[3]!.x, corners[3]!.y), this.handleSize, "nwse-resize"));
 
     // Top-right
-    handleSet.add(
-      new Handle(HandleType.Corner, Vector2.of(corners[2]!.x, corners[2]!.y), this.handleSize, "nesw-resize")
-    );
+    handleSet.add(new Handle(HandleType.Corner, Vector2.of(corners[2]!.x, corners[2]!.y), this.handleSize, "nesw-resize"));
 
     // Bottom-right
-    handleSet.add(
-      new Handle(HandleType.Corner, Vector2.of(corners[1]!.x, corners[1]!.y), this.handleSize, "nwse-resize")
-    );
+    handleSet.add(new Handle(HandleType.Corner, Vector2.of(corners[1]!.x, corners[1]!.y), this.handleSize, "nwse-resize"));
 
     // Bottom-left
-    handleSet.add(
-      new Handle(HandleType.Corner, Vector2.of(corners[0]!.x, corners[0]!.y), this.handleSize, "nesw-resize")
-    );
+    handleSet.add(new Handle(HandleType.Corner, Vector2.of(corners[0]!.x, corners[0]!.y), this.handleSize, "nesw-resize"));
   }
 
   /**
@@ -85,24 +77,16 @@ export abstract class HandleStyle2D implements IHandleStyle {
     const height = bounds.getHeight();
 
     // Top edge
-    handleSet.add(
-      new Handle(HandleType.Edge, Vector2.of(center.x, bounds.maxY), this.handleSize, "ns-resize")
-    );
+    handleSet.add(new Handle(HandleType.Edge, Vector2.of(center.x, bounds.maxY), this.handleSize, "ns-resize"));
 
     // Bottom edge
-    handleSet.add(
-      new Handle(HandleType.Edge, Vector2.of(center.x, bounds.minY), this.handleSize, "ns-resize")
-    );
+    handleSet.add(new Handle(HandleType.Edge, Vector2.of(center.x, bounds.minY), this.handleSize, "ns-resize"));
 
     // Left edge
-    handleSet.add(
-      new Handle(HandleType.Edge, Vector2.of(bounds.minX, center.y), this.handleSize, "ew-resize")
-    );
+    handleSet.add(new Handle(HandleType.Edge, Vector2.of(bounds.minX, center.y), this.handleSize, "ew-resize"));
 
     // Right edge
-    handleSet.add(
-      new Handle(HandleType.Edge, Vector2.of(bounds.maxX, center.y), this.handleSize, "ew-resize")
-    );
+    handleSet.add(new Handle(HandleType.Edge, Vector2.of(bounds.maxX, center.y), this.handleSize, "ew-resize"));
   }
 
   /**
@@ -112,9 +96,7 @@ export abstract class HandleStyle2D implements IHandleStyle {
     const center = bounds.getCenter();
     const rotationY = bounds.maxY + this.rotationHandleOffset;
 
-    handleSet.add(
-      new Handle(HandleType.Rotation, Vector2.of(center.x, rotationY), this.handleSize, "grab")
-    );
+    handleSet.add(new Handle(HandleType.Rotation, Vector2.of(center.x, rotationY), this.handleSize, "grab"));
   }
 
   /**
