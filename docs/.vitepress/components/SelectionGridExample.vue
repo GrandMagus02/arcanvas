@@ -1,242 +1,542 @@
 <script setup lang="ts">
+import { createCanvasHost, createFrameLoop, type FrameLoop, type CanvasHost } from "@arcanvas/runtime";
 import {
-  Arcanvas,
-  AutoResizePlugin,
-  Camera,
-  Camera2DController,
-  EngineRenderSystem,
-} from "@arcanvas/core";
-import { GridObject, HitTest2D, Polygon2DObject } from "@arcanvas/feature-2d";
-import { UnlitColorMaterial } from "@arcanvas/graphics";
-import { InputState, ModifierKey, normalizeEvent } from "@arcanvas/interaction";
-import { Entity, Scene } from "@arcanvas/scene";
-import { SelectionManager } from "@arcanvas/selection";
-import { SelectionTool } from "@arcanvas/tools";
+  requestAdapter,
+  BufferUsage,
+  glslVertex,
+  glslFragment,
+  type GfxDevice,
+  type GfxRenderPipeline,
+  type GfxBuffer,
+  WebGL2RenderPipeline,
+} from "@arcanvas/webgl2";
+import { SelectionManager, type BoundingBox, type ISelectable } from "@arcanvas/selection";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-let arc: Arcanvas | null = null;
-let stopLoop = false;
-let scene: Scene | null = null;
-let camera: Camera | null = null;
-let selectionTool: SelectionTool | null = null;
-let overlay: Entity | null = null;
-const inputState = new InputState();
+
+let canvasHost: CanvasHost | null = null;
+let frameLoop: FrameLoop | null = null;
+let device: GfxDevice | null = null;
+let shapePipeline: GfxRenderPipeline | null = null;
+let gridPipeline: GfxRenderPipeline | null = null;
+let shapeVertexBuffer: GfxBuffer | null = null;
+let gridQuadBuffer: GfxBuffer | null = null;
+let selectionManager: SelectionManager | null = null;
+
+// Camera state
+let cameraX = 0;
+let cameraY = 0;
+let cameraZoom = 0.5;
+let isDragging = false;
+let isMovingShape = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+let draggedShapeId: string | null = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 
 const selectedCount = ref(0);
 const hoverHitId = ref<string | null>(null);
 const hoverWorld = ref<{ x: number; y: number } | null>(null);
-const selectablesList: Polygon2DObject[] = [];
-let selectionConsumed = false; // set on pointerdown when we hit a shape, so we prevent mousedown from starting pan
 
-onMounted(() => {
+// Shape data
+interface Shape extends ISelectable {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: [number, number, number, number];
+  selectedColor: [number, number, number, number];
+  selected: boolean;
+}
+
+const shapes: Shape[] = [];
+
+// Shape shader
+const shapeVertexShader = `#version 300 es
+layout(location = 0) in vec2 a_position;
+layout(location = 1) in vec4 a_color;
+
+out vec4 v_color;
+
+uniform vec2 u_resolution;
+uniform vec2 u_cameraPos;
+uniform float u_zoom;
+
+void main() {
+  vec2 viewPos = (a_position - u_cameraPos) * u_zoom;
+  vec2 clipPos = viewPos / (u_resolution * 0.5);
+  clipPos.y = -clipPos.y;
+  gl_Position = vec4(clipPos, 0.0, 1.0);
+  v_color = a_color;
+}
+`;
+
+const shapeFragmentShader = `#version 300 es
+precision highp float;
+
+in vec4 v_color;
+out vec4 fragColor;
+
+void main() {
+  fragColor = v_color;
+}
+`;
+
+// Grid shader
+const gridVertexShader = `#version 300 es
+layout(location = 0) in vec2 a_position;
+
+out vec2 v_worldPos;
+
+uniform vec2 u_resolution;
+uniform vec2 u_cameraPos;
+uniform float u_zoom;
+
+void main() {
+  gl_Position = vec4(a_position, 0.0, 1.0);
+  vec2 screenPos = a_position * u_resolution * 0.5;
+  v_worldPos = screenPos / u_zoom + u_cameraPos;
+}
+`;
+
+const gridFragmentShader = `#version 300 es
+precision highp float;
+
+in vec2 v_worldPos;
+out vec4 fragColor;
+
+uniform float u_cellSize;
+uniform float u_zoom;
+
+float gridLine(float coord, float lineWidth) {
+  float d = abs(fract(coord - 0.5) - 0.5);
+  return smoothstep(lineWidth, 0.0, d);
+}
+
+void main() {
+  vec3 color = vec3(0.1, 0.1, 0.1);
+
+  // Minor grid lines
+  float minorIntensity = gridLine(v_worldPos.x / u_cellSize, 0.01 / u_zoom);
+  minorIntensity = max(minorIntensity, gridLine(v_worldPos.y / u_cellSize, 0.01 / u_zoom));
+  color = mix(color, vec3(0.3, 0.3, 0.3), minorIntensity * 0.5);
+
+  // Major grid lines
+  float majorCell = u_cellSize * 4.0;
+  float majorIntensity = gridLine(v_worldPos.x / majorCell, 0.015 / u_zoom);
+  majorIntensity = max(majorIntensity, gridLine(v_worldPos.y / majorCell, 0.015 / u_zoom));
+  color = mix(color, vec3(0.5, 0.5, 0.5), majorIntensity * 0.8);
+
+  // Axes
+  float axisWidth = 2.0 / u_zoom;
+  if (abs(v_worldPos.y) < axisWidth) {
+    float t = 1.0 - abs(v_worldPos.y) / axisWidth;
+    color = mix(color, vec3(0.8, 0.2, 0.2), t * 0.9);
+  }
+  if (abs(v_worldPos.x) < axisWidth) {
+    float t = 1.0 - abs(v_worldPos.x) / axisWidth;
+    color = mix(color, vec3(0.2, 0.8, 0.2), t * 0.9);
+  }
+
+  fragColor = vec4(color, 1.0);
+}
+`;
+
+function createShapeSelectable(id: string, x: number, y: number, width: number, height: number, baseColor: [number, number, number, number]): Shape {
+  return {
+    id,
+    x,
+    y,
+    width,
+    height,
+    color: baseColor,
+    selectedColor: [1, 0.5, 0, 1],
+    selected: false,
+    getBounds(): BoundingBox {
+      const self = this;
+      return {
+        getCenter: () => ({ x: self.x + self.width / 2, y: self.y + self.height / 2 }),
+        contains: (point: { x: number; y: number }) =>
+          point.x >= self.x && point.x <= self.x + self.width &&
+          point.y >= self.y && point.y <= self.y + self.height,
+      };
+    },
+    isVisible: () => true,
+  };
+}
+
+function screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+  if (!canvasHost) return { x: 0, y: 0 };
+  const centerX = canvasHost.cssWidth / 2;
+  const centerY = canvasHost.cssHeight / 2;
+  const worldX = (screenX - centerX) / cameraZoom + cameraX;
+  const worldY = -(screenY - centerY) / cameraZoom + cameraY;
+  return { x: worldX, y: worldY };
+}
+
+function hitTestShapes(worldX: number, worldY: number): Shape | null {
+  for (let i = shapes.length - 1; i >= 0; i--) {
+    const shape = shapes[i]!;
+    if (worldX >= shape.x && worldX <= shape.x + shape.width &&
+        worldY >= shape.y && worldY <= shape.y + shape.height) {
+      return shape;
+    }
+  }
+  return null;
+}
+
+function buildShapeVertices(): Float32Array {
+  const vertices: number[] = [];
+
+  for (const shape of shapes) {
+    const color = shape.selected ? shape.selectedColor : shape.color;
+    const [r, g, b, a] = color;
+    const { x, y, width, height } = shape;
+
+    // Two triangles for rectangle
+    // prettier-ignore
+    vertices.push(
+      x, y, r, g, b, a,
+      x + width, y, r, g, b, a,
+      x + width, y + height, r, g, b, a,
+      x, y, r, g, b, a,
+      x + width, y + height, r, g, b, a,
+      x, y + height, r, g, b, a,
+    );
+  }
+
+  return new Float32Array(vertices);
+}
+
+function updateShapeVertexBuffer() {
+  if (!device) return;
+
+  shapeVertexBuffer?.destroy();
+
+  const vertices = buildShapeVertices();
+  shapeVertexBuffer = device.createBuffer({
+    label: "Shape Vertex Buffer",
+    size: vertices.byteLength,
+    usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+    mappedAtCreation: true,
+  });
+  new Float32Array(shapeVertexBuffer.getMappedRange()).set(vertices);
+  shapeVertexBuffer.unmap();
+}
+
+function handleMouseDown(e: MouseEvent) {
   if (!canvasRef.value) return;
 
-  arc = new Arcanvas(canvasRef.value);
-  arc.use(AutoResizePlugin);
+  const rect = canvasRef.value.getBoundingClientRect();
+  const screenX = e.clientX - rect.left;
+  const screenY = e.clientY - rect.top;
+  const world = screenToWorld(screenX, screenY);
 
-  scene = new Scene({ width: 800, height: 600 });
-  camera = new Camera(arc);
-  camera.pixelsPerUnit = 100;
-  arc.setCamera(camera);
+  const hitShape = hitTestShapes(world.x, world.y);
 
-  const controller = new Camera2DController();
-  controller.zoom = 0.5;
-  controller.attach(camera);
-  controller.enable();
+  if (hitShape) {
+    // Start dragging shape
+    isMovingShape = true;
+    draggedShapeId = hitShape.id;
+    dragOffsetX = world.x - hitShape.x;
+    dragOffsetY = world.y - hitShape.y;
 
-  const renderSystem = new EngineRenderSystem(canvasRef.value, scene, camera, { backend: "webgl" });
-
-  const parent = canvasRef.value.parentElement;
-  if (parent) {
-    const rect = parent.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      arc.resize(rect.width, rect.height);
-    }
-  }
-
-  // Grid (like GridExample)
-  const grid = new GridObject({
-    plane: "XY",
-    cellSize: 1,
-    majorDivisions: 4,
-    adaptiveSpacing: true,
-    fixedPixelSize: true,
-    minCellPixelSize: 20,
-    baseColor: [0.1, 0.1, 0.1, 1],
-    minorColor: [0.3, 0.3, 0.3, 0.5],
-    majorColor: [0.5, 0.5, 0.5, 0.8],
-    xAxisColor: [0.8, 0.2, 0.2, 1],
-    yAxisColor: [0.2, 0.8, 0.2, 1],
-  });
-  scene.addObject(grid);
-
-  const selectionManager = new SelectionManager();
-  selectionManager.setMultiSelectEnabled(true);
-  selectionManager.setSelectionChangeCallback((event) => {
-    selectedCount.value = event.selectedIds.length;
-  });
-
-  selectionTool = new SelectionTool({ camera, selectionManager });
-  selectionTool.setCamera(camera);
-
-  // Selectable polygons (world units; camera pixelsPerUnit = 100 so ~2–4 units visible)
-  const rect1 = new Polygon2DObject(
-    [[0, 0], [1.5, 0], [1.5, 1], [0, 1]],
-    {},
-    new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] })
-  );
-  scene.addObject(rect1);
-  selectionTool.registerSelectable(rect1);
-  selectablesList.push(rect1);
-
-  const rect2 = new Polygon2DObject(
-    [[2, 0.5], [3.5, 0.5], [3.5, 1.5], [2, 1.5]],
-    {},
-    new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] })
-  );
-  scene.addObject(rect2);
-  selectionTool.registerSelectable(rect2);
-  selectablesList.push(rect2);
-
-  const tri = new Polygon2DObject(
-    [[1, 1.5], [2, 2.5], [2, 1.5]],
-    {},
-    new UnlitColorMaterial({ baseColor: [0.9, 0.5, 0.2, 1] })
-  );
-  scene.addObject(tri);
-  selectionTool.registerSelectable(tri);
-  selectablesList.push(tri);
-
-  // Overlay entity: each frame we replace its children with adorner meshes
-  overlay = new Entity("selection-overlay");
-  scene.addObject(overlay);
-
-  // Hit test on every pointermove for header display
-  function hitTestAt(screenPoint: { x: number; y: number }): { id: string; world: { x: number; y: number } } | null {
-    if (!camera) return null;
-    const world = HitTest2D.screenToWorld(screenPoint, camera);
-    for (let i = selectablesList.length - 1; i >= 0; i--) {
-      const poly = selectablesList[i]!;
-      if (!poly.isVisible()) continue;
-      if (HitTest2D.hitTestPolygon(screenPoint, poly, poly.transform, camera)) {
-        return { id: poly.id, world };
+    // Select if not already selected
+    if (!hitShape.selected && selectionManager) {
+      const addToSelection = e.shiftKey || e.metaKey;
+      if (!addToSelection) {
+        selectionManager.clear();
       }
+      selectionManager.select(hitShape.id, true);
     }
-    return null;
+  } else {
+    // Start panning
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+
+    // Clear selection if not shift-clicking
+    if (!e.shiftKey && !e.metaKey && selectionManager) {
+      selectionManager.clear();
+    }
   }
+}
 
-  // Wire pointer events: use capture so we run before Camera2DController (selection wins over pan)
-  function onPointer(ev: Event) {
-    if (!canvasRef.value || !selectionTool || !camera) return;
-    const normalized = normalizeEvent(ev, canvasRef.value);
-    if (!normalized) return;
-    const screenPoint = { x: normalized.position.x, y: normalized.position.y };
+function handleMouseMove(e: MouseEvent) {
+  if (!canvasRef.value) return;
 
-    if (normalized.type === "pointermove" || normalized.type === "mousemove") {
-      const hit = hitTestAt(screenPoint);
-      hoverHitId.value = hit?.id ?? null;
-      hoverWorld.value = hit ? hit.world : HitTest2D.screenToWorld(screenPoint, camera);
-    }
+  const rect = canvasRef.value.getBoundingClientRect();
+  const screenX = e.clientX - rect.left;
+  const screenY = e.clientY - rect.top;
+  const world = screenToWorld(screenX, screenY);
 
-    if (normalized.type === "pointerleave" || normalized.type === "mouseleave") {
-      hoverHitId.value = null;
-      hoverWorld.value = null;
-    }
+  hoverWorld.value = world;
 
-    if (normalized.type === "pointerdown" || normalized.type === "mousedown") {
-      if (normalized.buttons.length > 0) {
-        const hit = hitTestAt(screenPoint);
-        if (hit) {
-          selectionConsumed = true;
-          selectionTool.setPointerDownHit(hit.id);
-          const addToSelection =
-            normalized.modifiers.includes(ModifierKey.Shift) || normalized.modifiers.includes(ModifierKey.Meta);
+  const hitShape = hitTestShapes(world.x, world.y);
+  hoverHitId.value = hitShape?.id ?? null;
 
-          // Only change selection if not already selected, or if using multi-select modifiers
-          if (addToSelection || !selectionManager.isSelected(hit.id)) {
-            selectionManager.select(hit.id, addToSelection);
-          }
-        } else {
-          selectionTool.setPointerDownHit(null);
-          if (
-            !normalized.modifiers.includes(ModifierKey.Shift) &&
-            !normalized.modifiers.includes(ModifierKey.Meta)
-          ) {
-            selectionManager.clear();
-          }
+  if (isMovingShape && draggedShapeId) {
+    // Move all selected shapes
+    const shape = shapes.find(s => s.id === draggedShapeId);
+    if (shape) {
+      const dx = world.x - dragOffsetX - shape.x;
+      const dy = world.y - dragOffsetY - shape.y;
+
+      for (const s of shapes) {
+        if (s.selected) {
+          s.x += dx;
+          s.y += dy;
         }
       }
+      updateShapeVertexBuffer();
     }
-    if (normalized.type === "pointerup" || normalized.type === "pointercancel" || normalized.type === "mouseup") {
-      selectionConsumed = false;
-    }
-
-    inputState.update(normalized);
-    // Feed all events to the tool. The tool now handles duplicate mouse events internally
-    // and implements a drag threshold to allow both selection and dragging.
-    selectionTool.handleInput(normalized, inputState);
+  } else if (isDragging) {
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    cameraX -= dx / cameraZoom;
+    cameraY += dy / cameraZoom;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
   }
+}
 
-  // Swallow mouse events when we're doing selection (controller uses mousedown/move/up for pan)
-  function onMouseCapture(ev: Event) {
-    if (selectionConsumed) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (ev.type === "mouseup" || ev.type === "mouseleave") {
-        selectionConsumed = false;
-      }
-    }
-  }
+function handleMouseUp() {
+  isDragging = false;
+  isMovingShape = false;
+  draggedShapeId = null;
+}
 
-  const useCapture = true;
-  // Pointer events (primary)
-  canvasRef.value.addEventListener("pointerdown", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("pointermove", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("pointerup", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("pointercancel", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("pointerleave", onPointer, { passive: false, capture: useCapture });
-  // Mouse events (fallback and for blocking camera pan)
-  canvasRef.value.addEventListener("mousedown", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("mousemove", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("mouseup", onPointer, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("mouseleave", onPointer, { passive: false, capture: useCapture });
-  // Mouse capture for blocking camera pan when selection is active
-  canvasRef.value.addEventListener("mousedown", onMouseCapture, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("mousemove", onMouseCapture, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("mouseup", onMouseCapture, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("mouseleave", onMouseCapture, { passive: false, capture: useCapture });
-  canvasRef.value.addEventListener("contextmenu", (e) => e.preventDefault(), { passive: false });
+function handleMouseLeave() {
+  hoverHitId.value = null;
+  hoverWorld.value = null;
+}
 
-  arc.on("resize", (width, height) => {
-    if (scene) scene.viewport = { width, height };
+function handleWheel(e: WheelEvent) {
+  e.preventDefault();
+  const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+  cameraZoom = Math.max(0.1, Math.min(10, cameraZoom * zoomFactor));
+}
+
+function handleContextMenu(e: Event) {
+  e.preventDefault();
+}
+
+onMounted(async () => {
+  if (!canvasRef.value) return;
+
+  canvasRef.value.addEventListener('mousedown', handleMouseDown);
+  canvasRef.value.addEventListener('mousemove', handleMouseMove);
+  canvasRef.value.addEventListener('mouseup', handleMouseUp);
+  canvasRef.value.addEventListener('mouseleave', handleMouseLeave);
+  canvasRef.value.addEventListener('wheel', handleWheel, { passive: false });
+  canvasRef.value.addEventListener('contextmenu', handleContextMenu);
+
+  canvasHost = createCanvasHost({
+    canvas: canvasRef.value,
+    autoResize: true,
+    handleDpr: true,
+    maxDpr: 2,
   });
 
-  const frame = () => {
-    if (stopLoop) return;
-    if (overlay && selectionTool) {
-      overlay.removeChildren();
-      const meshes = selectionTool.getAdornerMeshes();
-      for (const ro of meshes) {
-        overlay.add(ro);
-      }
+  const adapter = await requestAdapter({ canvas: canvasHost.canvas });
+  if (!adapter) {
+    console.error("WebGL2 not supported");
+    return;
+  }
+
+  device = await adapter.requestDevice({ label: "SelectionGrid Device" });
+
+  // Create shape pipeline
+  const shapeVS = device.createShaderModule({
+    label: "Shape Vertex Shader",
+    sources: [glslVertex(shapeVertexShader)],
+  });
+
+  const shapeFS = device.createShaderModule({
+    label: "Shape Fragment Shader",
+    sources: [glslFragment(shapeFragmentShader)],
+  });
+
+  shapePipeline = device.createRenderPipeline({
+    label: "Shape Pipeline",
+    layout: "auto",
+    vertex: {
+      module: shapeVS,
+      entryPoint: "main",
+      buffers: [{
+        arrayStride: 6 * 4,
+        attributes: [
+          { format: "float32x2", offset: 0, shaderLocation: 0 },
+          { format: "float32x4", offset: 2 * 4, shaderLocation: 1 },
+        ],
+      }],
+    },
+    fragment: {
+      module: shapeFS,
+      entryPoint: "main",
+      targets: [{ format: "rgba8unorm" }],
+    },
+    primitive: { topology: "triangle-list" },
+  });
+
+  // Create grid pipeline
+  const gridVS = device.createShaderModule({
+    label: "Grid Vertex Shader",
+    sources: [glslVertex(gridVertexShader)],
+  });
+
+  const gridFS = device.createShaderModule({
+    label: "Grid Fragment Shader",
+    sources: [glslFragment(gridFragmentShader)],
+  });
+
+  gridPipeline = device.createRenderPipeline({
+    label: "Grid Pipeline",
+    layout: "auto",
+    vertex: {
+      module: gridVS,
+      entryPoint: "main",
+      buffers: [{
+        arrayStride: 2 * 4,
+        attributes: [
+          { format: "float32x2", offset: 0, shaderLocation: 0 },
+        ],
+      }],
+    },
+    fragment: {
+      module: gridFS,
+      entryPoint: "main",
+      targets: [{ format: "rgba8unorm" }],
+    },
+    primitive: { topology: "triangle-list" },
+  });
+
+  // Fullscreen quad for grid
+  const quadVertices = new Float32Array([
+    -1, -1, 1, -1, 1, 1,
+    -1, -1, 1, 1, -1, 1,
+  ]);
+
+  gridQuadBuffer = device.createBuffer({
+    label: "Grid Quad Buffer",
+    size: quadVertices.byteLength,
+    usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+    mappedAtCreation: true,
+  });
+  new Float32Array(gridQuadBuffer.getMappedRange()).set(quadVertices);
+  gridQuadBuffer.unmap();
+
+  // Selection manager
+  selectionManager = new SelectionManager();
+  selectionManager.setMultiSelectEnabled(true);
+
+  selectionManager.setSelectionChangeCallback((event) => {
+    selectedCount.value = event.selectedIds.length;
+
+    for (const id of event.addedIds) {
+      const shape = shapes.find(s => s.id === id);
+      if (shape) shape.selected = true;
     }
-    renderSystem.renderOnce();
-    requestAnimationFrame(frame);
-  };
-  frame();
+    for (const id of event.removedIds) {
+      const shape = shapes.find(s => s.id === id);
+      if (shape) shape.selected = false;
+    }
+
+    updateShapeVertexBuffer();
+  });
+
+  // Create shapes (in world units, camera pixelsPerUnit ~ 100 so 1-2 units visible initially)
+  const rect1 = createShapeSelectable("rect1", 0, 0, 1.5, 1, [0.2, 0.7, 0.9, 1]);
+  const rect2 = createShapeSelectable("rect2", 2, 0.5, 1.5, 1, [0.2, 0.7, 0.9, 1]);
+  const tri = createShapeSelectable("triangle", 1, 1.5, 1, 1, [0.9, 0.5, 0.2, 1]);
+
+  shapes.push(rect1, rect2, tri);
+
+  for (const shape of shapes) {
+    selectionManager.register(shape);
+  }
+
+  updateShapeVertexBuffer();
+
+  // Frame loop
+  frameLoop = createFrameLoop();
+
+  frameLoop.onFrame(() => {
+    if (!device || !canvasHost) return;
+
+    const gl = (device as unknown as { native: WebGL2RenderingContext }).native;
+    gl.viewport(0, 0, canvasHost.width, canvasHost.height);
+
+    const encoder = device.createCommandEncoder({ label: "Frame Encoder" });
+
+    const renderPass = encoder.beginRenderPass({
+      colorAttachments: [{
+        view: null as unknown as Parameters<typeof encoder.beginRenderPass>[0]["colorAttachments"][0]["view"],
+        clearValue: { r: 0.1, g: 0.1, b: 0.1, a: 1.0 },
+        loadOp: "clear",
+        storeOp: "store",
+      }],
+    });
+
+    // Render grid
+    if (gridPipeline && gridQuadBuffer) {
+      renderPass.setPipeline(gridPipeline);
+      renderPass.setVertexBuffer(0, gridQuadBuffer);
+
+      const gridProg = (gridPipeline as WebGL2RenderPipeline).program.native;
+      gl.uniform2f(gl.getUniformLocation(gridProg, "u_resolution"), canvasHost.cssWidth, canvasHost.cssHeight);
+      gl.uniform2f(gl.getUniformLocation(gridProg, "u_cameraPos"), cameraX, cameraY);
+      gl.uniform1f(gl.getUniformLocation(gridProg, "u_zoom"), cameraZoom);
+      gl.uniform1f(gl.getUniformLocation(gridProg, "u_cellSize"), 1);
+
+      renderPass.draw(6);
+    }
+
+    // Render shapes
+    if (shapePipeline && shapeVertexBuffer) {
+      renderPass.setPipeline(shapePipeline);
+      renderPass.setVertexBuffer(0, shapeVertexBuffer);
+
+      const shapeProg = (shapePipeline as WebGL2RenderPipeline).program.native;
+      gl.uniform2f(gl.getUniformLocation(shapeProg, "u_resolution"), canvasHost.cssWidth, canvasHost.cssHeight);
+      gl.uniform2f(gl.getUniformLocation(shapeProg, "u_cameraPos"), cameraX, cameraY);
+      gl.uniform1f(gl.getUniformLocation(shapeProg, "u_zoom"), cameraZoom);
+
+      renderPass.draw(shapes.length * 6);
+    }
+
+    renderPass.end();
+    device.queue.submit([encoder.finish()]);
+  });
+
+  frameLoop.start();
 });
 
 onBeforeUnmount(() => {
-  stopLoop = true;
-  arc?.destroy();
+  if (canvasRef.value) {
+    canvasRef.value.removeEventListener('mousedown', handleMouseDown);
+    canvasRef.value.removeEventListener('mousemove', handleMouseMove);
+    canvasRef.value.removeEventListener('mouseup', handleMouseUp);
+    canvasRef.value.removeEventListener('mouseleave', handleMouseLeave);
+    canvasRef.value.removeEventListener('wheel', handleWheel);
+    canvasRef.value.removeEventListener('contextmenu', handleContextMenu);
+  }
+
+  frameLoop?.dispose();
+  shapeVertexBuffer?.destroy();
+  gridQuadBuffer?.destroy();
+  device?.destroy();
+  canvasHost?.dispose();
 });
 </script>
 
 <template>
   <div class="example-wrapper">
     <div class="controls">
-      <span class="hint">Click shapes to select; drag to move; drag handles to resize/rotate.</span>
+      <span class="hint">Click shapes to select; drag to move; drag empty space to pan.</span>
       <span>Selected: {{ selectedCount }}</span>
       <span class="hover-info">
         Hover: {{ hoverHitId ?? 'none' }}
@@ -288,5 +588,10 @@ canvas {
   width: 100%;
   height: 100%;
   display: block;
+  cursor: grab;
+}
+
+canvas:active {
+  cursor: grabbing;
 }
 </style>

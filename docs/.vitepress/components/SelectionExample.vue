@@ -1,145 +1,274 @@
 <script setup lang="ts">
+import { createCanvasHost, createFrameLoop, type FrameLoop, type CanvasHost } from "@arcanvas/runtime";
 import {
-    Arcanvas,
-    AutoResizePlugin,
-    Camera,
-    Camera2DController,
-    EngineRenderSystem,
-} from "@arcanvas/core";
-import { Polygon2DObject } from "@arcanvas/feature-2d";
-import { UnlitColorMaterial } from "@arcanvas/graphics";
-import { Scene } from "@arcanvas/scene";
-import { SelectionManager } from "@arcanvas/selection";
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+  requestAdapter,
+  BufferUsage,
+  glslVertex,
+  glslFragment,
+  type GfxDevice,
+  type GfxRenderPipeline,
+  type GfxBuffer,
+  WebGL2RenderPipeline,
+} from "@arcanvas/webgl2";
+import { SelectionManager, type BoundingBox, type ISelectable } from "@arcanvas/selection";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-let arc: Arcanvas | null = null;
-let stopLoop = false;
+
+let canvasHost: CanvasHost | null = null;
+let frameLoop: FrameLoop | null = null;
+let device: GfxDevice | null = null;
+let pipeline: GfxRenderPipeline | null = null;
+let vertexBuffer: GfxBuffer | null = null;
 let selectionManager: SelectionManager | null = null;
 
 const selectedCount = ref(0);
 
-onMounted(() => {
-  if (!canvasRef.value) return;
+// Shape data
+interface Shape extends ISelectable {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: [number, number, number, number];
+  selectedColor: [number, number, number, number];
+  selected: boolean;
+}
 
-  arc = new Arcanvas(canvasRef.value);
-  arc.use(AutoResizePlugin);
+const shapes: Shape[] = [];
+let rect1Id = "";
+let rect2Id = "";
 
-  const scene = new Scene({ width: 800, height: 600 });
-  const camera = new Camera(arc);
-  camera.pixelsPerUnit = 1;
-  arc.setCamera(camera);
+// Shader code
+const vertexShaderCode = `#version 300 es
+layout(location = 0) in vec2 a_position;
+layout(location = 1) in vec4 a_color;
 
-  const controller = new Camera2DController();
-  controller.attach(camera);
-  controller.enable();
+out vec4 v_color;
 
-  const renderSystem = new EngineRenderSystem(canvasRef.value, scene, camera, { backend: "webgl" });
+uniform vec2 u_resolution;
 
-  // Force initial resize to container size
-  const parent = canvasRef.value.parentElement;
-  if (parent) {
-    const rect = parent.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      arc.resize(rect.width, rect.height);
-    }
+void main() {
+  vec2 clipPos = (a_position / u_resolution) * 2.0 - 1.0;
+  clipPos.y = -clipPos.y;
+  gl_Position = vec4(clipPos, 0.0, 1.0);
+  v_color = a_color;
+}
+`;
+
+const fragmentShaderCode = `#version 300 es
+precision highp float;
+
+in vec4 v_color;
+out vec4 fragColor;
+
+void main() {
+  fragColor = v_color;
+}
+`;
+
+function createShapeSelectable(id: string, x: number, y: number, width: number, height: number): Shape {
+  return {
+    id,
+    x,
+    y,
+    width,
+    height,
+    color: [0.2, 0.7, 0.9, 1],
+    selectedColor: [1, 0.5, 0, 1],
+    selected: false,
+    getBounds(): BoundingBox {
+      const self = this;
+      return {
+        getCenter: () => ({ x: self.x + self.width / 2, y: self.y + self.height / 2 }),
+        contains: (point: { x: number; y: number }) =>
+          point.x >= self.x && point.x <= self.x + self.width &&
+          point.y >= self.y && point.y <= self.y + self.height,
+      };
+    },
+    isVisible: () => true,
+  };
+}
+
+function buildVertices(): Float32Array {
+  const vertices: number[] = [];
+
+  for (const shape of shapes) {
+    const color = shape.selected ? shape.selectedColor : shape.color;
+    const [r, g, b, a] = color;
+    const { x, y, width, height } = shape;
+
+    // Two triangles for rectangle
+    // prettier-ignore
+    vertices.push(
+      x, y, r, g, b, a,
+      x + width, y, r, g, b, a,
+      x + width, y + height, r, g, b, a,
+      x, y, r, g, b, a,
+      x + width, y + height, r, g, b, a,
+      x, y + height, r, g, b, a,
+    );
   }
 
-  // Selection Setup
+  return new Float32Array(vertices);
+}
+
+onMounted(async () => {
+  if (!canvasRef.value) return;
+
+  canvasHost = createCanvasHost({
+    canvas: canvasRef.value,
+    autoResize: true,
+    handleDpr: true,
+    maxDpr: 2,
+  });
+
+  const adapter = await requestAdapter({ canvas: canvasHost.canvas });
+  if (!adapter) {
+    console.error("WebGL2 not supported");
+    return;
+  }
+
+  device = await adapter.requestDevice({ label: "Selection Device" });
+
+  // Create shaders
+  const vertexShader = device.createShaderModule({
+    label: "Selection Vertex Shader",
+    sources: [glslVertex(vertexShaderCode)],
+  });
+
+  const fragmentShader = device.createShaderModule({
+    label: "Selection Fragment Shader",
+    sources: [glslFragment(fragmentShaderCode)],
+  });
+
+  // Create pipeline
+  pipeline = device.createRenderPipeline({
+    label: "Selection Pipeline",
+    layout: "auto",
+    vertex: {
+      module: vertexShader,
+      entryPoint: "main",
+      buffers: [{
+        arrayStride: 6 * 4, // pos2 + color4
+        attributes: [
+          { format: "float32x2", offset: 0, shaderLocation: 0 },
+          { format: "float32x4", offset: 2 * 4, shaderLocation: 1 },
+        ],
+      }],
+    },
+    fragment: {
+      module: fragmentShader,
+      entryPoint: "main",
+      targets: [{ format: "rgba8unorm" }],
+    },
+    primitive: { topology: "triangle-list" },
+  });
+
+  // Selection manager setup
   selectionManager = new SelectionManager();
   selectionManager.setMultiSelectEnabled(true);
 
   selectionManager.setSelectionChangeCallback((event) => {
     selectedCount.value = event.selectedIds.length;
 
-    // Update visuals (highlight selected)
-    event.addedIds.forEach(id => {
-      const obj = selectionManager?.getSelectable(id);
-      if (obj instanceof Polygon2DObject) {
-        (obj.material as UnlitColorMaterial).baseColor = [1, 0.5, 0, 1]; // Orange
-      }
+    // Update shape selection state
+    for (const id of event.addedIds) {
+      const shape = shapes.find(s => s.id === id);
+      if (shape) shape.selected = true;
+    }
+    for (const id of event.removedIds) {
+      const shape = shapes.find(s => s.id === id);
+      if (shape) shape.selected = false;
+    }
+
+    // Rebuild vertices with new colors
+    updateVertexBuffer();
+  });
+
+  // Create shapes
+  const shape1 = createShapeSelectable("rect1", 100, 100, 150, 100);
+  const shape2 = createShapeSelectable("rect2", 300, 150, 150, 100);
+  shapes.push(shape1, shape2);
+  rect1Id = shape1.id;
+  rect2Id = shape2.id;
+
+  selectionManager.register(shape1);
+  selectionManager.register(shape2);
+
+  // Create initial vertex buffer
+  updateVertexBuffer();
+
+  // Frame loop
+  frameLoop = createFrameLoop();
+
+  frameLoop.onFrame(() => {
+    if (!device || !pipeline || !vertexBuffer || !canvasHost) return;
+
+    const gl = (device as unknown as { native: WebGL2RenderingContext }).native;
+    gl.viewport(0, 0, canvasHost.width, canvasHost.height);
+
+    const encoder = device.createCommandEncoder({ label: "Frame Encoder" });
+
+    const renderPass = encoder.beginRenderPass({
+      colorAttachments: [{
+        view: null as unknown as Parameters<typeof encoder.beginRenderPass>[0]["colorAttachments"][0]["view"],
+        clearValue: { r: 0.12, g: 0.12, b: 0.12, a: 1.0 },
+        loadOp: "clear",
+        storeOp: "store",
+      }],
     });
 
-    event.removedIds.forEach(id => {
-      const obj = selectionManager?.getSelectable(id);
-      if (obj instanceof Polygon2DObject) {
-        (obj.material as UnlitColorMaterial).baseColor = [0.2, 0.7, 0.9, 1]; // Blue
-      }
-    });
+    renderPass.setPipeline(pipeline);
+    renderPass.setVertexBuffer(0, vertexBuffer);
+
+    // Set resolution uniform
+    const program = (pipeline as WebGL2RenderPipeline).program.native;
+    gl.uniform2f(gl.getUniformLocation(program, "u_resolution"), canvasHost.cssWidth, canvasHost.cssHeight);
+
+    renderPass.draw(shapes.length * 6); // 6 vertices per rectangle
+    renderPass.end();
+
+    device.queue.submit([encoder.finish()]);
   });
 
-  // Create objects
-  createObjects(scene);
-
-  // Interaction
-  canvasRef.value.addEventListener("pointerdown", (e) => {
-    // Very simple hit test for demo purposes
-    // In reality, use HitTest2D or Raycaster
-    const rect = canvasRef.value!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Map screen to world (simplified, assuming 1:1 and centered for now or use camera unproject)
-    // Actually we need proper unprojection.
-    // For this simple demo, we'll just check scene objects directly if we can map coords.
-    // BUT we have pan/zoom.
-    
-    // Let's just use a simulated "random click" effect or select random object if we can't implement full hit test here easily
-    // OR we can implement a basic hit test if we have the tools.
-    // Arcanvas should have HitTest2D?
-    // Let's try to import HitTest2D if available.
-    // import { HitTest2D } from "@arcanvas/feature-2d"; 
-    // But we need to unproject first.
-    
-    // For this demo, let's just make the objects clickable by iterating them and checking bounds roughly?
-    // Or just "Select All" / "Clear" buttons in UI to demonstrate API.
-    
-    // Actually, let's just expose buttons for "Select Rect 1", "Select Rect 2".
-    // Implementing full mouse picking in a small example component without full event system wiring might be flaky.
-  });
-
-  arc.on("resize", (width, height) => {
-    scene.viewport = { width, height };
-  });
-
-  const frame = () => {
-    if (stopLoop) return;
-    renderSystem.renderOnce();
-    requestAnimationFrame(frame);
-  };
-  frame();
+  frameLoop.start();
 });
 
-let rect1Id = "";
-let rect2Id = "";
+function updateVertexBuffer() {
+  if (!device) return;
 
-function createObjects(scene: Scene) {
-  const points1 = [[100, 100], [250, 100], [250, 200], [100, 200]];
-  const rect1 = new Polygon2DObject(points1, {}, new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] }));
-  rect1Id = rect1.id;
-  scene.addObject(rect1);
-  selectionManager?.register(rect1);
+  vertexBuffer?.destroy();
 
-  const points2 = [[300, 150], [450, 150], [450, 250], [300, 250]];
-  const rect2 = new Polygon2DObject(points2, {}, new UnlitColorMaterial({ baseColor: [0.2, 0.7, 0.9, 1] }));
-  rect2Id = rect2.id;
-  scene.addObject(rect2);
-  selectionManager?.register(rect2);
+  const vertices = buildVertices();
+  vertexBuffer = device.createBuffer({
+    label: "Shape Vertex Buffer",
+    size: vertices.byteLength,
+    usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+    mappedAtCreation: true,
+  });
+  new Float32Array(vertexBuffer.getMappedRange()).set(vertices);
+  vertexBuffer.unmap();
 }
 
 function selectRect1() {
   selectionManager?.select(rect1Id, true);
 }
+
 function selectRect2() {
   selectionManager?.select(rect2Id, true);
 }
+
 function clearSelection() {
   selectionManager?.clear();
 }
 
 onBeforeUnmount(() => {
-  stopLoop = true;
-  arc?.destroy();
+  frameLoop?.dispose();
+  vertexBuffer?.destroy();
+  device?.destroy();
+  canvasHost?.dispose();
 });
 </script>
 
@@ -163,6 +292,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   overflow: hidden;
 }
+
 .controls {
   padding: 10px;
   background: #252529;
@@ -171,6 +301,7 @@ onBeforeUnmount(() => {
   align-items: center;
   border-bottom: 1px solid #333;
 }
+
 button {
   padding: 4px 12px;
   background: #3e3e42;
@@ -179,14 +310,17 @@ button {
   border-radius: 4px;
   cursor: pointer;
 }
+
 button:hover {
   background: #4e4e52;
 }
+
 .example-container {
   width: 100%;
   height: 400px;
   background: #1e1e1e;
 }
+
 canvas {
   width: 100%;
   height: 100%;

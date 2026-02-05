@@ -1,0 +1,34 @@
+{
+  "name": "@arcanvas/webgl2",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebGL2 adapter implementing @arcanvas/gfx interfaces",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "index.ts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "webgl2",
+    "webgl",
+    "graphics",
+    "gpu",
+    "rendering"
+  ],
+  "dependencies": {
+    "@arcanvas/gfx": "workspace:*"
+  }
+}

@@ -1,5 +1,5 @@
-import { existsSync, readdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
 import { atlasGeneratePlugin } from "./atlasGeneratePlugin";
@@ -7,10 +7,15 @@ import { atlasGeneratePlugin } from "./atlasGeneratePlugin";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../..");
 
+interface SidebarItem {
+  text: string;
+  link?: string;
+  items?: SidebarItem[];
+  collapsed?: boolean;
+}
+
 /**
  * Format a camelCase/PascalCase name for display.
- * Adds spaces only at word boundaries (lowercase to uppercase), preserving abbreviations.
- * Example: "ColorRGB" -> "Color RGB", "MyClass" -> "My Class"
  */
 function formatDisplayName(name: string): string {
   return (
@@ -24,9 +29,8 @@ function formatDisplayName(name: string): string {
 
 /**
  * Build sidebar structure from API directory.
- * Top-level files become categories, subdirectories become nested groups.
  */
-function buildApiSidebar(): Array<{ text: string; items: Array<{ text: string; link: string } | { text: string; collapsed?: boolean; items: Array<{ text: string; link: string }> }> }> {
+function buildApiSidebar(): Array<SidebarItem> {
   const apiDir = join(__dirname, "../api");
   if (!existsSync(apiDir)) return [];
 
@@ -34,7 +38,7 @@ function buildApiSidebar(): Array<{ text: string; items: Array<{ text: string; l
     .filter((d) => d.isDirectory() && !d.name.startsWith("."))
     .map((d) => d.name);
 
-  const sidebar: Array<{ text: string; items: Array<{ text: string; link: string } | { text: string; collapsed?: boolean; items: Array<{ text: string; link: string }> }> }> = [];
+  const sidebar: Array<SidebarItem> = [];
 
   for (const pkg of packages) {
     const pkgDir = join(apiDir, pkg);
@@ -68,7 +72,7 @@ function buildApiSidebar(): Array<{ text: string; items: Array<{ text: string; l
 
     walk(pkgDir, "", true);
 
-    const items: Array<{ text: string; link: string } | { text: string; collapsed?: boolean; items: Array<{ text: string; link: string }> }> = [];
+    const items: Array<SidebarItem> = [];
     // Add top-level files first (categories)
     topLevelFiles.sort((a, b) => a.text.localeCompare(b.text)).forEach((item) => items.push(item));
     // Add subdirectories as collapsible groups
@@ -131,77 +135,268 @@ function getFirstApiLink(pkg: string): string {
   return findFirstFile(apiDir, "") || `/api/${pkg}`;
 }
 
+// --- Package Docs Auto-Discovery ---
+
+/**
+ * Generate rewrite rules for package docs.
+ */
+function getPackageRewrites() {
+  const packagesDir = resolve(ROOT, "packages");
+  if (!existsSync(packagesDir)) return {};
+
+  const rewrites: Record<string, string> = {};
+  const packages = readdirSync(packagesDir).filter((f) => statSync(join(packagesDir, f)).isDirectory());
+
+  for (const pkg of packages) {
+    const docsDir = join(packagesDir, pkg, "docs");
+    if (existsSync(docsDir)) {
+      // Find all MD files recursively
+      const files = findFilesRecursively(docsDir, ".md");
+      for (const file of files) {
+        const relPath = relative(docsDir, file);
+        // Normalize path separators to forward slash for consistency
+        const normalizedRelPath = relPath.split("\\").join("/");
+
+        // Source path relative to VitePress root (docs folder)
+        const sourcePath = relative(resolve(__dirname, ".."), file).split("\\").join("/");
+
+        let destPath: string;
+        if (normalizedRelPath.startsWith("examples/") || normalizedRelPath === "examples") {
+          // It's an example, map to examples/<pkg>/...
+          const exampleRelPath = normalizedRelPath.replace(/^examples\//, "");
+          destPath = `examples/${pkg}/${exampleRelPath}`;
+        } else {
+          // Regular doc, map to packages/<pkg>/...
+          destPath = `packages/${pkg}/${normalizedRelPath}`;
+        }
+
+        rewrites[sourcePath] = destPath;
+      }
+    }
+  }
+  return rewrites;
+}
+
+/**
+ * Find files recursively in a directory.
+ */
+function findFilesRecursively(dir: string, ext: string, fileList: string[] = []) {
+  const files = readdirSync(dir);
+  for (const file of files) {
+    const filePath = join(dir, file);
+    if (statSync(filePath).isDirectory()) {
+      findFilesRecursively(filePath, ext, fileList);
+    } else if (file.endsWith(ext)) {
+      fileList.push(filePath);
+    }
+  }
+  return fileList;
+}
+
+/**
+ * Build sidebar for a specific package's docs.
+ * Adapts links based on whether they are examples or regular docs.
+ */
+function buildPackageDocsSidebar(pkg: string): SidebarItem[] {
+  const docsDir = resolve(ROOT, "packages", pkg, "docs");
+  if (!existsSync(docsDir)) return [];
+
+  // Custom walker for sidebar structure
+  /**
+   * Walk directory to build sidebar structure.
+   */
+  function walk(dir: string, prefix: string): SidebarItem[] {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    const result: SidebarItem[] = [];
+
+    // Separate index.md, other files, and directories
+    const indexFile = entries.find((e) => e.isFile() && e.name === "index.md");
+    const otherFiles = entries.filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "index.md");
+    const directories = entries.filter((e) => e.isDirectory());
+
+    // Helper to generate correct link
+    const getLink = (subPath: string) => {
+      const fullRelPath = prefix ? `${prefix}/${subPath}` : subPath;
+      // Normalize check
+      const normalized = fullRelPath.split("\\").join("/");
+      if (normalized.startsWith("examples/") || normalized === "examples") {
+        const exRelPath = normalized.replace(/^examples\/?/, "");
+        return `/examples/${pkg}/${exRelPath}`;
+      }
+      return `/packages/${pkg}/${fullRelPath}`;
+    };
+
+    // 1. Handle index.md
+    if (indexFile) {
+      let text = formatDisplayName(prefix.split("/").pop() || pkg);
+      if (dir === docsDir) text = formatDisplayName(pkg);
+
+      result.push({
+        text,
+        link: getLink(""), // Points to index.md
+      });
+    }
+
+    // 2. Handle other files
+    for (const file of otherFiles) {
+      const name = file.name.replace(".md", "");
+      result.push({
+        text: formatDisplayName(name),
+        link: getLink(name),
+      });
+    }
+
+    // 3. Handle directories
+    for (const d of directories) {
+      const subItems = walk(join(dir, d.name), prefix ? `${prefix}/${d.name}` : d.name);
+      if (subItems.length > 0) {
+        result.push({
+          text: formatDisplayName(d.name),
+          items: subItems,
+          collapsed: false,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  return walk(docsDir, "");
+}
+
+/**
+ * Build the Examples sidebar by automatically scanning /docs/examples directory.
+ */
+function buildExamplesSidebar(): SidebarItem[] {
+  const examplesDir = join(__dirname, "../examples");
+  if (!existsSync(examplesDir)) {
+    return [
+      {
+        text: "Examples",
+        items: [{ text: "Overview", link: "/examples/" }],
+      },
+    ];
+  }
+
+  /**
+   * Recursively walk the examples directory to build sidebar structure.
+   */
+  function walk(dir: string, basePath: string): SidebarItem[] {
+    const entries = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => !e.name.startsWith("."))
+      .sort((a, b) => {
+        // Sort: directories first, then files, both alphabetically
+        if (a.isDirectory() && !b.isDirectory()) return -1;
+        if (!a.isDirectory() && b.isDirectory()) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    const items: SidebarItem[] = [];
+    const files: Array<{ text: string; link: string }> = [];
+    const directories: Array<{ name: string; items: SidebarItem[] }> = [];
+
+    // Separate files and directories
+    for (const ent of entries) {
+      const full = join(dir, ent.name);
+      if (ent.isDirectory()) {
+        const subItems = walk(full, basePath ? `${basePath}/${ent.name}` : ent.name);
+        if (subItems.length > 0) {
+          directories.push({ name: ent.name, items: subItems });
+        }
+      } else if (ent.isFile() && ent.name.endsWith(".md")) {
+        const name = ent.name.replace(/\.md$/, "");
+        const link = `/examples${basePath ? `/${basePath}` : ""}${name === "index" ? "" : `/${name}`}`;
+        const displayName = formatDisplayName(name === "index" ? (basePath ? basePath.split("/").pop() || "Overview" : "Overview") : name);
+        files.push({ text: displayName, link });
+      }
+    }
+
+    // Add files first (sorted)
+    files.sort((a, b) => a.text.localeCompare(b.text)).forEach((item) => items.push(item));
+
+    // Add directories as collapsible groups (sorted)
+    directories
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(({ name, items: dirItems }) => {
+        items.push({
+          text: formatDisplayName(name),
+          collapsed: false,
+          items: dirItems,
+        });
+      });
+
+    return items;
+  }
+
+  const items = walk(examplesDir, "");
+
+  return [
+    {
+      text: "Examples",
+      items: items.length > 0 ? items : [{ text: "Overview", link: "/examples/" }],
+    },
+  ];
+}
+
+// Get list of packages with docs
+const packagesDir = resolve(ROOT, "packages");
+const packagesWithDocs = existsSync(packagesDir) ? readdirSync(packagesDir).filter((pkg) => existsSync(join(packagesDir, pkg, "docs"))) : [];
+
+// Build sidebar config for packages
+const packageSidebars: Record<string, SidebarItem[]> = {};
+for (const pkg of packagesWithDocs) {
+  packageSidebars[`/packages/${pkg}/`] = buildPackageDocsSidebar(pkg);
+}
+
 export default defineConfig({
   title: "Arcanvas",
   description: "WebGL canvas engine",
   lastUpdated: true,
   cleanUrls: true,
   appearance: true,
+  rewrites: {
+    ...getPackageRewrites(),
+  },
   themeConfig: {
     logo: undefined,
     nav: [
-      { text: "Overview", link: "/core/overview" },
+      { text: "Overview", link: "/guide/overview" },
       { text: "Examples", link: "/examples/" },
-      { text: "API", link: getFirstApiLink("core") },
+      { text: "API", link: getFirstApiLink("gfx") },
+      {
+        text: "Packages",
+        items: packagesWithDocs.map((pkg) => ({
+          text: pkg,
+          link: `/packages/${pkg}/`,
+        })),
+      },
     ],
     sidebar: {
       "/api/": buildApiSidebar(),
-      "/examples/": [
-        {
-          text: "Examples",
-          items: [
-            { text: "Overview", link: "/examples/" },
-            { text: "Getting Started", link: "/examples/getting-started" },
-            {
-              text: "2D Graphics",
-              items: [
-                { text: "Basic Shapes", link: "/examples/basic-shapes" },
-                { text: "Grid", link: "/examples/grid" },
-                { text: "Selection", link: "/examples/selection" },
-                { text: "Selection on Grid", link: "/examples/selection-grid" },
-              ],
-            },
-            {
-              text: "Typography",
-              items: [
-                { text: "Text Rendering", link: "/examples/typography" },
-                { text: "MSDF Generator", link: "/examples/msdf-generator" },
-              ],
-            },
-          ],
-        },
-      ],
+      ...packageSidebars,
+      "/examples/": buildExamplesSidebar(),
       "/": [
         {
-          text: "Core",
+          text: "Guide",
           items: [
-            { text: "Overview", link: "/core/overview" },
-            { text: "Classes", link: "/core/classes" },
-            { text: "Utils", link: "/core/utils" },
+            { text: "Overview", link: "/guide/overview" },
+            { text: "Architecture", link: "/guide/architecture" },
+            { text: "Getting Started", link: "/guide/getting-started" },
           ],
         },
         {
-          text: "Color",
+          text: "Packages",
           items: [
-            { text: "Overview", link: "/color/overview" },
-            { text: "Classes", link: "/color/classes" },
-            { text: "Utils", link: "/color/utils" },
-          ],
-        },
-        {
-          text: "Matrix",
-          items: [
-            { text: "Overview", link: "/matrix/overview" },
-            { text: "Classes", link: "/matrix/classes" },
-            { text: "Utils", link: "/matrix/utils" },
-          ],
-        },
-        {
-          text: "Vector",
-          items: [
-            { text: "Overview", link: "/vector/overview" },
-            { text: "Classes", link: "/vector/classes" },
-            { text: "Utils", link: "/vector/utils" },
+            { text: "gfx (Graphics API)", link: "/packages/gfx" },
+            { text: "webgpu (WebGPU Backend)", link: "/packages/webgpu" },
+            { text: "webgl2 (WebGL2 Backend)", link: "/packages/webgl2" },
+            { text: "runtime (App Infrastructure)", link: "/packages/runtime" },
+            { text: "scene (Scene Graph)", link: "/packages/scene" },
+            { text: "math (Vector/Matrix)", link: "/packages/math" },
+            { text: "color (Color Spaces)", link: "/packages/color" },
+            { text: "selection (Selection)", link: "/packages/selection" },
+            { text: "interaction (Input)", link: "/packages/interaction" },
+            { text: "typography (Text)", link: "/packages/typography" },
           ],
         },
       ],
@@ -234,17 +429,21 @@ export default defineConfig({
     plugins: [atlasGeneratePlugin()],
     resolve: {
       alias: {
-        "@arcanvas/backend-webgl": resolve(ROOT, "packages/backend-webgl/index.ts"),
-        "@arcanvas/core": resolve(ROOT, "packages/core/index.ts"),
-        "@arcanvas/feature-2d": resolve(ROOT, "packages/feature-2d/index.ts"),
-        "@arcanvas/graphics": resolve(ROOT, "packages/graphics/index.ts"),
+        // Foundation
         "@arcanvas/math": resolve(ROOT, "packages/math/index.ts"),
+        "@arcanvas/color": resolve(ROOT, "packages/color/index.ts"),
+        "@arcanvas/interaction": resolve(ROOT, "packages/interaction/index.ts"),
+        // Kernel
+        "@arcanvas/gfx": resolve(ROOT, "packages/gfx/index.ts"),
+        // Adapters
+        "@arcanvas/webgpu": resolve(ROOT, "packages/webgpu/index.ts"),
+        "@arcanvas/webgl2": resolve(ROOT, "packages/webgl2/index.ts"),
+        // Scene/Runtime
         "@arcanvas/scene": resolve(ROOT, "packages/scene/index.ts"),
+        "@arcanvas/runtime": resolve(ROOT, "packages/runtime/index.ts"),
+        // Features
         "@arcanvas/selection": resolve(ROOT, "packages/selection/index.ts"),
         "@arcanvas/typography": resolve(ROOT, "packages/typography/index.ts"),
-        "@arcanvas/tools": resolve(ROOT, "packages/tools/index.ts"),
-        "@arcanvas/interaction": resolve(ROOT, "packages/interaction/index.ts"),
-        "@arcanvas/color": resolve(ROOT, "packages/color/index.ts"),
         // WASM package - requires building first: cd packages/msdf-generator-rs && bun run build
         "@arcanvas/msdf-generator-rs": resolve(ROOT, "packages/msdf-generator-rs/pkg/msdf_generator_rs.js"),
       },

@@ -1,4 +1,4 @@
-import { createPositionNormalUVLayout, Mesh } from "@arcanvas/graphics";
+import { Mesh, VERTEX_LAYOUT_POSITION_NORMAL_UV } from "@arcanvas/gfx";
 import type * as opentype from "opentype.js";
 import type { TriangulatedGlyph } from "./font/GlyphTriangulator";
 import { GlyphTriangulator } from "./font/GlyphTriangulator";
@@ -8,7 +8,7 @@ import { TextLayout } from "./layout/TextLayout";
 export type { LayoutOptions } from "./layout/TextLayout";
 
 /**
- * Creates WebGL-ready mesh geometry from text.
+ * Creates GPU-ready mesh geometry from text.
  *
  * Combines text layout and glyph triangulation into a single mesh.
  */
@@ -21,7 +21,7 @@ export class TextGeometry {
    * @param text - Text to render
    * @param font - opentype.js Font object
    * @param options - Layout options (fontSize, align, etc.)
-   * @returns WebGL-ready Mesh
+   * @returns GPU-ready Mesh
    */
   static create(text: string, font: opentype.Font, options: LayoutOptions): Mesh {
     const metrics = TextLayout.layout(text, font, options);
@@ -52,8 +52,8 @@ export class TextGeometry {
       totalIndices += tri.indices.length;
     }
 
-    const layout = createPositionNormalUVLayout();
-    const strideFloats = layout.stride / 4;
+    const layout = VERTEX_LAYOUT_POSITION_NORMAL_UV;
+    const strideFloats = layout.arrayStride / 4;
     const vertexData = new Float32Array(totalVertices * strideFloats);
     const indexData = totalVertices > 65535 ? new Uint32Array(totalIndices) : new Uint16Array(totalIndices);
 
@@ -92,7 +92,19 @@ export class TextGeometry {
       iOffset += tri.indices.length;
     }
 
-    return new Mesh(vertexData, indexData, layout);
+    return new Mesh({
+      label: "text",
+      vertexBuffers: [
+        {
+          data: vertexData,
+          layout,
+        },
+      ],
+      indexData: {
+        data: indexData,
+        format: totalVertices > 65535 ? "uint32" : "uint16",
+      },
+    });
   }
 
   /**

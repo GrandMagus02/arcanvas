@@ -35,7 +35,8 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
     "types": [
-      "bun"
+      "bun",
+      "@webgpu/types"
     ]
   }
 }

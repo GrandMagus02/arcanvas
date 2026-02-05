@@ -102,7 +102,7 @@ export class HandleInteraction {
 
     this._lastPosition = { x: currentPosition.x, y: currentPosition.y } as Vector2;
 
-    const interactionType = this._activeHandle.type === "rotation" ? InteractionType.Rotate : InteractionType.Resize;
+    const interactionType = (this._activeHandle.type as string) === "rotation" ? InteractionType.Rotate : InteractionType.Resize;
 
     if (this._onInteraction) {
       this._onInteraction({

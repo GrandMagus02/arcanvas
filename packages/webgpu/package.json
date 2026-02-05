@@ -1,0 +1,36 @@
+{
+  "name": "@arcanvas/webgpu",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebGPU adapter implementing @arcanvas/gfx interfaces",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "index.ts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "webgpu",
+    "graphics",
+    "gpu",
+    "rendering"
+  ],
+  "dependencies": {
+    "@arcanvas/gfx": "workspace:*"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.40"
+  }
+}

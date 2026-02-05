@@ -1,0 +1,33 @@
+{
+  "name": "@arcanvas/runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Runtime infrastructure for Arcanvas - canvas host, event bus, frame loop",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "index.ts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "canvas",
+    "runtime",
+    "events",
+    "lifecycle"
+  ],
+  "dependencies": {
+    "@arcanvas/gfx": "workspace:*"
+  }
+}

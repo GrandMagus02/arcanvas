@@ -6,7 +6,8 @@
   "module": "./index.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "exports": {
     ".": {
@@ -19,7 +20,7 @@
     }
   },
   "dependencies": {
-    "@arcanvas/graphics": "workspace:*",
+    "@arcanvas/gfx": "workspace:*",
     "earcut": "^3.0.0",
     "opentype.js": "^1.3.4"
   },

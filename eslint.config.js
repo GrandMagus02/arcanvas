@@ -1,10 +1,8 @@
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import jsdoc from "eslint-plugin-jsdoc";
-import jsonc from "eslint-plugin-jsonc";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import unusedImports from "eslint-plugin-unused-imports";
-import jsoncParser from "jsonc-eslint-parser";
 import tseslint from "typescript-eslint";
 
 export default [
@@ -17,8 +15,11 @@ export default [
       "**/.bun/**",
       "**/.vitepress/cache/**",
       "docs/.vitepress/cache/**",
+      "docs/.vitepress/atlasGeneratePlugin.ts",
+      "apps/playground/**",
       "eslint.config.js",
       "prettier.config.js",
+      "bun.lock",
     ],
   },
   js.configs.recommended,
@@ -34,7 +35,6 @@ export default [
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
         sourceType: "module",
-        project: ["./tsconfig.json", "./apps/*/tsconfig.json", "./packages/*/tsconfig.json", "./docs/tsconfig.json"],
       },
     },
   })),
@@ -65,6 +65,7 @@ export default [
         },
       ],
       "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off",
       "unused-imports/no-unused-imports": "error",
       "unused-imports/no-unused-vars": [
         "error",
@@ -105,18 +106,6 @@ export default [
     },
   },
   eslintPluginPrettierRecommended,
-  {
-    files: ["bun.lock"],
-    languageOptions: {
-      parser: jsoncParser,
-    },
-    plugins: {
-      jsonc,
-    },
-    rules: {
-      "jsonc/comma-dangle": ["error", "never"],
-    },
-  },
   {
     files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
     plugins: {

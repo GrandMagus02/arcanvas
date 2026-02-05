@@ -1,0 +1,60 @@
+{
+  "name": "@arcanvas/gfx",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebGPU-like graphics kernel - backend-agnostic GPU abstraction for arcanvas",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "import": "./src/types/index.ts"
+    },
+    "./resource": {
+      "types": "./src/resource/index.ts",
+      "import": "./src/resource/index.ts"
+    },
+    "./pipeline": {
+      "types": "./src/pipeline/index.ts",
+      "import": "./src/pipeline/index.ts"
+    },
+    "./command": {
+      "types": "./src/command/index.ts",
+      "import": "./src/command/index.ts"
+    },
+    "./geometry": {
+      "types": "./src/geometry/index.ts",
+      "import": "./src/geometry/index.ts"
+    },
+    "./shader": {
+      "types": "./src/shader/index.ts",
+      "import": "./src/shader/index.ts"
+    },
+    "./util": {
+      "types": "./src/util/index.ts",
+      "import": "./src/util/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "index.ts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "webgpu",
+    "webgl",
+    "graphics",
+    "gpu",
+    "rendering",
+    "canvas"
+  ]
+}
